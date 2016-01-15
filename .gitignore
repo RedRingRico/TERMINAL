@@ -1,0 +1,65 @@
+# Directories #
+Obj
+obj
+Bin
+bin
+Build
+build
+Lib
+lib
+Debug
+debug
+Release
+release
+Profile
+profile
+Data
+CodeScape
+
+# Complied #
+*.obj
+*.o
+*.exe
+*.bin
+
+# Build #
+*.ncb
+*.suo
+*.user
+*.sdf
+*.opensdf
+*.aps
+*.pch
+local.properties
+
+# Debugging temporary directory#
+Codescape
+
+# GD-ROM workshop #
+Workshop
+
+# Temporary Vim #
+*.swp
+*.swo
+*.swn
+*.vim
+
+# Temporary Blender files #
+*.blend*
+!*.blend
+
+# Diffing temporary files #
+*.orig
+
+# Documentation #
+*.~lock.*
+*.docstates
+
+# LaTeX temporary files
+*.aux
+*.log
+*.toc
+
+# Compiled content
+*.PVR
+*.pvr
