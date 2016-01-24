@@ -63,3 +63,11 @@ Workshop
 # Compiled content
 *.PVR
 *.pvr
+
+# GD Files
+*.gdi
+*.cim
+
+# Misc
+*~
+GitVersion.h

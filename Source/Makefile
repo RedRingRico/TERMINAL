@@ -139,6 +139,10 @@ TRIM_QUOTES = ~
 
 ifneq ($(OBJSABSOLUTE), $(CURDIR))
 
+VERSIONINFO:
+	-mkdir Headers
+	gitversion.bat Headers\GitVersion.h TERMINAL
+
 CLEAR:
 	@cls
 
@@ -155,7 +159,7 @@ export VPATH := $(foreach dir,$(SOURCEDIR),$(CURDIR)/$(dir))
 export OBJS := $(CFILES:.c=.obj) $(ASMFILES:.src=.obj) $(ICFILES:.ic=.obj)
 
 # Target re-direction to make in the OBJSDIR directory
-$(TARGET): CLEAR OBJSDIR TARGETDIR
+$(TARGET): CLEAR OBJSDIR TARGETDIR VERSIONINFO
 	$(MAKE) -C $(OBJSDIR) -f "$(TOPSRC)\Makefile" OPTIMISE=$(OPTIMISE) \
 		OPTIMISE_LINK=$(OPTIMISE_LINK) EXTENSION=$(EXTENSION) $(BUILD_TYPE)
 else
