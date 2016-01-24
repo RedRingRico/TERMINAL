@@ -1,7 +1,5 @@
 @echo off
 
-echo %PATH%
-
 FOR /F "tokens=* USEBACKQ" %%F IN (`git rev-parse HEAD`) DO (
 SET GITHASH=%%F
 )
