@@ -1,0 +1,75 @@
+;=======================================================================
+; CD script samples for KATANA disc
+;=======================================================================
+Define	DATAPATH	.	;File source storage directory
+;-----------------------------------------------------------------------
+Gd	TERMINAL.cim
+
+	;::::: Single Density Area <begin> :::::
+	RecordArea	SINGLE
+		SystemArea	"[DATAPATH]\IP_SDA.BIN"
+
+		;TNO <01>
+		Track	MODE1
+			Volume
+				PrimaryVolume
+				    SystemIdentifier            "SEGA SEGAKATANA"
+				    VolumeIdentifier            "TERMINAL"
+				    VolumeSetIdentifier         "TERMINAL"
+				    PublisherIdentifier         "SEGA ENTERPRISES,LTD."
+					CopyrightFileIdentifier		"COPYRIGH.TXT"
+					AbstractFileIdentifier		"ABSTRACT.TXT"
+					BibliographicFileIdentifier	"BIBLIOGR.TXT"
+				EndPrimaryVolume
+			EndVolume
+
+			File	COPYRIGH.TXT			;copyright file
+				FileSource	"[DATAPATH]\copyrigh.txt"
+				EndFileSource
+			EndFile
+			File	ABSTRACT.TXT			;abstract file
+				FileSource	"[DATAPATH]\abstract.txt"
+				EndFileSource
+			EndFile
+			File	BIBLIOGR.TXT			;bibliographic file
+				FileSource	"[DATAPATH]\bibliogr.txt"
+				EndFileSource
+			EndFile
+		EndTrack
+
+		;TNO <02>
+		Track	CDDA
+			FileSource	"[DATAPATH]\warning.da"
+			EndFileSource
+		EndTrack
+	EndRecordArea
+	;::::: Single Density Area <end> :::::
+
+	;::::: High Density Area <begin> :::::
+	RecordArea	HIGH
+		SystemArea	"[DATAPATH]\IP_HDA.BIN"
+
+		;TNO <03>
+		Track	MODE1
+			Volume
+				PrimaryVolume
+				    SystemIdentifier            "SEGA SEGAKATANA"
+				    VolumeIdentifier            "TERMINAL"
+				    VolumeSetIdentifier         "TERMINAL"
+				    PublisherIdentifier         "SEGA ENTERPRISES,LTD."
+				EndPrimaryVolume
+			EndVolume
+
+			;<<1st Read File Definition>>
+			; If the feature of automatic 1st Read File arrangement is enabled,
+			; the 1st Read file is located on the outermost track.
+			File	1ST_READ.BIN
+				FileSource	"[DATAPATH]\1ST_READ.BIN"
+				EndFileSource
+			EndFile
+
+		EndTrack
+	EndRecordArea
+	;::::: High Density Area <end> :::::
+
+EndGd

@@ -1,0 +1,54 @@
+{
+	"hda": "IP_HDA.BIN",
+	"sda": "IP_SDA.BIN",
+	"title": "THIS IS A SAMPLE DISK FOR USE INTHE OFFICE ONLY / DO NOT SELL / DO NOT CARRY OUT FROM THE OFFICE",
+	"disc_no": "1",
+	"disc_count": "1",
+	"release":
+	{
+		"day": "14",
+		"month": "10",
+		"year": "1999"
+	},
+	"boot_file": "1ST_READ.BIN",
+	"region":
+	[
+		{ "value": "asia" },
+		{ "value": "americas" },
+		{ "value": "europe" }
+	],
+	"windows": "false",
+	"vga": "true",
+	"floating_point": "nearest",
+	"company": "3rd_party",
+	"product_no": "0000M",
+	"japan_only": "false",
+	"version":
+	{
+		"major": "0",
+		"minor": "100"
+	},
+	"peripherals":
+	[
+		{ "button": "start_a_b_dpad" },
+		{ "button": "c" },
+		{ "button":	"d" },
+		{ "button": "x" },
+		{ "button": "y" },
+		{ "button": "z" },
+		{ "analog": "trigger_l" },
+		{ "analog": "trigger_r" },
+		{ "analog": "stick_x" },
+		{ "analog": "stick_y" },
+		{ "analog": "expanded_stick_x" },
+		{ "analog": "expanded_stick_y" },
+		{ "button": "dpad2" },
+		{ "hardware": "mouse" },
+		{ "hardware": "keyboard" },
+		{ "hardware": "gun" },
+		{ "slot": "vmu" },
+		{ "slot": "sip" },
+		{ "slot": "vib" },
+		{ "slot": "other" }
+	]
+}
