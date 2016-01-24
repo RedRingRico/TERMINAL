@@ -1,5 +1,5 @@
 cd Source
-make
+make release
 cd ..\GDROM
 copy ..\Bin\Dreamcast\1ST_READ.BIN .
 ipmaker_cmd ip_config.json
