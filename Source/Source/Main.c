@@ -1,3 +1,4 @@
+#include <GitVersion.h>
 #include <sn_fcntl.h>
 #include <usrsnasm.h>
 #include <string.h>
@@ -5,6 +6,7 @@
 #include <Hardware.h>
 #include <Peripheral.h>
 #include <Renderer.h>
+#include <Memory.h>
 #include <kamui2.h>
 
 #define MAX_TEXTURES ( 4096 )
@@ -21,10 +23,22 @@ void main( void )
 	KMSURFACEDESC FrontBuffer, BackBuffer;
 	PKMDWORD pVertexBuffer;
 	KMVERTEXBUFFDESC VertexBufferDesc;
+	MEMORY_BLOCK MemoryBlock;
+	void *pSomeMemory;
 
 	HW_Initialise( );
 	LOG_Initialise( NULL );
 	LOG_Debug( "TERMINAL" );
+	LOG_Debug( "Version: %s", GIT_VERSION );
+
+	pSomeMemory = syMalloc( 1024*1024*8 );
+	if( MEM_InitialiseMemoryBlock( &MemoryBlock, pSomeMemory, 1024*1024*8, 4,
+		"System Root" ) == 0 )
+	{
+#if defined ( DEBUG )
+		MEM_ListMemoryBlocks( &MemoryBlock );
+#endif
+	}
 
 	pVertexBuffer = ( PKMDWORD )syMalloc( 0x40000 );
 
