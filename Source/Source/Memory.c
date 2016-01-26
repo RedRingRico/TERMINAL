@@ -26,6 +26,17 @@ int MEM_Initialise( void )
 {
 	syMallocInit( MEM_HEAP_AREA, MEM_HEAP_SIZE );
 
+#if defined ( DEBUG )
+	{
+		Uint32 Free, BiggestFree;
+
+		syMallocStat( &Free, &BiggestFree );
+
+		LOG_Debug( "Memory initialised with a heap of %ld bytes",
+			BiggestFree );
+	}
+#endif
+
 	return 0;
 }
 

@@ -109,6 +109,27 @@ void REN_Terminate( void )
 {
 }
 
+void REN_SetClearColour( float p_Red, float p_Green, float p_Blue )
+{
+	KMSTRIPHEAD BackgroundStripHead;
+	KMVERTEX_01 BackgroundClear;
+
+	memset( &BackgroundStripHead, 0, sizeof( BackgroundStripHead ) );
+	kmGenerateStripHead01( &BackgroundStripHead, &g_DefaultStripContext );
+
+	BackgroundClear.ParamControlWord = KM_VERTEXPARAM_NORMAL;
+	BackgroundClear.fX = 0.0f;
+	BackgroundClear.fY = 0.0f;
+	BackgroundClear.u.fZ = 0.2f;
+	BackgroundClear.fBaseAlpha = 1.0f;
+	BackgroundClear.fBaseRed = p_Red;
+	BackgroundClear.fBaseGreen = p_Green;
+	BackgroundClear.fBaseBlue = p_Blue;
+
+	kmSetBackGround( &BackgroundStripHead, KM_VERTEXTYPE_01,
+		&BackgroundClear, &BackgroundClear, &BackgroundClear );
+}
+
 int REN_Clear( void )
 {
 	KMSTATUS Status;

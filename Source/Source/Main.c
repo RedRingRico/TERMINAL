@@ -70,6 +70,8 @@ void main( void )
 
 	REN_Initialise( &RendererConfiguration );
 
+	REN_SetClearColour( 0.0f, 0.0f, 0.0f );
+
 	while( Run )
 	{
 		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
