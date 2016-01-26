@@ -37,7 +37,7 @@ void main( void )
 	{
 #if defined ( DEBUG )
 		MEM_ListMemoryBlocks( &MemoryBlock );
-#endif
+#endif /* DEBUG */
 	}
 
 	pVertexBuffer = ( PKMDWORD )syMalloc( 0x40000 );
@@ -70,7 +70,7 @@ void main( void )
 
 	REN_Initialise( &RendererConfiguration );
 
-	REN_SetClearColour( 0.0f, 0.0f, 0.0f );
+	REN_SetClearColour( 0.0f, 17.0f / 255.0f, 43.0f / 255.0f );
 
 	while( Run )
 	{

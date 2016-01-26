@@ -45,9 +45,11 @@ bool MEM_CreateMemoryBlock( MEMORY_BLOCK *p_pMemoryBlock, bool p_Free,
 	size_t p_DataSize );
 Uint32 MEM_CalculateDataOffset( MEMORY_BLOCK_HEADER *p_pBlockHeader,
 	unsigned char p_Alignment );
+MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK_HEADER *pBlock,
+	size_t p_Size );
 
-size_t MEM_GetFreeBlockMemory( MEMORY_BLOCK *p_pBlock );
-size_t MEM_GetUsedBlockMemory( MEMORY_BLOCK *p_pBlock );
+size_t MEM_GetFreeBlockSize( MEMORY_BLOCK *p_pBlock );
+size_t MEM_GetUsedBlockSize( MEMORY_BLOCK *p_pBlock );
 
 void MEM_ListMemoryBlocks( MEMORY_BLOCK *p_pBlock );
 

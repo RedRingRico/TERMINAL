@@ -35,7 +35,7 @@ int MEM_Initialise( void )
 		LOG_Debug( "Memory initialised with a heap of %ld bytes",
 			BiggestFree );
 	}
-#endif
+#endif /* DEBUG */
 
 	return 0;
 }
@@ -79,7 +79,7 @@ int MEM_InitialiseMemoryBlock( MEMORY_BLOCK *p_pBlock, void *p_pMemoryPointer,
 	{
 		memcpy( p_pBlock->pFirstBlock->Name, p_pName, strlen( p_pName ) );
 	}
-#endif
+#endif /* DEBUG */
 
 	return 0;
 }
@@ -111,7 +111,7 @@ bool MEM_CreateMemoryBlock( MEMORY_BLOCK *p_pMemoryBlock, bool p_Free,
 
 #if defined ( DEBUG )
 	p_pBlockHeader->CRC = 0;
-#endif
+#endif /* DEBUG */
 
 	return true;
 }
@@ -130,7 +130,13 @@ Uint32 MEM_CalculateDataOffset( MEMORY_BLOCK_HEADER *p_pBlockHeader,
 	return Position - Start;
 }
 
-size_t MEM_GetFreeBlockMemory( MEMORY_BLOCK *p_pBlock )
+MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK_HEADER *pBlock,
+	size_t p_Size )
+{
+	return NULL;
+}
+
+size_t MEM_GetFreeBlockSize( MEMORY_BLOCK *p_pBlock )
 {
 	size_t FreeMemory = 0;
 	MEMORY_BLOCK_HEADER *pBlock = p_pBlock->pFirstBlock;
@@ -147,7 +153,7 @@ size_t MEM_GetFreeBlockMemory( MEMORY_BLOCK *p_pBlock )
 	return FreeMemory;
 }
 
-size_t MEM_GetUsedBlockMemory( MEMORY_BLOCK *p_pBlock )
+size_t MEM_GetUsedBlockSize( MEMORY_BLOCK *p_pBlock )
 {
 	size_t UsedMemory = 0;
 	MEMORY_BLOCK_HEADER *pBlock = p_pBlock->pFirstBlock;
@@ -166,6 +172,7 @@ size_t MEM_GetUsedBlockMemory( MEMORY_BLOCK *p_pBlock )
 
 void MEM_ListMemoryBlocks( MEMORY_BLOCK *p_pBlock )
 {
+#if defined ( DEBUG )
 	MEMORY_BLOCK_HEADER *pBlock = p_pBlock->pFirstBlock;
 
 	LOG_Debug( "Memory block dump" );
@@ -180,5 +187,6 @@ void MEM_ListMemoryBlocks( MEMORY_BLOCK *p_pBlock )
 
 		pBlock = pBlock->pNext;
 	}
+#endif /* DEBUG */
 }
 
