@@ -3,20 +3,18 @@
 ;=======================================================================
 Define	DATAPATH	.	;File source storage directory
 ;-----------------------------------------------------------------------
-Gd	TERMINAL.cim
+Gd	"TERMINAL.cim"
 
 	;::::: Single Density Area <begin> :::::
 	RecordArea	SINGLE
+    FileNameType ISO9660L2
 		SystemArea	"[DATAPATH]\IP_SDA.BIN"
 
 		;TNO <01>
 		Track	MODE1
 			Volume
 				PrimaryVolume
-				    SystemIdentifier            "SEGA SEGAKATANA"
 				    VolumeIdentifier            "TERMINAL"
-				    VolumeSetIdentifier         "TERMINAL"
-				    PublisherIdentifier         "SEGA ENTERPRISES,LTD."
 					CopyrightFileIdentifier		"COPYRIGH.TXT"
 					AbstractFileIdentifier		"ABSTRACT.TXT"
 					BibliographicFileIdentifier	"BIBLIOGR.TXT"
@@ -24,14 +22,17 @@ Gd	TERMINAL.cim
 			EndVolume
 
 			File	COPYRIGH.TXT			;copyright file
+				Location 1
 				FileSource	"[DATAPATH]\copyrigh.txt"
 				EndFileSource
 			EndFile
 			File	ABSTRACT.TXT			;abstract file
+				Location 2
 				FileSource	"[DATAPATH]\abstract.txt"
 				EndFileSource
 			EndFile
 			File	BIBLIOGR.TXT			;bibliographic file
+				Location 0
 				FileSource	"[DATAPATH]\bibliogr.txt"
 				EndFileSource
 			EndFile
@@ -47,16 +48,14 @@ Gd	TERMINAL.cim
 
 	;::::: High Density Area <begin> :::::
 	RecordArea	HIGH
+	FileNameType ISO9660L2
 		SystemArea	"[DATAPATH]\IP_HDA.BIN"
 
 		;TNO <03>
 		Track	MODE1
 			Volume
 				PrimaryVolume
-				    SystemIdentifier            "SEGA SEGAKATANA"
 				    VolumeIdentifier            "TERMINAL"
-				    VolumeSetIdentifier         "TERMINAL"
-				    PublisherIdentifier         "SEGA ENTERPRISES,LTD."
 				EndPrimaryVolume
 			EndVolume
 
@@ -64,6 +63,7 @@ Gd	TERMINAL.cim
 			; If the feature of automatic 1st Read File arrangement is enabled,
 			; the 1st Read file is located on the outermost track.
 			File	1ST_READ.BIN
+				Location 0
 				FileSource	"[DATAPATH]\1ST_READ.BIN"
 				EndFileSource
 			EndFile
@@ -72,4 +72,5 @@ Gd	TERMINAL.cim
 	EndRecordArea
 	;::::: High Density Area <end> :::::
 
-EndGd
+EndGd "TERMINAL.cim"
+
