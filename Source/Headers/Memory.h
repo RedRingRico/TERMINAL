@@ -40,13 +40,21 @@ void MEM_Terminate( void );
 
 int MEM_InitialiseMemoryBlock( MEMORY_BLOCK *p_pBlock, void *p_pMemoryPointer,
 	size_t p_Size, unsigned char p_Alignment, const char *p_pName );
-bool MEM_CreateMemoryBlock( MEMORY_BLOCK *p_pMemoryBlock, bool p_Free,
-	MEMORY_BLOCK_HEADER *p_pBlockHeader, size_t p_TotalSize,
-	size_t p_DataSize );
+bool MEM_CreateMemoryBlock( MEMORY_BLOCK_HEADER *p_pBlockHeader, bool p_Free,
+	size_t p_TotalSize, size_t p_DataSize );
 Uint32 MEM_CalculateDataOffset( MEMORY_BLOCK_HEADER *p_pBlockHeader,
 	unsigned char p_Alignment );
-MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK_HEADER *pBlock,
+MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK *p_pBlock,
 	size_t p_Size );
+size_t MEM_GetBlockSize( MEMORY_BLOCK_HEADER *p_pHeader, size_t p_Size,
+	unsigned char p_Alignment, unsigned char p_StructAlign );
+void *MEM_GetPointerFromBlock( MEMORY_BLOCK_HEADER *p_pHeader );
+MEMORY_BLOCK_HEADER *MEM_GetBlockHeader( void *p_pPointer );
+void MEM_GarbageCollectMemoryBlock( MEMORY_BLOCK *p_pBlock );
+
+void *MEM_AllocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_Size,
+	const char *p_pName );
+void MEM_FreeFromBlock( MEMORY_BLOCK *p_pBlock, void *p_pPointer );
 
 size_t MEM_GetFreeBlockSize( MEMORY_BLOCK *p_pBlock );
 size_t MEM_GetUsedBlockSize( MEMORY_BLOCK *p_pBlock );

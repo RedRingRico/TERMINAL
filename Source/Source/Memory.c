@@ -59,6 +59,7 @@ int MEM_InitialiseMemoryBlock( MEMORY_BLOCK *p_pBlock, void *p_pMemoryPointer,
 	}
 
 	p_pBlock->Alignment = p_Alignment;
+	p_pBlock->StructAlignment = sizeof( size_t );
 	p_pBlock->PaddedHeaderSize = MEM_Align( sizeof( MEMORY_BLOCK_HEADER ),
 		sizeof( size_t ) );
 	p_pBlock->pAllocatedBlock = p_pMemoryPointer;
@@ -84,16 +85,15 @@ int MEM_InitialiseMemoryBlock( MEMORY_BLOCK *p_pBlock, void *p_pMemoryPointer,
 	return 0;
 }
 
-bool MEM_CreateMemoryBlock( MEMORY_BLOCK *p_pMemoryBlock, bool p_Free,
-	MEMORY_BLOCK_HEADER *p_pBlockHeader, size_t p_TotalSize,
-	size_t p_DataSize )
+bool MEM_CreateMemoryBlock( MEMORY_BLOCK_HEADER *p_pBlockHeader, bool p_Free,
+	size_t p_TotalSize, size_t p_DataSize )
 {
 	unsigned char *pPadding = ( unsigned char * )p_pBlockHeader;
 	MEMORY_BLOCK_FOOTER *pFooter;
 
 	p_pBlockHeader->Flags = 0;
 
-	if( p_Free )
+	if( p_Free == true )
 	{
 		p_pBlockHeader->Flags |= MEM_BLOCK_FREE;
 	}
@@ -105,7 +105,7 @@ bool MEM_CreateMemoryBlock( MEMORY_BLOCK *p_pMemoryBlock, bool p_Free,
 	pPadding -= sizeof( MEMORY_BLOCK_FOOTER );
 
 	pFooter = ( MEMORY_BLOCK_FOOTER * )pPadding;
-	pFooter->Padding -= ( unsigned char )( p_pBlockHeader->DataOffset -
+	pFooter->Padding = ( unsigned char )( p_pBlockHeader->DataOffset -
 		( sizeof( MEMORY_BLOCK_HEADER ) + sizeof( MEMORY_BLOCK_FOOTER ) ) );
 	pFooter->Magic = MEM_MAGIC8;
 
@@ -130,10 +130,160 @@ Uint32 MEM_CalculateDataOffset( MEMORY_BLOCK_HEADER *p_pBlockHeader,
 	return Position - Start;
 }
 
-MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK_HEADER *pBlock,
+MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK *p_pBlock,
 	size_t p_Size )
 {
+	MEMORY_BLOCK_HEADER *pHeader = p_pBlock->pFirstBlock;
+	MEMORY_BLOCK_HEADER *pNewBlock = NULL;
+	size_t TotalSize = 0;
+
+	while( pHeader )
+	{
+		TotalSize = MEM_GetBlockSize( pHeader, p_Size, p_pBlock->Alignment,
+			p_pBlock->StructAlignment );
+
+		if( ( pHeader->Flags & MEM_BLOCK_FREE ) && TotalSize >= p_Size )
+		{
+			size_t FreeSize, FreeTotalSize, FreeOffset;
+
+			pNewBlock = ( MEMORY_BLOCK_HEADER * )(
+				( ( unsigned char * )pHeader ) + TotalSize );
+
+			FreeTotalSize = pHeader->Size - TotalSize;
+			FreeOffset = MEM_CalculateDataOffset( pNewBlock,
+				p_pBlock->Alignment );
+			FreeSize = FreeTotalSize - FreeOffset;
+
+			/* Found enough space to split the block into two halves */
+			if( FreeSize > 0 )
+			{
+				MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
+					FreeSize );
+				pNewBlock->pNext = NULL;
+
+				MEM_CreateMemoryBlock( pHeader, false, TotalSize, p_Size );
+				pHeader->pNext = pNewBlock;
+			}
+			else
+			{
+				/* No room to split the block */
+				pHeader->Flags &= ~( MEM_BLOCK_FREE );
+			}
+
+			return pHeader;
+		}
+
+		pHeader = pHeader->pNext;
+	}
+
 	return NULL;
+}
+
+size_t MEM_GetBlockSize( MEMORY_BLOCK_HEADER *p_pHeader, size_t p_Size,
+	unsigned char p_Alignment, unsigned char p_StructAlign )
+{
+	size_t Start, End;
+	Start = End = ( size_t )p_pHeader;
+
+	End += MEM_CalculateDataOffset( p_pHeader, p_Alignment );
+	End += p_Size;
+
+	End = MEM_Align( End, p_StructAlign );
+
+	return End - Start;
+}
+
+void *MEM_GetPointerFromBlock( MEMORY_BLOCK_HEADER *p_pHeader )
+{
+	unsigned char *pData = ( unsigned char * )p_pHeader;
+
+	pData += p_pHeader->DataOffset;
+
+	return ( void * )pData;
+}
+
+
+MEMORY_BLOCK_HEADER *MEM_GetBlockHeader( void *p_pPointer )
+{
+	MEMORY_BLOCK_FOOTER *pFooter;
+	unsigned char *pData = ( unsigned char * )p_pPointer;
+
+	pFooter =
+		( MEMORY_BLOCK_FOOTER * )( pData - sizeof( MEMORY_BLOCK_FOOTER ) );
+	
+	pData -= sizeof( MEMORY_BLOCK_HEADER ) + sizeof( MEMORY_BLOCK_FOOTER );
+	pData -= pFooter->Padding;
+
+	return ( MEMORY_BLOCK_HEADER * )pData;
+}
+
+void MEM_GarbageCollectMemoryBlock( MEMORY_BLOCK *p_pBlock )
+{
+	MEMORY_BLOCK_HEADER *pHeader, *pNext;
+
+	pHeader = p_pBlock->pFirstBlock;
+
+	while( pHeader )
+	{
+		pNext = pHeader->pNext;
+
+		if( ( pHeader->Flags & MEM_BLOCK_FREE ) &&
+			( pNext->Flags & MEM_BLOCK_FREE ) )
+		{
+#if defined ( DEBUG )
+			/* When freeing, copy the next block's name into this one */
+			memcpy( pHeader->Name, pNext->Name, sizeof( pHeader->Name ) );
+#endif /* DEBUG */
+			pHeader->Size += pNext->Size;
+			pHeader->pNext = pNext->pNext;
+		}
+		else
+		{
+			pHeader = pHeader->pNext;
+		}
+	}
+}
+
+void *MEM_AllocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_Size,
+	const char *p_pName )
+{
+	MEMORY_BLOCK_HEADER *pNewBlock = NULL;
+
+	if( !( pNewBlock = MEM_GetFreeBlock( p_pBlock, p_Size ) ) )
+	{
+		MEM_GarbageCollectMemoryBlock( p_pBlock );
+		pNewBlock = MEM_GetFreeBlock( p_pBlock, p_Size );
+	}
+
+	if( pNewBlock )
+	{
+#if defined ( DEBUG )
+		/* Copy the previous block's name, first */
+		memcpy( pNewBlock->pNext->Name, pNewBlock->Name,
+			sizeof( pNewBlock->Name ) );
+		/* Set the new block's name */
+		memset( pNewBlock->Name, '\0', sizeof( pNewBlock->Name ) );
+		if( strlen( p_pName ) >= sizeof( pNewBlock->Name ) )
+		{
+			memcpy( pNewBlock->Name, p_pName, 63 );
+		}
+		else
+		{
+			memcpy( pNewBlock->Name, p_pName, strlen( p_pName ) );
+		}
+#endif /* DEBUG */
+
+		return MEM_GetPointerFromBlock( pNewBlock );
+	}
+
+	return NULL;
+}
+
+void MEM_FreeFromBlock( MEMORY_BLOCK *p_pBlock, void *p_pPointer )
+{
+	MEMORY_BLOCK_HEADER *pFree = MEM_GetBlockHeader( p_pPointer );
+
+	pFree->Flags |= MEM_BLOCK_FREE;
 }
 
 size_t MEM_GetFreeBlockSize( MEMORY_BLOCK *p_pBlock )
@@ -160,7 +310,7 @@ size_t MEM_GetUsedBlockSize( MEMORY_BLOCK *p_pBlock )
 
 	while( pBlock )
 	{
-		if( pBlock->Flags & ~MEM_BLOCK_FREE )
+		if( ( pBlock->Flags & MEM_BLOCK_FREE ) == 0 )
 		{
 			UsedMemory += pBlock->Size;
 		}
@@ -176,8 +326,8 @@ void MEM_ListMemoryBlocks( MEMORY_BLOCK *p_pBlock )
 	MEMORY_BLOCK_HEADER *pBlock = p_pBlock->pFirstBlock;
 
 	LOG_Debug( "Memory block dump" );
-	LOG_Debug( "\tFree: %ld", MEM_GetFreeBlockMemory( p_pBlock ) );
-	LOG_Debug( "\tUsed: %ld", MEM_GetUsedBlockMemory( p_pBlock ) );
+	LOG_Debug( "\tFree: %ld", MEM_GetFreeBlockSize( p_pBlock ) );
+	LOG_Debug( "\tUsed: %ld", MEM_GetUsedBlockSize( p_pBlock ) );
 
 	while( pBlock )
 	{

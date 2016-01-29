@@ -24,7 +24,7 @@ void main( void )
 	PKMDWORD pVertexBuffer;
 	KMVERTEXBUFFDESC VertexBufferDesc;
 	MEMORY_BLOCK MemoryBlock;
-	void *pSomeMemory;
+	void *pSomeMemory, *pBlock1, *pBlock2;
 
 	HW_Initialise( );
 	LOG_Initialise( NULL );
@@ -36,6 +36,21 @@ void main( void )
 		"System Root" ) == 0 )
 	{
 #if defined ( DEBUG )
+		MEM_ListMemoryBlocks( &MemoryBlock );
+
+		pBlock1 = MEM_AllocateFromBlock( &MemoryBlock, 1024*1024, "Block 1" );
+		MEM_ListMemoryBlocks( &MemoryBlock );
+
+		pBlock2 = MEM_AllocateFromBlock( &MemoryBlock, 1024*1024, "Block 2" );
+		MEM_ListMemoryBlocks( &MemoryBlock );
+
+		MEM_FreeFromBlock( &MemoryBlock, pBlock1 );
+		MEM_ListMemoryBlocks( &MemoryBlock );
+
+		MEM_FreeFromBlock( &MemoryBlock, pBlock2 );
+		MEM_ListMemoryBlocks( &MemoryBlock );
+
+		MEM_GarbageCollectMemoryBlock( &MemoryBlock );
 		MEM_ListMemoryBlocks( &MemoryBlock );
 #endif /* DEBUG */
 	}
@@ -55,7 +70,7 @@ void main( void )
 	RendererConfiguration.pTextureWorkArea = g_pTextureWorkArea;
 	RendererConfiguration.pVertexBuffer = pVertexBuffer;
 	RendererConfiguration.pVertexBufferDesc = &VertexBufferDesc;
-	RendererConfiguration.VertexBufferSize = 0x40000;
+	RendererConfiguration.VertexBufferSize = 0x100000;
 	RendererConfiguration.PassCount = 1;
 
 	RendererConfiguration.PassInfo[ 0 ].dwRegionArrayFlag =
