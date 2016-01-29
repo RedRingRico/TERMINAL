@@ -112,22 +112,46 @@ void REN_Terminate( void )
 void REN_SetClearColour( float p_Red, float p_Green, float p_Blue )
 {
 	KMSTRIPHEAD BackgroundStripHead;
-	KMVERTEX_01 BackgroundClear;
+	KMVERTEX_01 BackgroundClear[ 3 ];
+	KMPACKEDARGB BorderColour;
 
 	memset( &BackgroundStripHead, 0, sizeof( BackgroundStripHead ) );
 	kmGenerateStripHead01( &BackgroundStripHead, &g_DefaultStripContext );
 
-	BackgroundClear.ParamControlWord = KM_VERTEXPARAM_NORMAL;
-	BackgroundClear.fX = 0.0f;
-	BackgroundClear.fY = 0.0f;
-	BackgroundClear.u.fZ = 0.2f;
-	BackgroundClear.fBaseAlpha = 1.0f;
-	BackgroundClear.fBaseRed = p_Red;
-	BackgroundClear.fBaseGreen = p_Green;
-	BackgroundClear.fBaseBlue = p_Blue;
+	BackgroundClear[ 0 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+	BackgroundClear[ 0 ].fX = 0.0f;
+	BackgroundClear[ 0 ].fY = 479.0f;
+	BackgroundClear[ 0 ].u.fZ = 0.2f;
+	BackgroundClear[ 0 ].fBaseAlpha = 1.0f;
+	BackgroundClear[ 0 ].fBaseRed = p_Red;
+	BackgroundClear[ 0 ].fBaseGreen = p_Green;
+	BackgroundClear[ 0 ].fBaseBlue = p_Blue;
+
+
+	BackgroundClear[ 1 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+	BackgroundClear[ 1 ].fX = 639.0f;
+	BackgroundClear[ 1 ].fY = 0.0f;
+	BackgroundClear[ 1 ].u.fZ = 0.2f;
+	BackgroundClear[ 1 ].fBaseAlpha = 1.0f;
+	BackgroundClear[ 1 ].fBaseRed = p_Red;
+	BackgroundClear[ 1 ].fBaseGreen = p_Green;
+	BackgroundClear[ 1 ].fBaseBlue = p_Blue;
+
+	BackgroundClear[ 2 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
+	BackgroundClear[ 2 ].fX = 639.0f;
+	BackgroundClear[ 2 ].fY = 479.0f;
+	BackgroundClear[ 2 ].u.fZ = 0.2f;
+	BackgroundClear[ 2 ].fBaseAlpha = 1.0f;
+	BackgroundClear[ 2 ].fBaseRed = p_Red;
+	BackgroundClear[ 2 ].fBaseGreen = p_Green;
+	BackgroundClear[ 2 ].fBaseBlue = p_Blue;
 
 	kmSetBackGround( &BackgroundStripHead, KM_VERTEXTYPE_01,
-		&BackgroundClear, &BackgroundClear, &BackgroundClear );
+		&BackgroundClear[ 0 ], &BackgroundClear[ 1 ], &BackgroundClear[ 2 ] );
+
+	BorderColour.dwPacked = 0;
+
+	kmSetBorderColor( BorderColour );
 }
 
 int REN_Clear( void )
