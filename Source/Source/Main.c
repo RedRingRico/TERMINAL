@@ -26,7 +26,7 @@ void main( void )
 	MEMORY_BLOCK MemoryBlock;
 	void *pSomeMemory, *pBlock1, *pBlock2;
 
-	if( HW_Initialise( ) != 0 )
+	if( HW_Initialise( KM_DSPBPP_RGB888 ) != 0 )
 	{
 		HW_Terminate( );
 		HW_Reboot( );
