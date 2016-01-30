@@ -1,5 +1,8 @@
 @echo off
 
+for /f "tokens=1" %%x in ('ver') do set WINVER=%%x
+set WINVER=%WINVER:Version =%
+
 FOR /F "tokens=* USEBACKQ" %%F IN (`git rev-parse HEAD`) DO (
 SET GITHASH=%%F
 )
@@ -46,7 +49,14 @@ echo Revision: %GITMAJOR%.%GITMINOR%.%GITREVISION%.%GITBUILD% [%GITHASH%] %GITDA
 SETLOCAL ENABLEDELAYEDEXPANSION
 
 set INPUT=%2
-CALL :UCase INPUT PROJECT
+
+IF /I "%WINVER%"=="Microsoft" (
+	CALL case_microsoft.bat UCase INPUT PROJECT
+)
+
+IF /I "%WINVER%"=="Wine" (
+	CALL case_wine.bat UCase INPUT PROJECT
+)
 SET GITHEADER=%1
 
 echo #ifndef __%PROJECT%_GITVERSION_H__ > %GITHEADER%
@@ -67,23 +77,3 @@ echo #endif /* __%PROJECT%_GITVERSION_H__ */ >> %GITHEADER%
 echo. >> %GITHEADER%
 
 ENDLOCAL
-
-GOTO:EOF
-
-:LCase
-:UCase
-:: Converts to upper/lower case variable contents
-:: Syntax: CALL :UCase _VAR1 _VAR2
-:: Syntax: CALL :LCase _VAR1 _VAR2
-:: _VAR1 = Variable NAME whose VALUE is to be converted to upper/lower case
-:: _VAR2 = NAME of variable to hold the converted value
-:: Note: Use variable NAMES in the CALL, not values (pass "by reference")
-
-SET _UCase=A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
-SET _LCase=a b c d e f g h i j k l m n o p q r s t u v w x y z
-SET _Lib_UCase_Tmp=!%1!
-IF /I "%0"==":UCase" SET _Abet=%_UCase%
-IF /I "%0"==":LCase" SET _Abet=%_LCase%
-FOR %%Z IN (%_Abet%) DO SET _Lib_UCase_Tmp=!_Lib_UCase_Tmp:%%Z=%%Z!
-SET %2=%_Lib_UCase_Tmp%
-GOTO:EOF
