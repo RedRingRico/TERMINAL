@@ -26,7 +26,12 @@ void main( void )
 	MEMORY_BLOCK MemoryBlock;
 	void *pSomeMemory, *pBlock1, *pBlock2;
 
-	HW_Initialise( );
+	if( HW_Initialise( ) != 0 )
+	{
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
 	LOG_Initialise( NULL );
 	LOG_Debug( "TERMINAL" );
 	LOG_Debug( "Version: %s", GIT_VERSION );
@@ -55,7 +60,7 @@ void main( void )
 #endif /* DEBUG */
 	}
 
-	pVertexBuffer = ( PKMDWORD )syMalloc( 0x40000 );
+	pVertexBuffer = ( PKMDWORD )syMalloc( 0x100000 );
 
 	memset( &RendererConfiguration, 0, sizeof( RendererConfiguration ) );
 
@@ -102,7 +107,6 @@ void main( void )
 
 	REN_Terminate( );
 	LOG_Terminate( );
-	MEM_Terminate( );
 	HW_Terminate( );
 	HW_Reboot( );
 }
