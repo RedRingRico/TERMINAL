@@ -43,26 +43,12 @@ void main( void )
 
 	pSomeMemory = syMalloc( 1024*1024*8 );
 	if( MEM_InitialiseMemoryBlock( &MemoryBlock, pSomeMemory, 1024*1024*8, 4,
-		"System Root" ) == 0 )
+		"System Root" ) != 0 )
 	{
-#if defined ( DEBUG )
-		MEM_ListMemoryBlocks( &MemoryBlock );
-
-		pBlock1 = MEM_AllocateFromBlock( &MemoryBlock, 1024*1024, "Block 1" );
-		MEM_ListMemoryBlocks( &MemoryBlock );
-
-		pBlock2 = MEM_AllocateFromBlock( &MemoryBlock, 1024*1024, "Block 2" );
-		MEM_ListMemoryBlocks( &MemoryBlock );
-
-		MEM_FreeFromBlock( &MemoryBlock, pBlock1 );
-		MEM_ListMemoryBlocks( &MemoryBlock );
-
-		MEM_FreeFromBlock( &MemoryBlock, pBlock2 );
-		MEM_ListMemoryBlocks( &MemoryBlock );
-
-		MEM_GarbageCollectMemoryBlock( &MemoryBlock );
-		MEM_ListMemoryBlocks( &MemoryBlock );
-#endif /* DEBUG */
+		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*8 );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
 	}
 
 	pVertexBuffer = ( PKMDWORD )syMalloc( 0x100000 );
@@ -134,20 +120,60 @@ void main( void )
 
 	while( Run )
 	{
+		static float Alpha = 1.0f;
+		static float AlphaInc = 0.02f;
+		KMBYTE AlphaByte;
 		float TextLength;
+		KMPACKEDARGB TextColour;
 		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
 		{
 			Run = 0;
 		}
 
+		TextColour.dwPacked = 0xFF00FF00;
+
 		REN_Clear( );
 		TEX_MeasureString( &GlyphSet, "[TERMINAL]", &TextLength );
-		TEX_RenderString( &GlyphSet, 320.0f - ( TextLength / 2.0f ),
+		TEX_RenderString( &GlyphSet, &TextColour,
+			320.0f - ( TextLength / 2.0f ),
 			480.0f - ( ( float )GlyphSet.LineHeight * 4.0f ), "[TERMINAL]" );
 		TEX_MeasureString( &GlyphSet, VersionString, &TextLength );
-		TEX_RenderString( &GlyphSet, 320.0f - ( TextLength / 2.0f ),
+		TEX_RenderString( &GlyphSet, &TextColour,
+			320.0f - ( TextLength / 2.0f ),
 			480.0f - ( ( float )GlyphSet.LineHeight * 3.0f ), VersionString );
+
+		TextColour.dwPacked = 0x00FFFFFF;
+		if( Alpha < 0.0f )
+		{
+			AlphaByte = 0;
+		}
+		else if( Alpha > 255.0f )
+		{
+			AlphaByte = 255;
+		}
+		else
+		{
+			AlphaByte = ( KMBYTE )( Alpha * 255.0f );
+		}
+
+		TextColour.byte.bAlpha = AlphaByte;
+		TEX_MeasureString( &GlyphSet, "PRESS START", &TextLength );
+		TEX_RenderString( &GlyphSet, &TextColour,
+			320.0f -( TextLength / 2.0f ),
+			240.0f - ( ( float )GlyphSet.LineHeight / 2.0f ), "PRESS START" );
 		REN_SwapBuffers( );
+
+		Alpha += AlphaInc;
+
+		if( Alpha <= 0.0f )
+		{
+			AlphaInc = 0.02f;
+		}
+		
+		if( Alpha >= 1.0f )
+		{
+			AlphaInc = -0.02f;
+		}
 	}
 
 	LOG_Debug( "Rebooting" );

@@ -32,8 +32,8 @@ int TEX_CreateGlyphSetFromFile( char *p_pFileName,
 int TEX_SetTextureForGlyphSet( char *p_pFileName,
 	GLYPHSET *p_pGlyphSet );
 
-void TEX_RenderString( GLYPHSET *p_pGlyphSet, float p_X, float p_Y,
-	char *p_pString );
+void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
+	float p_X, float p_Y, char *p_pString );
 
 void TEX_MeasureString( GLYPHSET *p_pGlyphSet, char *p_pString,
 	float *p_pWidth );

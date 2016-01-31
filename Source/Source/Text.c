@@ -67,7 +67,7 @@ int TEX_Initialise( void )
 	TextContext.ObjectControl.nCullingMode = KM_NOCULLING;
 	TextContext.ObjectControl.bZWriteDisable = KM_FALSE;
 	TextContext.ObjectControl.bDCalcControl = KM_FALSE;
-	BaseColour.dwPacked = 0xFF00FF00;
+	BaseColour.dwPacked = 0xFFFFFFFF;
 	TextContext.type.splite.Base = BaseColour;
 	TextContext.ImageControl[ KM_IMAGE_PARAM1 ].nSRCBlendingMode = KM_SRCALPHA;
 	TextContext.ImageControl[ KM_IMAGE_PARAM1 ].nDSTBlendingMode =
@@ -85,7 +85,7 @@ int TEX_Initialise( void )
 	TextContext.ImageControl[ KM_IMAGE_PARAM1 ].dwMipmapAdjust = 
 		KM_MIPMAP_D_ADJUST_1_00;
 	TextContext.ImageControl[ KM_IMAGE_PARAM1 ].nTextureShadingMode =
-		KM_MODULATE;
+		KM_MODULATE_ALPHA;
 	TextContext.ImageControl[ KM_IMAGE_PARAM1 ].pTextureSurfaceDesc = NULL;
 
 	kmGenerateStripHead16( &TEX_StripHead, &TextContext );
@@ -262,8 +262,8 @@ int TEX_SetTextureForGlyphSet( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 	return 0;
 }
 
-void TEX_RenderString( GLYPHSET *p_pGlyphSet, float p_X, float p_Y,
-	char *p_pString )
+void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
+	float p_X, float p_Y, char *p_pString )
 {
 	size_t StringLength;
 	size_t Char;
@@ -279,6 +279,11 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, float p_X, float p_Y,
 
 	kmChangeStripTextureSurface( &TEX_StripHead, KM_IMAGE_PARAM1,
 		&( p_pGlyphSet )->Texture );
+
+	if( p_pColour )
+	{
+		kmChangeStripSpriteBaseColor( &TEX_StripHead, *( p_pColour ) );
+	}
 
 	for( Char = 0; Char < StringLength - 1; ++Char )
 	{
