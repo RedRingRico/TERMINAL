@@ -71,3 +71,9 @@ Workshop
 # Misc
 *~
 GitVersion.h
+
+# Built content
+*.PVR
+*.pvr
+*.FNT
+*.fnt

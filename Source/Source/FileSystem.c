@@ -72,7 +72,7 @@ GDFS FS_OpenFile( char *p_pFilePath )
 {
 	char *pFileName;
 	char File[ GDD_FS_FNAMESIZE ];
-	char pFilePath[ 256 ];
+	char FilePath[ 256 ];
 	GDFS_DIRREC Directory;
 	Uint32 DirectoryBuffer[ GDFS_DIRREC_SIZE( 64 ) ];
 	GDFS ReturnFile;
@@ -88,10 +88,11 @@ GDFS FS_OpenFile( char *p_pFilePath )
 	}
 
 	/* Don't modify the input file path */
-	strncpy( pFilePath, p_pFilePath, strlen( p_pFilePath ) );
+	strncpy( FilePath, p_pFilePath, strlen( p_pFilePath ) );
+	FilePath[ strlen( p_pFilePath ) ] = '\0';
 
 	/* Break the path down for GDFS to consume */
-	pFileName = strtok( pFilePath, "/" );
+	pFileName = strtok( FilePath, "/" );
 
 	while( pFileName != NULL )
 	{

@@ -68,6 +68,20 @@ Gd	"TERMINAL.cim"
 				EndFileSource
 			EndFile
 
+			Directory FONTS
+				File TERMINAL.FNT
+					Location 2
+					FileSource "[DATAPATH]\FONTS\TERMINAL.FNT"
+					EndFileSource
+				EndFile
+
+				File TERMINAL.PVR
+					Location 1
+					FileSource "[DATAPATH]\FONTS\TERMINAL.PVR"
+					EndFileSource
+				EndFile
+			EndDirectory
+
 		EndTrack
 	EndRecordArea
 	;::::: High Density Area <end> :::::

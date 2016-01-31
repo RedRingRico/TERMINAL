@@ -7,6 +7,7 @@
 #include <Peripheral.h>
 #include <Renderer.h>
 #include <Memory.h>
+#include <Text.h>
 #include <kamui2.h>
 
 #define MAX_TEXTURES ( 4096 )
@@ -25,6 +26,8 @@ void main( void )
 	KMVERTEXBUFFDESC VertexBufferDesc;
 	MEMORY_BLOCK MemoryBlock;
 	void *pSomeMemory, *pBlock1, *pBlock2;
+	GLYPHSET GlyphSet;
+	char VersionString[ 256 ];
 
 	if( HW_Initialise( KM_DSPBPP_RGB888 ) != 0 )
 	{
@@ -90,16 +93,57 @@ void main( void )
 
 	REN_Initialise( &RendererConfiguration );
 
+	if( TEX_Initialise( ) != 0 )
+	{
+		LOG_Debug( "Failed to initialise the text system" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( TEX_CreateGlyphSetFromFile( "/FONTS/TERMINAL.FNT", &GlyphSet ) != 0 )
+	{
+		LOG_Debug( "Failed to load the glyph descriptions" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( TEX_SetTextureForGlyphSet( "/FONTS/TERMINAL.PVR", &GlyphSet ) != 0 )
+	{
+		LOG_Debug( "Failed to load the glyph texture" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	memset( VersionString, '\0', sizeof( VersionString ) );
+
+	sprintf( VersionString, "Build: %s", GIT_VERSION );
+
 	REN_SetClearColour( 0.0f, 17.0f / 255.0f, 43.0f / 255.0f );
 
 	while( Run )
 	{
+		float TextLength;
 		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
 		{
 			Run = 0;
 		}
 
 		REN_Clear( );
+		TEX_MeasureString( &GlyphSet, "[TERMINAL]", &TextLength );
+		TEX_RenderString( &GlyphSet, 320.0f - ( TextLength / 2.0f ),
+			480.0f - ( ( float )GlyphSet.LineHeight * 4.0f ), "[TERMINAL]" );
+		TEX_MeasureString( &GlyphSet, VersionString, &TextLength );
+		TEX_RenderString( &GlyphSet, 320.0f - ( TextLength / 2.0f ),
+			480.0f - ( ( float )GlyphSet.LineHeight * 3.0f ), VersionString );
 		REN_SwapBuffers( );
 	}
 

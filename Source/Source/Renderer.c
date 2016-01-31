@@ -43,6 +43,7 @@ static KMSTRIPCONTEXT		g_DefaultStripContext =
 		0
 	}
 };
+static KMSTRIPHEAD g_StripHead16;
 
 int REN_Initialise( DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration )
 {
@@ -101,6 +102,9 @@ int REN_Initialise( DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration )
 	{
 		return 1;
 	}
+
+	memset( &g_StripHead16, 0, sizeof( g_StripHead16 ) );
+	kmGenerateStripHead16( &g_StripHead16, &g_DefaultStripContext );
 
 	return 0;
 }
@@ -171,5 +175,28 @@ int REN_SwapBuffers( void )
 	kmEndScene( &g_Kamui2Config );
 
 	return 0;
+}
+
+void REN_DrawPrimitives16( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_16 p_pVertices,
+	KMUINT32 p_Count )
+{
+	KMUINT32 VertexIndex;
+
+	if( p_pStripHead )
+	{
+		kmStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
+	}
+	else
+	{
+		kmStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead16 );
+	}
+
+	for( VertexIndex = 0; VertexIndex < p_Count; ++VertexIndex )
+	{
+		kmSetVertex( g_Kamui2Config.pBufferDesc, &p_pVertices[ VertexIndex ],
+			KM_VERTEXTYPE_16, sizeof( KMVERTEX_16 ) );
+	}
+
+	kmEndStrip( g_Kamui2Config.pBufferDesc );
 }
 
