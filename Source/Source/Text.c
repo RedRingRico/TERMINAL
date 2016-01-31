@@ -6,6 +6,50 @@
 KMSTRIPHEAD	TEX_StripHead;
 KMVERTEX_16 TEX_TextBuffer[ 64 ];
 
+#define BMF_ID_INFO		1
+#define BMF_ID_COMMON	2
+#define BMF_ID_PAGES	3
+#define BMF_ID_CHARS	4
+#define BMF_ID_KERNING	5
+
+#define BMF_COMMON_PACKED_SIZE	15
+
+/* Unsuccessful in my attempt to find out how to #pragma pack this, I've
+ * resorted to using chars to pack it to a one-byte boundary */
+typedef struct _tagBMF_CHUNK
+{
+	unsigned char	ID;
+	unsigned char	Size[ 4 ];
+}BMF_CHUNK;
+
+typedef struct _tagBMF_COMMON
+{
+	Uint16	LineHeight;
+	Uint16	BaseLine;
+	Uint16	Width;
+	Uint16	Height;
+	Uint16	Pages;
+	Uint8	BitField;
+	Uint8	Alpha;
+	Uint8	Red;
+	Uint8	Green;
+	Uint8	Blue;
+}BMF_COMMON;
+
+typedef struct _tagBMF_CHAR
+{
+	Uint32	ID;
+	Uint16	X;
+	Uint16	Y;
+	Uint16	Width;
+	Uint16	Height;
+	Sint16	XOffset;
+	Sint16	YOffset;
+	Sint16	XAdvance;
+	Uint8	Page;
+	Uint8	Channel;
+}BMF_CHAR;
+
 int TEX_Initialise( void )
 {
 	KMPACKEDARGB BaseColour;
@@ -57,6 +101,9 @@ int TEX_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 	char *pLine;
 	char Token[ 256 ];
 	char *pLineChar;
+	size_t FilePosition = 0;
+	BMF_CHUNK Chunk;
+	Sint32 FileSize;
 
 	if( !( FileHandle = FS_OpenFile( p_pFileName ) ) )
 	{
@@ -64,6 +111,8 @@ int TEX_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 
 		return 1;
 	}
+
+	gdFsGetFileSize( FileHandle, &FileSize );
 
 	gdFsGetFileSctSize( FileHandle, &FileBlocks );
 
@@ -82,139 +131,82 @@ int TEX_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 
 	gdFsClose( FileHandle );
 
-	pLine = strtok( pFileContents, "\n" );
-
-	while( pLine )
+	if( ( pFileContents[ 0 ] != 'B' ) ||
+		( pFileContents[ 1 ] != 'M' ) ||
+		( pFileContents[ 2 ] != 'F' ) ||
+		( pFileContents[ 3 ] != 0x03 ) )
 	{
-		char *pEnd = NULL;
-		char *pStart = pLine;
-		size_t TokenLength = 0;
-		char Key[ 32 ], Value[ 32 ];
+		syFree( pFileContents );
 
-		if( ( pEnd = strchr( pStart, ' ' ) ) )
+		LOG_Debug( "Font file is not a binary file" );
+
+		return 1;
+	}
+
+	FilePosition = 4;
+
+	while( FilePosition != FileSize )
+	{
+		size_t TestSize = sizeof( BMF_CHAR );
+		Sint32 Size = 0;
+		memcpy( &Chunk, &pFileContents[ FilePosition ], sizeof( BMF_CHUNK ) );
+		/* Very ugly code */
+		Size = ( Chunk.Size[ 0 ] );
+		Size |= ( Chunk.Size[ 1 ] << 8 );
+		Size |= ( ( Chunk.Size[ 2 ] ) << 16 );
+		Size |= ( ( Chunk.Size[ 3 ] ) << 24 );
+
+		FilePosition += sizeof( BMF_CHUNK );
+
+		switch( Chunk.ID )
 		{
-			TokenLength = ( size_t )pEnd - ( size_t )pStart;
-			Token[ TokenLength ] = '\0';
-			strncpy( Token, pStart, TokenLength );
-
-			if( strcmp( Token, "common" ) == 0 )
+			case BMF_ID_COMMON:
 			{
-				pStart = pEnd + 1;
+				BMF_COMMON Common;
 
-				while( pEnd = strchr( pStart, ' ' ) )
-				{
-					char *pNewEnd;
+				memcpy( &Common, &pFileContents[ FilePosition ],
+					BMF_COMMON_PACKED_SIZE );
 
-					TokenLength = ( size_t )pEnd - ( size_t )pStart;
-					Token[ TokenLength ] = '\0';
-					strncpy( Token, pStart, TokenLength );
+				FilePosition += BMF_COMMON_PACKED_SIZE;
 
-					if( ( pNewEnd = strchr( Token, '=' ) ) == NULL )
-					{
-						break;
-					}
+				p_pGlyphSet->LineHeight = Common.LineHeight;
+				p_pGlyphSet->BaseLine = Common.BaseLine;
+				p_pGlyphSet->Width = Common.Width;
+				p_pGlyphSet->Height = Common.Height;
 
-					Key[ pNewEnd - Token ] = '\0';
-					strncpy( Key, Token, pNewEnd - Token );
-
-					Value[ ( size_t )pNewEnd - 1 ] = '\0';
-					strncpy( Value, pNewEnd + 1, strlen( pNewEnd - 1 ) );
-
-					if( strcmp( Key, "lineHeight" ) == 0 )
-					{
-						p_pGlyphSet->LineHeight = atoi( Value );
-					}
-					else if( strcmp( Key, "base" ) == 0 )
-					{
-						p_pGlyphSet->BaseLine = atoi( Value );
-					}
-					else if( strcmp( Key, "scaleW" ) == 0 )
-					{
-						p_pGlyphSet->Width = atoi( Value );
-					}
-					else if( strcmp( Key, "scaleH" ) == 0 )
-					{
-						p_pGlyphSet->Height = atoi( Value );
-					}
-
-					pStart = pEnd + 1;
-				}
+				break;
 			}
-			else if( strcmp( Token, "char" ) == 0 )
+			case BMF_ID_CHARS:
 			{
-				Uint16 Char = 0;
-				pStart = pEnd + 1;
+				size_t CharCount = Size / sizeof( BMF_CHAR );
+				size_t CharIndex;
 
-				while( pEnd = strchr( pStart, ' ' ) )
+				for( CharIndex = 0; CharIndex < CharCount; ++CharIndex )
 				{
-					char *pNewEnd;
+					BMF_CHAR Char;
 
-					TokenLength = ( size_t )pEnd - ( size_t )pStart;
+					memcpy( &Char, &pFileContents[ FilePosition ],
+						sizeof( BMF_CHAR ) );
 
-					/* Space was encountered as first char, length will be
-					 * zero, add one to advance */
-					if( TokenLength == 0 )
-					{
-						TokenLength = 1;
-					}
+					p_pGlyphSet->Glyphs[ Char.ID ].X = Char.X;
+					p_pGlyphSet->Glyphs[ Char.ID ].Y = Char.Y;
+					p_pGlyphSet->Glyphs[ Char.ID ].Width = Char.Width;
+					p_pGlyphSet->Glyphs[ Char.ID ].Height = Char.Height;
+					p_pGlyphSet->Glyphs[ Char.ID ].XOffset = Char.XOffset;
+					p_pGlyphSet->Glyphs[ Char.ID ].YOffset = Char.YOffset;
+					p_pGlyphSet->Glyphs[ Char.ID ].XAdvance = Char.XAdvance;
 
-					Token[ TokenLength ] = '\0';
-					strncpy( Token, pStart, TokenLength );
-
-					if( ( pNewEnd = strchr( Token, '=' ) ) == NULL )
-					{
-						pStart = pEnd + 1;
-						continue;
-					}
-
-					Key[ pNewEnd - Token ] = '\0';
-					strncpy( Key, Token, pNewEnd - Token );
-
-					Value[ ( size_t )pNewEnd - 1 ] = '\0';
-					strncpy( Value, pNewEnd + 1, strlen( pNewEnd - 1 ) );
-
-					/* id is usually first, the rest will not work without
-					 * it */
-					if( strcmp( Key, "id" ) == 0 )
-					{
-						Char = atoi( Value );
-					}
-					else if( strcmp( Key, "x" ) == 0 )
-					{
-						p_pGlyphSet->Glyphs[ Char ].X = atoi( Value );
-					}
-					else if( strcmp( Key, "y" ) == 0 )
-					{
-						p_pGlyphSet->Glyphs[ Char ].Y = atoi( Value );
-					}
-					else if( strcmp( Key, "width" ) == 0 )
-					{
-						p_pGlyphSet->Glyphs[ Char ].Width = atoi( Value );
-					}
-					else if( strcmp( Key, "height" ) == 0 )
-					{
-						p_pGlyphSet->Glyphs[ Char ].Height = atoi( Value );
-					}
-					else if( strcmp( Key, "xoffset" ) == 0 )
-					{
-						p_pGlyphSet->Glyphs[ Char ].XOffset = atoi( Value );
-					}
-					else if( strcmp( Key, "yoffset" ) == 0 )
-					{
-						p_pGlyphSet->Glyphs[ Char ].YOffset = atoi( Value );
-					}
-					else if( strcmp( Key, "xadvance" ) == 0 )
-					{
-						p_pGlyphSet->Glyphs[ Char ].XAdvance = atoi( Value );
-					}
-
-					pStart = pEnd + 1;
+					FilePosition += sizeof( BMF_CHAR );
 				}
+				break;
+			}
+			default:
+			{
+				FilePosition += Size;
+				break;
 			}
 		}
-
-		pLine = strtok( NULL, "\n" );
-	}	
+	}
 
 	syFree( pFileContents );
 

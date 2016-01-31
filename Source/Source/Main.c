@@ -29,6 +29,7 @@ void main( void )
 	void *pSomeMemory, *pBlock1, *pBlock2;
 	GLYPHSET GlyphSet;
 	char VersionString[ 256 ];
+	Uint32 StartTime, EndTime;
 
 	if( HW_Initialise( KM_DSPBPP_RGB888 ) != 0 )
 	{

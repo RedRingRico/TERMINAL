@@ -10,12 +10,12 @@ cd ..\GDROM
 copy ..\Bin\Dreamcast\1ST_READ.BIN .
 ipmaker_cmd ip_config.json
 copy %KATANA_ROOT%\Submit\Warning\US_warn.da warning.da
-call build_assets.bat
-if not errorlevel 0 (
-	echo An error occurred when building the content
-	cd ..
-	exit /b 1
-)
+rem call build_assets.bat
+rem if not errorlevel 0 (
+rem	echo An error occurred when building the content
+rem	cd ..
+rem	exit /b 1
+rem )
 %KATANA_ROOT%\Utl\Dev\CDCraft\crfgdc -bld=BUILD.SCR,dsk -benv=imf1
 cim2gdi TERMINAL.cim
 if not errorlevel 0 (

@@ -10,9 +10,9 @@ typedef struct _tagGLYPH
 	Uint16	Y;
 	Uint16	Width;
 	Uint16	Height;
-	Uint16	XOffset;
-	Uint16	YOffset;
-	Uint16	XAdvance;
+	Sint16	XOffset;
+	Sint16	YOffset;
+	Sint16	XAdvance;
 }GLYPH;
 
 typedef struct _tagGLYPHSET

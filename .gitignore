@@ -72,8 +72,8 @@ Workshop
 *~
 GitVersion.h
 
-# Built content
-*.PVR
-*.pvr
-*.FNT
-*.fnt
+# Built content (Temporarily allowed)
+#*.PVR
+#*.pvr
+#*.FNT
+#*.fnt
