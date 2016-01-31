@@ -6,5 +6,7 @@
 int FS_Initialise( void );
 int FS_Terminate( void );
 
+GDFS FS_OpenFile( char *p_pFilePath );
+
 #endif /* __TERMINAL_FILESYSTEM_H__ */
 
