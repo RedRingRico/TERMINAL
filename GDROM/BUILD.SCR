@@ -69,15 +69,15 @@ Gd	"TERMINAL.cim"
 			EndFile
 
 			Directory FONTS
-				File TERMINAL.FNT
+				File WHITERABBIT.FNT
 					Location 2
-					FileSource "[DATAPATH]\FONTS\TERMINAL.FNT"
+					FileSource "[DATAPATH]\FONTS\WHITERABBIT.FNT"
 					EndFileSource
 				EndFile
 
-				File TERMINAL.PVR
+				File WHITERABBIT.PVR
 					Location 1
-					FileSource "[DATAPATH]\FONTS\TERMINAL.PVR"
+					FileSource "[DATAPATH]\FONTS\WHITERABBIT.PVR"
 					EndFileSource
 				EndFile
 			EndDirectory

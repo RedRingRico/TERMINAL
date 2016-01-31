@@ -9,6 +9,7 @@
 #include <Memory.h>
 #include <Text.h>
 #include <kamui2.h>
+#include <sh4scif.h>
 
 #define MAX_TEXTURES ( 4096 )
 #define MAX_SMALLVQ ( 0 )
@@ -103,7 +104,8 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( TEX_CreateGlyphSetFromFile( "/FONTS/TERMINAL.FNT", &GlyphSet ) != 0 )
+	if( TEX_CreateGlyphSetFromFile( "/FONTS/WHITERABBIT.FNT",
+		&GlyphSet ) != 0 )
 	{
 		LOG_Debug( "Failed to load the glyph descriptions" );
 
@@ -113,7 +115,7 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( TEX_SetTextureForGlyphSet( "/FONTS/TERMINAL.PVR", &GlyphSet ) != 0 )
+	if( TEX_SetTextureForGlyphSet( "/FONTS/WHITERABBIT.PVR", &GlyphSet ) != 0 )
 	{
 		LOG_Debug( "Failed to load the glyph texture" );
 
