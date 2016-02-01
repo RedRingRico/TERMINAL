@@ -17,6 +17,9 @@
 #pragma aligndata32( g_pTextureWorkArea )
 KMDWORD g_pTextureWorkArea[ MAX_TEXTURES * 24 / 4 + MAX_SMALLVQ * 76 / 4 ];
 
+unsigned char RecvBuf[ 1024 * 8 ];
+unsigned char SendBuf[ 1024 * 8 ];
+
 void main( void )
 {
 	int Run = 1;
@@ -51,6 +54,25 @@ void main( void )
 		HW_Reboot( );
 	}
 
+	scif_init( RecvBuf, 1024 * 8, SendBuf, 1024 * 8 );
+	scif_open( BPS_115200 );
+	scif_putq( '[' );
+	scif_putq( 'T' );
+	scif_putq( 'E' );
+	scif_putq( 'R' );
+	scif_putq( 'M' );
+	scif_putq( 'I' );
+	scif_putq( 'N' );
+	scif_putq( 'A' );
+	scif_putq( 'L' );
+	scif_putq( ']' );
+	scif_putq( 0x1B );
+	scif_putq( '[' );
+	scif_putq( '2' );
+	scif_putq( ';' );
+	scif_putq( '1' );
+	scif_putq( 'f' );
+
 	pVertexBuffer = ( PKMDWORD )syMalloc( 0x100000 );
 
 	memset( &RendererConfiguration, 0, sizeof( RendererConfiguration ) );
@@ -80,6 +102,8 @@ void main( void )
 	RendererConfiguration.PassInfo[ 0 ].fBufferSize[ 4 ] = 50.0f;
 
 	REN_Initialise( &RendererConfiguration );
+
+	scif_close( );
 
 	if( TEX_Initialise( ) != 0 )
 	{
@@ -147,7 +171,7 @@ void main( void )
 		{
 			AlphaByte = 0;
 		}
-		else if( Alpha > 255.0f )
+		else if( Alpha > 1.0f )
 		{
 			AlphaByte = 255;
 		}
@@ -168,11 +192,13 @@ void main( void )
 		if( Alpha <= 0.0f )
 		{
 			AlphaInc = 0.02f;
+			Alpha = 0.0f;
 		}
 		
 		if( Alpha >= 1.0f )
 		{
 			AlphaInc = -0.02f;
+			Alpha = 1.0f;
 		}
 	}
 
