@@ -24,4 +24,5 @@ if not errorlevel 0 (
 	exit /b 1
 )
 cd ..
+echo.>success
 
