@@ -57,7 +57,7 @@ OPTIMISE_TYPE = size
 LIBDIR	= $(KATANA_ROOT)\lib
 DEFAULT_INCLUDE	= $(KATANA_ROOT)\include
 
-DEFAULT_LIBS	= kamui2 shinobi sh4nlfzn
+DEFAULT_LIBS	= kamui2 shinobi sh4nlfzn dmcast
 
 
 DEFAULT_OBJS = strt1.obj strt2.obj systemid.obj toc.obj sg_sec.obj \
@@ -114,7 +114,7 @@ debug: COPT_LINK =
 debug: LINK = lnk.exe
 debug: CDEBUG = -debug
 debug: TARGET := $(TARGET)D
-debug: DEFAULT_LIBS += libcross sh4nlfzn dmcast
+debug: DEFAULT_LIBS += libcross sh4nlfzn
 debug: OPTIMISE := 0
 debug: OPTIMISE_LINK := 0
 debug: CDEFS += DEBUG
