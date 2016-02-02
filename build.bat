@@ -1,7 +1,7 @@
 @echo off
 cd Source
 make release
-if not errorlevel 0 (
+if errorlevel 1 (
 	echo Failed to build the source code
 	cd ..
 	exit /b 1
