@@ -1,13 +1,12 @@
 #include <Hardware.h>
-#include <shinobi.h>
-#include <kamui2.h>
 #include <Memory.h>
 #include <Peripheral.h>
 #include <FileSystem.h>
+#include <Log.h>
 
 KMVOID PALExtCallback( PKMVOID p_pArgs );
 
-int HW_Initialise( KMBPPMODE p_BPP )
+int HW_Initialise( KMBPPMODE p_BPP, SYE_CBL *p_pCableType )
 {
 	KMDISPLAYMODE DisplayMode;
 
@@ -20,8 +19,11 @@ int HW_Initialise( KMBPPMODE p_BPP )
 		}
 		case SYE_CBL_PAL:
 		{
+			if( p_pCableType )
+			{
+				( *p_pCableType ) = SYE_CBL_PAL;
+			}
 			DisplayMode = KM_DSPMODE_PALNI640x480EXT;
-			kmSetPALEXTCallback( PALExtCallback, NULL );
 
 			break;
 		}
@@ -58,6 +60,12 @@ int HW_Initialise( KMBPPMODE p_BPP )
 		return 1;
 	}
 
+	if( syCblCheck( ) == SYE_CBL_PAL )
+	{
+		kmSetPALEXTCallback( PALExtCallback, NULL );
+		kmSetDisplayMode( DisplayMode, p_BPP, TRUE, FALSE );
+	}
+
 	return 0;
 }
 
@@ -84,10 +92,7 @@ KMVOID PALExtCallback( PKMVOID p_pArgs )
 {
 	PKMPALEXTINFO pPALInfo;
 
-	if( p_pArgs )
-	{
-		pPALInfo = ( PKMPALEXTINFO )p_pArgs;
-		pPALInfo->nPALExtMode = KM_PALEXT_HEIGHT_RATIO_1_133;
-	}
+	pPALInfo = ( PKMPALEXTINFO )p_pArgs;
+	pPALInfo->nPALExtMode = KM_PALEXT_HEIGHT_RATIO_1_166;
 }
 
