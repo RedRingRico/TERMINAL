@@ -4,7 +4,7 @@
 #include <string.h>
 
 KMSTRIPHEAD	TEX_StripHead;
-KMVERTEX_16 TEX_TextBuffer[ 64 ];
+KMVERTEX_16 TEX_TextBuffer[ 128 ];
 
 #define BMF_ID_INFO		1
 #define BMF_ID_COMMON	2
