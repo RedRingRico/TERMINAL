@@ -12,6 +12,7 @@
 #include <sh4scif.h>
 #include <Vector3.h>
 #include <mathf.h>
+#include <Camera.h>
 
 #define MAX_TEXTURES ( 4096 )
 #define MAX_SMALLVQ ( 0 )
@@ -30,9 +31,7 @@ typedef struct _tagRENDER_VERTEX
 {
 	float		X;
 	float		Y;
-	float		Z;
 	float		InvW;
-	KMUINT32	Colour;
 }RENDER_VERTEX;
 
 typedef struct _tagVERTEX
@@ -41,7 +40,6 @@ typedef struct _tagVERTEX
 	VECTOR3 Normal;
 }VERTEX;
 
-void Perspective( const VERTEX *p_pVertex, RENDER_VERTEX *p_pRenderVertex );
 bool SelectPALRefresh( GLYPHSET *p_pGlyphSet );
 
 void main( void )
@@ -59,10 +57,12 @@ void main( void )
 	Uint32 StartTime, EndTime;
 	SYE_CBL AVCable;
 
-	/*RENDER_VERTEX Cube[ 36 ];
-	VERTEX CubeVerts[ 36 ];
-	KMVERTEX_01 CubeKMVerts[ 36 ];
-	VECTOR3 LightPosition = { 10.0f, 10.0f, 9.0f };*/
+	RENDER_VERTEX Cube[ 10 ];
+	VERTEX CubeVerts[ 10 ];
+	KMVERTEX_01 CubeKMVerts[ 10 ];
+	CAMERA TestCamera;
+	float YRotation = 0.0f;
+	MATRIX4X4 Projection;
 
 	if( HW_Initialise( KM_DSPBPP_RGB888, &AVCable ) != 0 )
 	{
@@ -167,85 +167,100 @@ void main( void )
 	}
 
 	memset( VersionString, '\0', sizeof( VersionString ) );
-
 	sprintf( VersionString, "Build: %s", GIT_VERSION );
 
 	REN_SetClearColour( 0.0f, 17.0f / 255.0f, 43.0f / 255.0f );
 
 	/* Oh, fun -_- */
-	/*CubeVerts[ 0 ].Position.X = -10.0f;
+	CubeVerts[ 0 ].Position.X = -10.0f;
 	CubeVerts[ 0 ].Position.Y = -10.0f;
-	CubeVerts[ 0 ].Position.Z = 10.0f;
+	CubeVerts[ 0 ].Position.Z = -10.0f;
 	CubeVerts[ 0 ].Normal.X = -0.5773491849436035f;
 	CubeVerts[ 0 ].Normal.Y = -0.5773491849436035f;
-	CubeVerts[ 0 ].Normal.Z = 0.5773491849436035f;
+	CubeVerts[ 0 ].Normal.Z = -0.5773491849436035f;
 
 	CubeVerts[ 1 ].Position.X = -10.0f;
 	CubeVerts[ 1 ].Position.Y = 10.0f;
-	CubeVerts[ 1 ].Position.Z = 10.0f;
+	CubeVerts[ 1 ].Position.Z = -10.0f;
 	CubeVerts[ 1 ].Normal.X = -0.5773491849436035f;
 	CubeVerts[ 1 ].Normal.Y = 0.5773491849436035f;
-	CubeVerts[ 1 ].Normal.Z = 0.5773491849436035f;
+	CubeVerts[ 1 ].Normal.Z = -0.5773491849436035f;
 
 	CubeVerts[ 2 ].Position.X = 10.0f;
 	CubeVerts[ 2 ].Position.Y = -10.0f;
-	CubeVerts[ 2 ].Position.Z = 10.0f;
+	CubeVerts[ 2 ].Position.Z = -10.0f;
 	CubeVerts[ 2 ].Normal.X = 0.5773491849436035f;
 	CubeVerts[ 2 ].Normal.Y = -0.5773491849436035f;
-	CubeVerts[ 2 ].Normal.Z = 0.5773491849436035f;
+	CubeVerts[ 2 ].Normal.Z = -0.5773491849436035f;
 
 	CubeVerts[ 3 ].Position.X = 10.0f;
 	CubeVerts[ 3 ].Position.Y = 10.0f;
-	CubeVerts[ 3 ].Position.Z = 10.0f;
+	CubeVerts[ 3 ].Position.Z = -10.0f;
 	CubeVerts[ 3 ].Normal.X = 0.5773491849436035f;
 	CubeVerts[ 3 ].Normal.Y = 0.5773491849436035f;
-	CubeVerts[ 3 ].Normal.Z = 0.5773491849436035f;
+	CubeVerts[ 3 ].Normal.Z = -0.5773491849436035f;
 
-	{
-		int i;
-		for( i = 0; i < 4; ++i )
-		{
-			VECTOR3 Colour = { 1.0f, 1.0f, 1.0f };
-			VECTOR3 LightColour = { 1.0f, 1.0f, 1.0f };
-			VECTOR3 DiffuseLight;
-			VECTOR3 LightNormal;
-			VERTEX LightPos;
-			RENDER_VERTEX LightPosRender;
-			float LightIntensity;
+	CubeVerts[ 4 ].Position.X = 10.0f;
+	CubeVerts[ 4 ].Position.Y = -10.0f;
+	CubeVerts[ 4 ].Position.Z = 10.0f;
+	CubeVerts[ 4 ].Normal.X = 0.5773491849436035f;
+	CubeVerts[ 4 ].Normal.Y = -0.5773491849436035f;
+	CubeVerts[ 4 ].Normal.Z = 0.5773491849436035f;
 
-			Perspective( &CubeVerts[ i ], &Cube[ i ] );
-			LightPos.Position.X = LightPosition.X;
-			LightPos.Position.Y = LightPosition.Y;
-			LightPos.Position.Z = LightPosition.Z;
-			Perspective( &LightPos, &LightPosRender );
-			LightPosition.X = LightPosRender.X;
-			LightPosition.Y = LightPosRender.Y;
-			LightPosition.Z = LightPosRender.Z;
-			VEC3_Subtract( &LightPosition, &CubeVerts[ i ].Position,
-				&LightNormal );
-			VEC3_Normalise( &LightNormal );
-			Cube[ i ].Colour = 0xFFFFFFFF;
-			LightIntensity = VEC3_Dot(
-				&CubeVerts[ i ].Normal, &LightNormal );
-			if( LightIntensity < 0.0f )
-			{
-				LightIntensity = 0.0f;
-			}
-			VEC3_MultiplyV( &Colour, &LightColour, &DiffuseLight );
-			VEC3_MultiplyF( &DiffuseLight, LightIntensity, &DiffuseLight );
+	CubeVerts[ 5 ].Position.X = 10.0f;
+	CubeVerts[ 5 ].Position.Y = 10.0f;
+	CubeVerts[ 5 ].Position.Z = 10.0f;
+	CubeVerts[ 5 ].Normal.X = 0.5773491849436035f;
+	CubeVerts[ 5 ].Normal.Y = 0.5773491849436035f;
+	CubeVerts[ 5 ].Normal.Z = 0.5773491849436035f;
 
-			CubeKMVerts[ i ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
-			CubeKMVerts[ i ].fX = Cube[ i ].X;
-			CubeKMVerts[ i ].fY = Cube[ i ].Y;
-			CubeKMVerts[ i ].u.fInvW = Cube[ i ].InvW;
-			CubeKMVerts[ i ].fBaseAlpha = 1.0f;
-			CubeKMVerts[ i ].fBaseRed = DiffuseLight.X;
-			CubeKMVerts[ i ].fBaseGreen = DiffuseLight.Y;
-			CubeKMVerts[ i ].fBaseBlue = DiffuseLight.Z;
-		}
+	CubeVerts[ 6 ].Position.X = -10.0f;
+	CubeVerts[ 6 ].Position.Y = -10.0f;
+	CubeVerts[ 6 ].Position.Z = 10.0f;
+	CubeVerts[ 6 ].Normal.X = -0.5773491849436035f;
+	CubeVerts[ 6 ].Normal.Y = -0.5773491849436035f;
+	CubeVerts[ 6 ].Normal.Z = 0.5773491849436035f;
 
-		CubeKMVerts[ 3 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
-	}*/
+	CubeVerts[ 7 ].Position.X = -10.0f;
+	CubeVerts[ 7 ].Position.Y = 10.0f;
+	CubeVerts[ 7 ].Position.Z = 10.0f;
+	CubeVerts[ 7 ].Normal.X = -0.5773491849436035f;
+	CubeVerts[ 7 ].Normal.Y = 0.5773491849436035f;
+	CubeVerts[ 7 ].Normal.Z = 0.5773491849436035f;
+
+	CubeVerts[ 8 ].Position.X = -10.0f;
+	CubeVerts[ 8 ].Position.Y = -10.0f;
+	CubeVerts[ 8 ].Position.Z = -10.0f;
+	CubeVerts[ 8 ].Normal.X = -0.5773491849436035f;
+	CubeVerts[ 8 ].Normal.Y = -0.5773491849436035f;
+	CubeVerts[ 8 ].Normal.Z = -0.5773491849436035f;
+
+	CubeVerts[ 9 ].Position.X = -10.0f;
+	CubeVerts[ 9 ].Position.Y = 10.0f;
+	CubeVerts[ 9 ].Position.Z = -10.0f;
+	CubeVerts[ 9 ].Normal.X = -0.5773491849436035f;
+	CubeVerts[ 9 ].Normal.Y = 0.5773491849436035f;
+	CubeVerts[ 9 ].Normal.Z = -0.5773491849436035f;
+
+	TestCamera.Position.X = 0.0f;
+	TestCamera.Position.Y = 0.0f;
+	TestCamera.Position.Z = 0.0f;
+
+	TestCamera.LookAt.X = 0.0f;
+	TestCamera.LookAt.Y = 0.0f;
+	TestCamera.LookAt.Z = 1.0f;
+
+	TestCamera.WorldUp.X = 0.0f;
+	TestCamera.WorldUp.Y = 1.0f;
+	TestCamera.WorldUp.Z = 0.0f;
+
+	TestCamera.GateWidth = 640.0f;
+	TestCamera.GateHeight = 480.0f;
+
+	TestCamera.AspectRatio = 640.0f / 480.0f;
+	TestCamera.FieldOfView = ( 3.141592654f / 4.0f );
+	TestCamera.NearPlane = 1.0f;
+	TestCamera.FarPlane = 100000.0f;
 
 	if( AVCable == SYE_CBL_PAL )
 	{
@@ -258,6 +273,8 @@ void main( void )
 				TRUE, FALSE);
 		}
 	}
+
+	CAM_CalculateProjectionMatrix( &Projection, &TestCamera );
 
 	while( Run )
 	{
@@ -274,7 +291,65 @@ void main( void )
 
 		REN_Clear( );
 
-		/*REN_DrawPrimitives01( NULL, CubeKMVerts, 4 );*/
+		{
+			int i;
+			MATRIX4X4 View, ViewProjection;
+			MATRIX4X4 World;
+			VECTOR3 LightWorldPos;
+			VECTOR3 LightPosition = { 10.0f, 10.0f, -15.0f };
+			VECTOR3 CubeRotate = { 0.0f, 1.0f, 0.0f };
+			VECTOR3 CubePosition = { 0.0f, 0.0f, 100.0f };
+
+			MAT44_SetIdentity( &World );
+
+			MAT44_RotateAxisAngle( &World, &CubeRotate, YRotation );
+			MAT44_Translate( &World, &CubePosition );
+
+			CAM_CalculateViewMatrix( &View, &TestCamera );
+			MAT44_Multiply( &ViewProjection, &World, &View );
+			MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
+
+			MAT44_TransformVerticesRHW( ( float * )Cube, ( float * )CubeVerts,
+				10, sizeof( Cube[ 0 ] ), sizeof( CubeVerts[ 0 ] ),
+				&ViewProjection );
+
+			for( i = 0; i < 10; ++i )
+			{
+				VECTOR3 Colour = { 1.0f, 1.0f, 1.0f };
+				VECTOR3 LightColour = { 1.0f, 1.0f, 1.0f };
+				VECTOR3 DiffuseLight;
+				VECTOR3 LightNormal;
+				VERTEX LightPos;
+				RENDER_VERTEX LightPosRender;
+				float LightIntensity;
+
+				VEC3_Subtract( &LightNormal, &LightPosition,
+					&CubeVerts[ i ].Position );
+				VEC3_Normalise( &LightNormal );
+				LightIntensity = VEC3_Dot(
+					&CubeVerts[ i ].Normal, &LightNormal );
+				if( LightIntensity < 0.0f )
+				{
+					LightIntensity = 0.0f;
+				}
+				VEC3_MultiplyV( &DiffuseLight, &Colour, &LightColour );
+				VEC3_MultiplyF( &DiffuseLight, &DiffuseLight, LightIntensity );
+
+				CubeKMVerts[ i ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+				CubeKMVerts[ i ].fX = Cube[ i ].X;
+				CubeKMVerts[ i ].fY = Cube[ i ].Y;
+				CubeKMVerts[ i ].u.fInvW = Cube[ i ].InvW;
+				CubeKMVerts[ i ].fBaseAlpha = 1.0f;
+				
+				CubeKMVerts[ i ].fBaseRed = DiffuseLight.X;
+				CubeKMVerts[ i ].fBaseGreen = DiffuseLight.Y;
+				CubeKMVerts[ i ].fBaseBlue = DiffuseLight.Z;
+			}
+
+			CubeKMVerts[ 9 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
+		}
+
+		REN_DrawPrimitives01( NULL, CubeKMVerts, 10 );
 
 		TextColour.dwPacked = 0xFF00FF00;
 		TEX_RenderString( &GlyphSet, &TextColour,
@@ -284,6 +359,11 @@ void main( void )
 		TEX_RenderString( &GlyphSet, &TextColour,
 			320.0f - ( TextLength / 2.0f ),
 			480.0f - ( ( float )GlyphSet.LineHeight * 3.0f ), VersionString );
+
+		TEX_MeasureString( &GlyphSet, GIT_TAGNAME, &TextLength );
+		TEX_RenderString( &GlyphSet, &TextColour,
+			320.0f - ( TextLength / 2.0f ),
+			480.0f - ( ( float )GlyphSet.LineHeight * 2.0f ), GIT_TAGNAME );
 
 		TextColour.dwPacked = 0xFFFFFFFF;
 
@@ -311,7 +391,6 @@ void main( void )
 			320.0f -( TextLength / 2.0f ),
 			240.0f - ( ( float )GlyphSet.LineHeight / 2.0f ), "PRESS START" );
 
-
 		REN_SwapBuffers( );
 
 		Alpha += AlphaInc;
@@ -327,6 +406,8 @@ void main( void )
 			AlphaInc = -0.02f;
 			Alpha = 1.0f;
 		}
+
+		YRotation += 0.01f;
 	}
 
 	LOG_Debug( "Rebooting" );
@@ -335,20 +416,6 @@ void main( void )
 	LOG_Terminate( );
 	HW_Terminate( );
 	HW_Reboot( );
-}
-
-void Perspective( const VERTEX *p_pVertex, RENDER_VERTEX *p_pRenderVertex )
-{
-	const VECTOR3 CameraPosition = { 0.0f, 0.0f, 150.0f };
-	float X, Y, Z;
-
-	X = p_pVertex->Position.X + CameraPosition.X;
-	Y = -p_pVertex->Position.Y + CameraPosition.Y;
-	Z = p_pVertex->Position.Z + CameraPosition.Z;
-
-	p_pRenderVertex->X = ( CameraFocus * X ) / Z + 320.0f;
-	p_pRenderVertex->Y = ( CameraFocus * Y ) / Z + 240.0f;
-	p_pRenderVertex->InvW = 1.0f / Z;
 }
 
 bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )

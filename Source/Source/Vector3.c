@@ -2,35 +2,35 @@
 #include <Arithmetic.h>
 #include <mathf.h>
 
-void VEC3_Add( PVECTOR3 p_pLeft, PVECTOR3 p_pRight, PVECTOR3 p_pOut )
+void VEC3_Add( PVECTOR3 p_pOut, PVECTOR3 p_pLeft, PVECTOR3 p_pRight )
 {
 	p_pOut->X = p_pLeft->X + p_pRight->X;
 	p_pOut->Y = p_pLeft->Y + p_pRight->Y;
 	p_pOut->Z = p_pLeft->Z + p_pRight->Z;
 }
 
-void VEC3_Subtract( PVECTOR3 p_pLeft, PVECTOR3 p_pRight, PVECTOR3 p_pOut )
+void VEC3_Subtract( PVECTOR3 p_pOut, PVECTOR3 p_pLeft, PVECTOR3 p_pRight )
 {
 	p_pOut->X = p_pLeft->X - p_pRight->X;
 	p_pOut->Y = p_pLeft->Y - p_pRight->Y;
 	p_pOut->Z = p_pLeft->Z - p_pRight->Z;
 }
 
-void VEC3_MultiplyV( PVECTOR3 p_pLeft, PVECTOR3 p_pRight, PVECTOR3 p_pOut )
+void VEC3_MultiplyV( PVECTOR3 p_pOut, PVECTOR3 p_pLeft, PVECTOR3 p_pRight )
 {
 	p_pOut->X = p_pLeft->X * p_pRight->X;
 	p_pOut->Y = p_pLeft->Y * p_pRight->Y;
 	p_pOut->Z = p_pLeft->Z * p_pRight->Z;
 }
 
-void VEC3_MultiplyF( PVECTOR3 p_pVector, float p_Scalar, PVECTOR3 p_pOut )
+void VEC3_MultiplyF( PVECTOR3 p_pOut, PVECTOR3 p_pVector, float p_Scalar )
 {
 	p_pOut->X = p_pVector->X * p_Scalar;
 	p_pOut->Y = p_pVector->Y * p_Scalar;
 	p_pOut->Z = p_pVector->Z * p_Scalar;
 }
 
-void VEC3_Divide( PVECTOR3 p_pVector, float p_Scalar, PVECTOR3 p_pOut )
+void VEC3_Divide( PVECTOR3 p_pOut, PVECTOR3 p_pVector, float p_Scalar )
 {
 	p_pOut->X = p_pVector->X / p_Scalar;
 	p_pOut->Y = p_pVector->Y / p_Scalar;
@@ -101,7 +101,7 @@ float VEC3_Dot( PVECTOR3 p_pLeft, PVECTOR3 p_pRight )
 		( p_pLeft->Z * p_pRight->Z ) );
 }
 
-void VEC3_Cross( PVECTOR3 p_pLeft, PVECTOR3 p_pRight, PVECTOR3 p_pOut )
+void VEC3_Cross( PVECTOR3 p_pOut, PVECTOR3 p_pLeft, PVECTOR3 p_pRight )
 {
 	p_pOut->X = ( p_pLeft->Y * p_pRight->Z ) - ( p_pLeft->Z * p_pRight->Y );
 	p_pOut->Y = ( p_pLeft->Z * p_pRight->X ) - ( p_pLeft->X * p_pRight->Z );

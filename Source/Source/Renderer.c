@@ -15,7 +15,7 @@ static KMSTRIPCONTEXT		g_DefaultStripContext =
 	},
 	{
 		KM_GREATER,
-		KM_CULLCCW,
+		KM_NOCULLING,
 		KM_FALSE,
 		KM_FALSE,
 		0
@@ -43,6 +43,8 @@ static KMSTRIPCONTEXT		g_DefaultStripContext =
 		0
 	}
 };
+static KMSTRIPHEAD g_StripHead00;
+static KMSTRIPHEAD g_StripHead01;
 static KMSTRIPHEAD g_StripHead16;
 
 int REN_Initialise( DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration )
@@ -103,6 +105,12 @@ int REN_Initialise( DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration )
 		return 1;
 	}
 
+	memset( &g_StripHead00, 0, sizeof( g_StripHead00 ) );
+	kmGenerateStripHead00( &g_StripHead00, &g_DefaultStripContext );
+
+	memset( &g_StripHead01, 0, sizeof( g_StripHead01 ) );
+	kmGenerateStripHead01( &g_StripHead01, &g_DefaultStripContext );
+
 	memset( &g_StripHead16, 0, sizeof( g_StripHead16 ) );
 	kmGenerateStripHead16( &g_StripHead16, &g_DefaultStripContext );
 
@@ -125,7 +133,7 @@ void REN_SetClearColour( float p_Red, float p_Green, float p_Blue )
 	BackgroundClear[ 0 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
 	BackgroundClear[ 0 ].fX = 0.0f;
 	BackgroundClear[ 0 ].fY = 479.0f;
-	BackgroundClear[ 0 ].u.fZ = 0.2f;
+	BackgroundClear[ 0 ].u.fZ = 0.0001f;
 	BackgroundClear[ 0 ].fBaseAlpha = 1.0f;
 	BackgroundClear[ 0 ].fBaseRed = p_Red;
 	BackgroundClear[ 0 ].fBaseGreen = p_Green;
@@ -135,7 +143,7 @@ void REN_SetClearColour( float p_Red, float p_Green, float p_Blue )
 	BackgroundClear[ 1 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
 	BackgroundClear[ 1 ].fX = 639.0f;
 	BackgroundClear[ 1 ].fY = 0.0f;
-	BackgroundClear[ 1 ].u.fZ = 0.2f;
+	BackgroundClear[ 1 ].u.fZ = 0.0001f;
 	BackgroundClear[ 1 ].fBaseAlpha = 1.0f;
 	BackgroundClear[ 1 ].fBaseRed = p_Red;
 	BackgroundClear[ 1 ].fBaseGreen = p_Green;
@@ -144,7 +152,7 @@ void REN_SetClearColour( float p_Red, float p_Green, float p_Blue )
 	BackgroundClear[ 2 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
 	BackgroundClear[ 2 ].fX = 639.0f;
 	BackgroundClear[ 2 ].fY = 479.0f;
-	BackgroundClear[ 2 ].u.fZ = 0.2f;
+	BackgroundClear[ 2 ].u.fZ = 0.0001f;
 	BackgroundClear[ 2 ].fBaseAlpha = 1.0f;
 	BackgroundClear[ 2 ].fBaseRed = p_Red;
 	BackgroundClear[ 2 ].fBaseGreen = p_Green;
@@ -175,6 +183,52 @@ int REN_SwapBuffers( void )
 	kmEndScene( &g_Kamui2Config );
 
 	return 0;
+}
+
+void REN_DrawPrimitives00( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_00 p_pVertices,
+	KMUINT32 p_Count )
+{
+	KMUINT32 VertexIndex;
+
+	if( p_pStripHead )
+	{
+		kmStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
+	}
+	else
+	{
+		kmStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead00 );
+	}
+
+	for( VertexIndex = 0; VertexIndex < p_Count; ++VertexIndex )
+	{
+		kmSetVertex( g_Kamui2Config.pBufferDesc, &p_pVertices[ VertexIndex ],
+			KM_VERTEXTYPE_00, sizeof( KMVERTEX_00 ) );
+	}
+
+	kmEndStrip( g_Kamui2Config.pBufferDesc );
+}
+
+void REN_DrawPrimitives01( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_01 p_pVertices,
+	KMUINT32 p_Count )
+{
+	KMUINT32 VertexIndex;
+
+	if( p_pStripHead )
+	{
+		kmStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
+	}
+	else
+	{
+		kmStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead01 );
+	}
+
+	for( VertexIndex = 0; VertexIndex < p_Count; ++VertexIndex )
+	{
+		kmSetVertex( g_Kamui2Config.pBufferDesc, &p_pVertices[ VertexIndex ],
+			KM_VERTEXTYPE_01, sizeof( KMVERTEX_01 ) );
+	}
+
+	kmEndStrip( g_Kamui2Config.pBufferDesc );
 }
 
 void REN_DrawPrimitives16( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_16 p_pVertices,
