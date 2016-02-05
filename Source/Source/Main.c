@@ -296,13 +296,17 @@ void main( void )
 			MATRIX4X4 View, ViewProjection;
 			MATRIX4X4 World;
 			VECTOR3 LightWorldPos;
-			VECTOR3 LightPosition = { 10.0f, 10.0f, -15.0f };
+			VECTOR3 LightPosition = { 15.0f, 15.0f, -15.0f };
 			VECTOR3 CubeRotate = { 0.0f, 1.0f, 0.0f };
 			VECTOR3 CubePosition = { 0.0f, 0.0f, 100.0f };
+			VECTOR3 TNormals[ 10 ];
+			MATRIX4X4 Rotation;
 
 			MAT44_SetIdentity( &World );
+			MAT44_SetIdentity( &Rotation );
 
 			MAT44_RotateAxisAngle( &World, &CubeRotate, YRotation );
+			MAT44_RotateAxisAngle( &Rotation, &CubeRotate, YRotation );
 			MAT44_Translate( &World, &CubePosition );
 
 			CAM_CalculateViewMatrix( &View, &TestCamera );
@@ -312,6 +316,10 @@ void main( void )
 			MAT44_TransformVerticesRHW( ( float * )Cube, ( float * )CubeVerts,
 				10, sizeof( Cube[ 0 ] ), sizeof( CubeVerts[ 0 ] ),
 				&ViewProjection );
+
+			MAT44_TransformVertices( ( float * )( TNormals ),
+				( float * )( CubeVerts )+3, 10, sizeof( TNormals[ 0 ] ),
+				sizeof( CubeVerts[ 0 ] ), &Rotation );
 
 			for( i = 0; i < 10; ++i )
 			{
@@ -326,8 +334,7 @@ void main( void )
 				VEC3_Subtract( &LightNormal, &LightPosition,
 					&CubeVerts[ i ].Position );
 				VEC3_Normalise( &LightNormal );
-				LightIntensity = VEC3_Dot(
-					&CubeVerts[ i ].Normal, &LightNormal );
+				LightIntensity = VEC3_Dot( &TNormals[ i ], &LightNormal );
 				if( LightIntensity < 0.0f )
 				{
 					LightIntensity = 0.0f;
@@ -389,7 +396,8 @@ void main( void )
 		TEX_MeasureString( &GlyphSet, "PRESS START", &TextLength );
 		TEX_RenderString( &GlyphSet, &TextColour,
 			320.0f -( TextLength / 2.0f ),
-			240.0f - ( ( float )GlyphSet.LineHeight / 2.0f ), "PRESS START" );
+			/*240.0f - ( ( float )GlyphSet.LineHeight / 2.0f )*/
+			360.0f, "PRESS START" );
 
 		REN_SwapBuffers( );
 
