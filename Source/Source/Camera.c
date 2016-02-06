@@ -84,7 +84,7 @@ void CAM_TransformNonClipPerspective( float *p_pTransformedVertices,
 	const size_t p_TransformedStride,const size_t p_UntransformedStride,
 	const PMATRIX4X4 p_pMatrix, const CAMERA *p_pCamera )
 {
-	register float H, *pDestVector, HalfWidth, HalfHeight, RHW, SpeedUp;
+	register float H, *pDestVector, HalfWidth, HalfHeight, RHW;
 	register int Index;
 	size_t UStride, TStride;
 	MATRIX4X4 Transform, Projection;
@@ -139,10 +139,8 @@ void CAM_TransformNonClipPerspective( float *p_pTransformedVertices,
 
 		RHW = 1.0f / g_Result[ 2 ];
 
-		SpeedUp = RHW * HalfWidth;
-
-		*( pDestVector++ ) = SpeedUp * g_Result[ 0 ] + HalfWidth;
-		*( pDestVector++ ) = -SpeedUp * g_Result[ 1 ] + HalfHeight;
+		*( pDestVector++ ) = RHW * HalfWidth * g_Result[ 0 ] + HalfWidth;
+		*( pDestVector++ ) = RHW * -HalfHeight * g_Result[ 1 ] + HalfHeight;
 		*( pDestVector++ ) = RHW;
 
 		pDestVector += TStride;
