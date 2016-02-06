@@ -13,6 +13,7 @@
 #include <Vector3.h>
 #include <mathf.h>
 #include <Camera.h>
+#include <Model.h>
 
 #define MAX_TEXTURES ( 4096 )
 #define MAX_SMALLVQ ( 0 )
@@ -68,6 +69,7 @@ void main( void )
 	CAMERA TestCamera;
 	float YRotation = 0.0f;
 	MATRIX4X4 Projection;
+	MODEL TestModel;
 
 	if( HW_Initialise( KM_DSPBPP_RGB888, &AVCable ) != 0 )
 	{
@@ -168,6 +170,16 @@ void main( void )
 	if( TEX_SetTextureForGlyphSet( "/FONTS/WHITERABBIT.PVR", &GlyphSet ) != 0 )
 	{
 		LOG_Debug( "Failed to load the glyph texture" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( MDL_LoadModel( &TestModel, "/MODELS/CUBE.TML" ) != 0 )
+	{
+		LOG_Debug( "Faile dto load the test model" );
 
 		REN_Terminate( );
 		LOG_Terminate( );
@@ -340,7 +352,9 @@ void main( void )
 			MAT44_Multiply( &ViewProjection, &World, &View );
 			MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
 
-			MAT44_TransformVerticesRHW( ( float * )Cube, ( float * )CubeVerts,
+			MDL_RenderModel( &TestModel, &ViewProjection );
+
+			/*MAT44_TransformVerticesRHW( ( float * )Cube, ( float * )CubeVerts,
 				10, sizeof( Cube[ 0 ] ), sizeof( CubeVerts[ 0 ] ),
 				&ViewProjection );
 
@@ -380,10 +394,10 @@ void main( void )
 				CubeKMVerts[ i ].fBaseBlue = DiffuseLight.Z;
 			}
 
-			CubeKMVerts[ 9 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
+			CubeKMVerts[ 9 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;*/
 		}
 
-		REN_DrawPrimitives01( NULL, CubeKMVerts, 10 );
+		//REN_DrawPrimitives01( NULL, CubeKMVerts, 10 );
 
 		DrawOverlayText( &GlyphSet );
 
@@ -426,6 +440,8 @@ void main( void )
 
 		YRotation += 0.01f;
 	}
+
+	MDL_DeleteModel( &TestModel );
 
 	LOG_Debug( "Rebooting" );
 

@@ -82,6 +82,14 @@ Gd	"TERMINAL.cim"
 				EndFile
 			EndDirectory
 
+			Directory MODELS
+				File CUBE.TML
+					Location 3
+					FileSource "[DATAPATH]\MODELS\CUBE.TML
+					EndFileSource
+				EndFile
+			EndDirectory
+
 		EndTrack
 	EndRecordArea
 	;::::: High Density Area <end> :::::
