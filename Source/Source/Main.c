@@ -28,6 +28,8 @@ unsigned char RecvBuf[ 1024 * 8 ];
 unsigned char SendBuf[ 1024 * 8 ];
 
 char g_VersionString[ 256 ];
+Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
+char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
 
 typedef struct _tagRENDER_VERTEX
 {
@@ -172,6 +174,23 @@ void main( void )
 		HW_Terminate( );
 		HW_Reboot( );
 	}
+
+	memset( g_ConsoleIDPrint, '\0', sizeof( g_ConsoleIDPrint ) );
+	if( syCfgGetIndividualID( g_ConsoleID ) != SYD_CFG_IID_OK )
+	{
+		sprintf( g_ConsoleIDPrint, "ERROR" );
+	}
+	g_ConsoleID[ SYD_CFG_IID_SIZE ] = '\0';
+
+	sprintf( g_ConsoleIDPrint, "%02X%02X%02X%02X%02X%02X",
+		( unsigned char )g_ConsoleID[ 0 ],
+		( unsigned char )g_ConsoleID[ 1 ],
+		( unsigned char )g_ConsoleID[ 2 ],
+		( unsigned char )g_ConsoleID[ 3 ],
+		( unsigned char )g_ConsoleID[ 4 ],
+		( unsigned char )g_ConsoleID[ 5 ] );
+
+	LOG_Debug( "Console ID: %s\n", g_ConsoleIDPrint );
 
 	REN_SetClearColour( 0.0f, 17.0f / 255.0f, 43.0f / 255.0f );
 
@@ -940,5 +959,9 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 	TEX_RenderString( p_pGlyphSet, &TextColour, 0.0f,
 		480.0f - ( float )p_pGlyphSet->LineHeight * 2.0f,
 		MILESTONE_STRING );
+
+	TEX_MeasureString( p_pGlyphSet, g_ConsoleIDPrint, &TextLength );
+	TEX_RenderString( p_pGlyphSet, &TextColour, 640.0f - TextLength,
+		480.0f - ( float )p_pGlyphSet->LineHeight * 2.0f, g_ConsoleIDPrint );
 }
 
