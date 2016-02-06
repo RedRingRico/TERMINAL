@@ -54,17 +54,25 @@ void CAM_CalculateProjectionMatrix( PMATRIX4X4 p_pMatrix,
 	H = tanf( p_pCamera->FieldOfView / 2.0f );
 
 	MAT44_SetIdentity( &ProjectionMatrix );
-	ProjectionMatrix.M22 = H * p_pCamera->FarPlane /
+	ProjectionMatrix.M00 = 1.0f/ ( p_pCamera->AspectRatio * H );
+	ProjectionMatrix.M11 = 1.0f / H;
+	/* Keep the following in case I made a mistake */
+	/*ProjectionMatrix.M22 = H * p_pCamera->FarPlane /
 		( p_pCamera->FarPlane - p_pCamera->NearPlane );
 	ProjectionMatrix.M23 = H;
 	ProjectionMatrix.M32 = -H * p_pCamera->FarPlane * p_pCamera->NearPlane /
+		( p_pCamera->FarPlane - p_pCamera->NearPlane );*/
+	ProjectionMatrix.M22 = p_pCamera->FarPlane /
 		( p_pCamera->FarPlane - p_pCamera->NearPlane );
+	ProjectionMatrix.M32 = p_pCamera->FarPlane * -p_pCamera->NearPlane /
+		( p_pCamera->FarPlane - p_pCamera->NearPlane );
+	ProjectionMatrix.M23 = 1.0f;
 	
 	ProjectionMatrix.M33 = 0.0f;
 	
 	MAT44_SetIdentity( &ScreenMatrix );
 	ScreenMatrix.M00 = HalfWidth;
-	ScreenMatrix.M11 = -HalfWidth;
+	ScreenMatrix.M11 = -HalfHeight;
 	ScreenMatrix.M20 = HalfWidth;
 	ScreenMatrix.M21 = HalfHeight;
 
@@ -102,11 +110,13 @@ void CAM_TransformNonClipPerspective( float *p_pTransformedVertices,
 
 	MAT44_SetIdentity( &Projection );
 
-	Projection.M22 = H * p_pCamera->FarPlane /
+	Projection.M00 = 1.0f/ ( p_pCamera->AspectRatio * H );
+	Projection.M11 = 1.0f / H;
+	Projection.M22 = p_pCamera->FarPlane /
 		( p_pCamera->FarPlane - p_pCamera->NearPlane );
-	Projection.M23 = H;
-	Projection.M32 = -H * p_pCamera->FarPlane * p_pCamera->NearPlane /
+	Projection.M32 = p_pCamera->FarPlane * -p_pCamera->NearPlane /
 		( p_pCamera->FarPlane - p_pCamera->NearPlane );
+	Projection.M23 = 1.0f;
 	Projection.M33 = 0.0f;
 
 	MAT44_Multiply( &Transform, p_pMatrix, &Projection );
