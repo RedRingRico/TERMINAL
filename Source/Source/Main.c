@@ -62,10 +62,14 @@ void main( void )
 	GLYPHSET GlyphSet;
 	Uint32 StartTime, EndTime;
 	SYE_CBL AVCable;
+	Uint32 ElapsedTime = 0UL;
+	Uint32 FPS = 0UL;
+	Uint32 FPSTimer = 0UL;
+	Uint16 FPSCounter = 0U;
+	Uint32 TimeDifference = 0UL;
+	Uint32 RenderStartTime = 0UL, RenderEndTime = 0UL;
+	char PrintBuffer[ 80 ];
 
-	RENDER_VERTEX Cube[ 10 ];
-	VERTEX CubeVerts[ 10 ];
-	KMVERTEX_01 CubeKMVerts[ 10 ];
 	CAMERA TestCamera;
 	float YRotation = 0.0f;
 	MATRIX4X4 Projection;
@@ -177,16 +181,6 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( MDL_LoadModel( &TestModel, "/MODELS/CUBE.TML" ) != 0 )
-	{
-		LOG_Debug( "Faile dto load the test model" );
-
-		REN_Terminate( );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
-	}
-
 	memset( g_ConsoleIDPrint, '\0', sizeof( g_ConsoleIDPrint ) );
 	if( syCfgGetIndividualID( g_ConsoleID ) != SYD_CFG_IID_OK )
 	{
@@ -205,77 +199,6 @@ void main( void )
 	LOG_Debug( "Console ID: %s\n", g_ConsoleIDPrint );
 
 	REN_SetClearColour( 0.0f, 17.0f / 255.0f, 43.0f / 255.0f );
-
-	/* Oh, fun -_- */
-	CubeVerts[ 0 ].Position.X = -10.0f;
-	CubeVerts[ 0 ].Position.Y = -10.0f;
-	CubeVerts[ 0 ].Position.Z = -10.0f;
-	CubeVerts[ 0 ].Normal.X = -0.5773491849436035f;
-	CubeVerts[ 0 ].Normal.Y = -0.5773491849436035f;
-	CubeVerts[ 0 ].Normal.Z = -0.5773491849436035f;
-
-	CubeVerts[ 1 ].Position.X = -10.0f;
-	CubeVerts[ 1 ].Position.Y = 10.0f;
-	CubeVerts[ 1 ].Position.Z = -10.0f;
-	CubeVerts[ 1 ].Normal.X = -0.5773491849436035f;
-	CubeVerts[ 1 ].Normal.Y = 0.5773491849436035f;
-	CubeVerts[ 1 ].Normal.Z = -0.5773491849436035f;
-
-	CubeVerts[ 2 ].Position.X = 10.0f;
-	CubeVerts[ 2 ].Position.Y = -10.0f;
-	CubeVerts[ 2 ].Position.Z = -10.0f;
-	CubeVerts[ 2 ].Normal.X = 0.5773491849436035f;
-	CubeVerts[ 2 ].Normal.Y = -0.5773491849436035f;
-	CubeVerts[ 2 ].Normal.Z = -0.5773491849436035f;
-
-	CubeVerts[ 3 ].Position.X = 10.0f;
-	CubeVerts[ 3 ].Position.Y = 10.0f;
-	CubeVerts[ 3 ].Position.Z = -10.0f;
-	CubeVerts[ 3 ].Normal.X = 0.5773491849436035f;
-	CubeVerts[ 3 ].Normal.Y = 0.5773491849436035f;
-	CubeVerts[ 3 ].Normal.Z = -0.5773491849436035f;
-
-	CubeVerts[ 4 ].Position.X = 10.0f;
-	CubeVerts[ 4 ].Position.Y = -10.0f;
-	CubeVerts[ 4 ].Position.Z = 10.0f;
-	CubeVerts[ 4 ].Normal.X = 0.5773491849436035f;
-	CubeVerts[ 4 ].Normal.Y = -0.5773491849436035f;
-	CubeVerts[ 4 ].Normal.Z = 0.5773491849436035f;
-
-	CubeVerts[ 5 ].Position.X = 10.0f;
-	CubeVerts[ 5 ].Position.Y = 10.0f;
-	CubeVerts[ 5 ].Position.Z = 10.0f;
-	CubeVerts[ 5 ].Normal.X = 0.5773491849436035f;
-	CubeVerts[ 5 ].Normal.Y = 0.5773491849436035f;
-	CubeVerts[ 5 ].Normal.Z = 0.5773491849436035f;
-
-	CubeVerts[ 6 ].Position.X = -10.0f;
-	CubeVerts[ 6 ].Position.Y = -10.0f;
-	CubeVerts[ 6 ].Position.Z = 10.0f;
-	CubeVerts[ 6 ].Normal.X = -0.5773491849436035f;
-	CubeVerts[ 6 ].Normal.Y = -0.5773491849436035f;
-	CubeVerts[ 6 ].Normal.Z = 0.5773491849436035f;
-
-	CubeVerts[ 7 ].Position.X = -10.0f;
-	CubeVerts[ 7 ].Position.Y = 10.0f;
-	CubeVerts[ 7 ].Position.Z = 10.0f;
-	CubeVerts[ 7 ].Normal.X = -0.5773491849436035f;
-	CubeVerts[ 7 ].Normal.Y = 0.5773491849436035f;
-	CubeVerts[ 7 ].Normal.Z = 0.5773491849436035f;
-
-	CubeVerts[ 8 ].Position.X = -10.0f;
-	CubeVerts[ 8 ].Position.Y = -10.0f;
-	CubeVerts[ 8 ].Position.Z = -10.0f;
-	CubeVerts[ 8 ].Normal.X = -0.5773491849436035f;
-	CubeVerts[ 8 ].Normal.Y = -0.5773491849436035f;
-	CubeVerts[ 8 ].Normal.Z = -0.5773491849436035f;
-
-	CubeVerts[ 9 ].Position.X = -10.0f;
-	CubeVerts[ 9 ].Position.Y = 10.0f;
-	CubeVerts[ 9 ].Position.Z = -10.0f;
-	CubeVerts[ 9 ].Normal.X = -0.5773491849436035f;
-	CubeVerts[ 9 ].Normal.Y = 0.5773491849436035f;
-	CubeVerts[ 9 ].Normal.Z = -0.5773491849436035f;
 
 	TestCamera.Position.X = 0.0f;
 	TestCamera.Position.Y = 0.0f;
@@ -311,9 +234,21 @@ void main( void )
 
 	TestCamera.AspectRatio = TestAspectRatio( &GlyphSet );
 
+	if( MDL_LoadModel( &TestModel, "/MODELS/CUBE.TML" ) != 0 )
+	{
+		LOG_Debug( "Faile dto load the test model" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
 	CAM_CalculateProjectionMatrix( &Projection, &TestCamera );
 
 	g_Peripherals[ 0 ].press = 0;
+
+	StartTime = syTmrGetCount( );
 
 	while( Run )
 	{
@@ -322,13 +257,23 @@ void main( void )
 		KMBYTE AlphaByte;
 		float TextLength;
 		KMPACKEDARGB TextColour;
+		Uint32 UpdateTime = 0UL;
+		static Uint32 RenderTime = 0UL;
+
+		StartTime = syTmrGetCount( );
 
 		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
 		{
 			Run = 0;
 		}
 
+		UpdateTime = syTmrGetCount( );
+		UpdateTime =
+			syTmrCountToMicro( syTmrDiffCount( StartTime, UpdateTime ) );
+
 		REN_Clear( );
+
+		RenderStartTime = syTmrGetCount( );
 
 		{
 			int i;
@@ -338,7 +283,6 @@ void main( void )
 			VECTOR3 LightPosition = { 15.0f, 15.0f, -15.0f };
 			VECTOR3 CubeRotate = { 0.0f, 1.0f, 1.0f };
 			VECTOR3 CubePosition = { 0.0f, 0.0f, 100.0f };
-			VECTOR3 TNormals[ 10 ];
 			MATRIX4X4 Rotation;
 
 			MAT44_SetIdentity( &World );
@@ -422,7 +366,38 @@ void main( void )
 			320.0f -( TextLength / 2.0f ),
 			360.0f, "PRESS START" );
 
+		sprintf( PrintBuffer, "%lu [%lu]", FPS, TimeDifference );
+
+		if( FPS >= 40 )
+		{
+			TextColour.dwPacked = 0xFF00FF00;
+		}
+		else if( FPS >= 15 )
+		{
+			TextColour.dwPacked = 0xFFFFFF00;
+		}
+		else
+		{
+			TextColour.dwPacked = 0xFFFF0000;
+		}
+
+		TEX_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
+		TEX_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
+			480.0f - ( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );
+
+		TextColour.dwPacked = 0xFFFFFFFF;
+		sprintf( PrintBuffer, "%lu | %lu", UpdateTime, RenderTime );
+		TEX_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
+		TEX_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
+			480.0f - ( float )GlyphSet.LineHeight * 4.0f, PrintBuffer );
+
 		REN_SwapBuffers( );
+
+		RenderEndTime = syTmrGetCount( );
+		RenderTime = syTmrCountToMicro(
+			syTmrDiffCount( RenderStartTime, RenderEndTime ) );
+
+		++FPSCounter;
 
 		Alpha += AlphaInc;
 
@@ -439,6 +414,21 @@ void main( void )
 		}
 
 		YRotation += 0.01f;
+
+		EndTime = syTmrGetCount( );
+
+		TimeDifference =
+			syTmrCountToMicro( syTmrDiffCount( StartTime, EndTime ) );
+
+		ElapsedTime += TimeDifference;
+		FPSTimer += TimeDifference;
+
+		if( FPSTimer >= 1000000UL )
+		{
+			FPSTimer = 0UL;
+			FPS = FPSCounter;
+			FPSCounter = 0UL;
+		}
 	}
 
 	MDL_DeleteModel( &TestModel );
