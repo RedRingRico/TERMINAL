@@ -90,6 +90,12 @@ Gd	"TERMINAL.cim"
 				EndFile
 			EndDirectory
 
+			File 0GDTEX.PVR
+				Location 4
+				FileSource "[DATAPATH]\0GDTEX.pvr"
+				EndFileSource
+			EndFile
+
 		EndTrack
 	EndRecordArea
 	;::::: High Density Area <end> :::::
