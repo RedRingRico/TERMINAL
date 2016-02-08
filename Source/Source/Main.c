@@ -100,7 +100,16 @@ void main( void )
 		GIT_TAGNAME );
 
 	scif_init( RecvBuf, 1024 * 8, SendBuf, 1024 * 8 );
-	scif_open( BPS_115200 );
+	/* The perfect speed for a cool peripheral */
+	scif_open( BPS_19200 );
+
+	/* Clear the terminal */
+	scif_putq( 0x1B );
+	scif_putq( '[' );
+	scif_putq( '2' );
+	scif_putq( 'J' );
+
+	/* Test the output */
 	scif_putq( '[' );
 	scif_putq( 'T' );
 	scif_putq( 'E' );
@@ -150,7 +159,7 @@ void main( void )
 
 	scif_close( );
 
-	if( TEX_Initialise( ) != 0 )
+	if( TXT_Initialise( ) != 0 )
 	{
 		LOG_Debug( "Failed to initialise the text system" );
 
@@ -160,7 +169,7 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( TEX_CreateGlyphSetFromFile( "/FONTS/WHITERABBIT.FNT",
+	if( TXT_CreateGlyphSetFromFile( "/FONTS/WHITERABBIT.FNT",
 		&GlyphSet ) != 0 )
 	{
 		LOG_Debug( "Failed to load the glyph descriptions" );
@@ -171,7 +180,7 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( TEX_SetTextureForGlyphSet( "/FONTS/WHITERABBIT.PVR", &GlyphSet ) != 0 )
+	if( TXT_SetTextureForGlyphSet( "/FONTS/WHITERABBIT.PVR", &GlyphSet ) != 0 )
 	{
 		LOG_Debug( "Failed to load the glyph texture" );
 
@@ -361,8 +370,8 @@ void main( void )
 		}
 
 		TextColour.byte.bAlpha = AlphaByte;
-		TEX_MeasureString( &GlyphSet, "PRESS START", &TextLength );
-		TEX_RenderString( &GlyphSet, &TextColour,
+		TXT_MeasureString( &GlyphSet, "PRESS START", &TextLength );
+		TXT_RenderString( &GlyphSet, &TextColour,
 			320.0f -( TextLength / 2.0f ),
 			360.0f, "PRESS START" );
 
@@ -381,19 +390,20 @@ void main( void )
 			TextColour.dwPacked = 0xFFFF0000;
 		}
 
-		TEX_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
-		TEX_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
+		TXT_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
+		TXT_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
 			480.0f - ( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );
 
 		TextColour.dwPacked = 0xFFFFFFFF;
 		sprintf( PrintBuffer, "%lu | %lu", UpdateTime, RenderTime );
-		TEX_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
-		TEX_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
+		TXT_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
+		TXT_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
 			480.0f - ( float )GlyphSet.LineHeight * 4.0f, PrintBuffer );
+
+		RenderEndTime = syTmrGetCount( );
 
 		REN_SwapBuffers( );
 
-		RenderEndTime = syTmrGetCount( );
 		RenderTime = syTmrCountToMicro(
 			syTmrDiffCount( RenderStartTime, RenderEndTime ) );
 
@@ -486,16 +496,16 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 			{
 				if( TestStage == 0 )
 				{
-					TEX_MeasureString( p_pGlyphSet, "The display will change "
+					TXT_MeasureString( p_pGlyphSet, "The display will change "
 						"mode now for five seconds", &TextLength );
-					TEX_RenderString( p_pGlyphSet, &TextColour,
+					TXT_RenderString( p_pGlyphSet, &TextColour,
 						320.0f - ( TextLength / 2.0f ),
 						( float )p_pGlyphSet->LineHeight * 4.0f,
 						"The display will change mode now for five seconds" );
 
-					TEX_MeasureString( p_pGlyphSet, "Press 'A' to continue",
+					TXT_MeasureString( p_pGlyphSet, "Press 'A' to continue",
 						&TextLength );
-					TEX_RenderString( p_pGlyphSet, &TextColour,
+					TXT_RenderString( p_pGlyphSet, &TextColour,
 						320.0f - ( TextLength / 2.0f ),
 						240.0f - ( ( float )p_pGlyphSet->LineHeight / 2.0f ),
 						"Press 'A' to continue" );
@@ -524,16 +534,16 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 					memset( TimeLeft, '\0', sizeof( TimeLeft ) );
 					sprintf( TimeLeft, "Time remaining: %ld",
 						5000000UL - ElapsedTime );
-					TEX_MeasureString( p_pGlyphSet,
+					TXT_MeasureString( p_pGlyphSet,
 						"Time remaining: 0000000", &TextLength );
-					TEX_RenderString( p_pGlyphSet, &TextColour,
+					TXT_RenderString( p_pGlyphSet, &TextColour,
 						320.0f - ( TextLength / 2.0f ),
 						240.0f - ( ( float ) p_pGlyphSet->LineHeight * 6.0f ),
 						TimeLeft );
 
-					TEX_MeasureString( p_pGlyphSet,
+					TXT_MeasureString( p_pGlyphSet,
 						"Some fucking cool artwork", &TextLength );
-					TEX_RenderString( p_pGlyphSet, &TextColour,
+					TXT_RenderString( p_pGlyphSet, &TextColour,
 						320.0f - ( TextLength / 2.0f ),
 						240.0f - ( ( float )p_pGlyphSet->LineHeight / 2.0f ),
 						"Some fucking cool artwork" );
@@ -549,16 +559,16 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 				/* Confirm test */
 				else if( TestStage == 2 )
 				{
-					TEX_MeasureString( p_pGlyphSet, "Did the picture appear "
+					TXT_MeasureString( p_pGlyphSet, "Did the picture appear "
 						"stable?", &TextLength );
-					TEX_RenderString( p_pGlyphSet, &TextColour,
+					TXT_RenderString( p_pGlyphSet, &TextColour,
 						320.0f - ( TextLength / 2.0f ),
 						( float )p_pGlyphSet->LineHeight * 4.0f,
 						"Did the picture appear stable?" );
 
-					TEX_MeasureString( p_pGlyphSet, "Press 'A' to confirm",
+					TXT_MeasureString( p_pGlyphSet, "Press 'A' to confirm",
 						&TextLength );
-					TEX_RenderString( p_pGlyphSet, &TextColour,
+					TXT_RenderString( p_pGlyphSet, &TextColour,
 						320.0f - ( TextLength / 2.0f ),
 						( float )p_pGlyphSet->LineHeight * 5.5f,
 						"Press 'A' to confirm" );
@@ -585,8 +595,8 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 						TextColour.byte.bAlpha = 255;
 					}
 
-					TEX_MeasureString( p_pGlyphSet, "Yes", &TextLength );
-					TEX_RenderString( p_pGlyphSet, &TextColour,
+					TXT_MeasureString( p_pGlyphSet, "Yes", &TextLength );
+					TXT_RenderString( p_pGlyphSet, &TextColour,
 						320.0f - ( TextLength ) - Spacing,
 						( 240.0f - ( float )p_pGlyphSet->LineHeight / 2.0f ),
 						"Yes" );
@@ -600,7 +610,7 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 						TextColour.byte.bAlpha = 255;
 					}
 
-					TEX_RenderString( p_pGlyphSet, &TextColour,
+					TXT_RenderString( p_pGlyphSet, &TextColour,
 						320.0f + Spacing,
 						( 240.0f - ( float )p_pGlyphSet->LineHeight / 2.0f ),
 						"No" );
@@ -620,16 +630,16 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 				Alpha = 1.0f;
 			}
 
-			TEX_MeasureString( p_pGlyphSet, "Select output mode",
+			TXT_MeasureString( p_pGlyphSet, "Select output mode",
 				&TextLength );
-			TEX_RenderString( p_pGlyphSet, &TextColour,
+			TXT_RenderString( p_pGlyphSet, &TextColour,
 				320.0f - ( TextLength / 2.0f ),
 				( float )p_pGlyphSet->LineHeight * 4.0f,
 				"Select output mode" );
 
-			TEX_MeasureString( p_pGlyphSet, "Press 'A' to select",
+			TXT_MeasureString( p_pGlyphSet, "Press 'A' to select",
 				&TextLength );
-			TEX_RenderString( p_pGlyphSet, &TextColour,
+			TXT_RenderString( p_pGlyphSet, &TextColour,
 				320.0f - ( TextLength / 2.0f ),
 				( 480.0f - ( float )p_pGlyphSet->LineHeight * 4.0f ),
 				"Press 'A' to select" );
@@ -643,8 +653,8 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 				TextColour.byte.bAlpha = 255;
 			}
 
-			TEX_MeasureString( p_pGlyphSet, "50Hz", &TextLength );
-			TEX_RenderString( p_pGlyphSet, &TextColour,
+			TXT_MeasureString( p_pGlyphSet, "50Hz", &TextLength );
+			TXT_RenderString( p_pGlyphSet, &TextColour,
 				320.0f - ( TextLength ) - Spacing,
 				( 240.0f - ( float )p_pGlyphSet->LineHeight / 2.0f ),
 				"50Hz" );
@@ -658,7 +668,7 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 				TextColour.byte.bAlpha = 255;
 			}
 
-			TEX_RenderString( p_pGlyphSet, &TextColour,
+			TXT_RenderString( p_pGlyphSet, &TextColour,
 				320.0f + Spacing,
 				( 240.0f - ( float )p_pGlyphSet->LineHeight / 2.0f ),
 				"60Hz" );
@@ -841,23 +851,23 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 
 		REN_Clear( );
 
-		TEX_MeasureString( p_pGlyphSet, "Select aspect ratio",
+		TXT_MeasureString( p_pGlyphSet, "Select aspect ratio",
 			&TextLength );
-		TEX_RenderString( p_pGlyphSet, &TextColour,
+		TXT_RenderString( p_pGlyphSet, &TextColour,
 			320.0f - ( TextLength / 2.0f ),
 			( float )p_pGlyphSet->LineHeight * 4.0f,
 			"Select aspect ratio" );
 
-		TEX_MeasureString( p_pGlyphSet, "The square should not be distorted",
+		TXT_MeasureString( p_pGlyphSet, "The square should not be distorted",
 			&TextLength );
-		TEX_RenderString( p_pGlyphSet, &TextColour,
+		TXT_RenderString( p_pGlyphSet, &TextColour,
 			320.0f - ( TextLength / 2.0f ),
 			( float )p_pGlyphSet->LineHeight * 5.5f,
 			"The square should not be distorted" );
 
-		TEX_MeasureString( p_pGlyphSet, "Press 'A' to select",
+		TXT_MeasureString( p_pGlyphSet, "Press 'A' to select",
 			&TextLength );
-		TEX_RenderString( p_pGlyphSet, &TextColour,
+		TXT_RenderString( p_pGlyphSet, &TextColour,
 			320.0f - ( TextLength / 2.0f ),
 			( 480.0f - ( float )p_pGlyphSet->LineHeight * 4.0f ),
 			"Press 'A' to select" );
@@ -873,8 +883,8 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 			AspectCamera.AspectRatio = 16.0f / 9.0f;
 		}
 
-		TEX_MeasureString( p_pGlyphSet, "4:3", &TextLength );
-		TEX_RenderString( p_pGlyphSet, &TextColour,
+		TXT_MeasureString( p_pGlyphSet, "4:3", &TextLength );
+		TXT_RenderString( p_pGlyphSet, &TextColour,
 			320.0f - ( TextLength ) - Spacing,
 			360.0f,
 			"4:3" );
@@ -888,7 +898,7 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 			TextColour.byte.bAlpha = 140;
 		}
 
-		TEX_RenderString( p_pGlyphSet, &TextColour,
+		TXT_RenderString( p_pGlyphSet, &TextColour,
 			320.0f + Spacing,
 			360.0f,
 			"16:9" );
@@ -953,21 +963,21 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 
 	TextColour.dwPacked = 0x7F00FF00;
 
-	TEX_MeasureString( p_pGlyphSet, g_VersionString, &TextLength );
-	TEX_RenderString( p_pGlyphSet, &TextColour,
+	TXT_MeasureString( p_pGlyphSet, g_VersionString, &TextLength );
+	TXT_RenderString( p_pGlyphSet, &TextColour,
 		320.0f - ( TextLength / 2.0f ),
 		480.0f - ( ( float )p_pGlyphSet->LineHeight * 3.0f ),
 		g_VersionString );
 
 	TextColour.dwPacked = 0x7FFFFFFF;
 
-	TEX_MeasureString( p_pGlyphSet, MILESTONE_STRING, &TextLength );
-	TEX_RenderString( p_pGlyphSet, &TextColour, 0.0f,
+	TXT_MeasureString( p_pGlyphSet, MILESTONE_STRING, &TextLength );
+	TXT_RenderString( p_pGlyphSet, &TextColour, 0.0f,
 		480.0f - ( float )p_pGlyphSet->LineHeight * 2.0f,
 		MILESTONE_STRING );
 
-	TEX_MeasureString( p_pGlyphSet, g_ConsoleIDPrint, &TextLength );
-	TEX_RenderString( p_pGlyphSet, &TextColour, 640.0f - TextLength,
+	TXT_MeasureString( p_pGlyphSet, g_ConsoleIDPrint, &TextLength );
+	TXT_RenderString( p_pGlyphSet, &TextColour, 640.0f - TextLength,
 		480.0f - ( float )p_pGlyphSet->LineHeight * 2.0f, g_ConsoleIDPrint );
 }
 

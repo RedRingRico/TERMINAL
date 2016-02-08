@@ -3,6 +3,7 @@
 
 #include <shinobi.h>
 #include <kamui2.h>
+#include <Texture.h>
 
 typedef struct _tagGLYPH
 {
@@ -17,7 +18,8 @@ typedef struct _tagGLYPH
 
 typedef struct _tagGLYPHSET
 {
-	KMSURFACEDESC	Texture;
+	/*KMSURFACEDESC	Texture;*/
+	TEXTURE			Texture;
 	GLYPH			Glyphs[ 256 ];
 	Uint16			LineHeight;
 	Uint16			BaseLine;
@@ -25,17 +27,17 @@ typedef struct _tagGLYPHSET
 	Uint16			Height;
 }GLYPHSET;
 
-int TEX_Initialise( void );
+int TXT_Initialise( void );
 
-int TEX_CreateGlyphSetFromFile( char *p_pFileName,
+int TXT_CreateGlyphSetFromFile( char *p_pFileName,
 	GLYPHSET *p_pGlyphSet );
-int TEX_SetTextureForGlyphSet( char *p_pFileName,
+int TXT_SetTextureForGlyphSet( char *p_pFileName,
 	GLYPHSET *p_pGlyphSet );
 
-void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
+void TXT_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 	float p_X, float p_Y, char *p_pString );
 
-void TEX_MeasureString( GLYPHSET *p_pGlyphSet, char *p_pString,
+void TXT_MeasureString( GLYPHSET *p_pGlyphSet, char *p_pString,
 	float *p_pWidth );
 
 #endif /* __TERMINAL_TEXT_H__ */

@@ -3,8 +3,8 @@
 #include <Log.h>
 #include <string.h>
 
-KMSTRIPHEAD	TEX_StripHead;
-KMVERTEX_16 TEX_TextBuffer[ 128 ];
+KMSTRIPHEAD	TXT_StripHead;
+KMVERTEX_16 TXT_TextBuffer[ 128 ];
 
 #define BMF_ID_INFO		1
 #define BMF_ID_COMMON	2
@@ -50,7 +50,7 @@ typedef struct _tagBMF_CHAR
 	Uint8	Channel;
 }BMF_CHAR;
 
-int TEX_Initialise( void )
+int TXT_Initialise( void )
 {
 	KMPACKEDARGB BaseColour;
 	KMSTRIPCONTEXT TextContext;
@@ -88,12 +88,12 @@ int TEX_Initialise( void )
 		KM_MODULATE_ALPHA;
 	TextContext.ImageControl[ KM_IMAGE_PARAM1 ].pTextureSurfaceDesc = NULL;
 
-	kmGenerateStripHead16( &TEX_StripHead, &TextContext );
+	kmGenerateStripHead16( &TXT_StripHead, &TextContext );
 
 	return 0;
 }
 
-int TEX_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
+int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 {
 	GDFS FileHandle;
 	long FileBlocks;
@@ -213,9 +213,9 @@ int TEX_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 	return 0;
 }
 
-int TEX_SetTextureForGlyphSet( char *p_pFileName, GLYPHSET *p_pGlyphSet )
+int TXT_SetTextureForGlyphSet( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 {
-	GDFS FileHandle;
+	/*GDFS FileHandle;
 	long FileBlocks;
 	PKMDWORD pTexture;
 
@@ -244,10 +244,10 @@ int TEX_SetTextureForGlyphSet( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 
 	kmCreateTextureSurface( &p_pGlyphSet->Texture, p_pGlyphSet->Width,
 		p_pGlyphSet->Height,
-		( KM_TEXTURE_TWIDDLED | KM_TEXTURE_ARGB4444 ) );
+		( KM_TEXTURE_TWIDDLED | KM_TEXTURE_ARGB4444 ) );*/
 
 	/* Add 16 bytes to skip the PVRT header */
-	if( kmLoadTexture( &( p_pGlyphSet )->Texture, pTexture + 4 ) !=
+	/*if( kmLoadTexture( &( p_pGlyphSet )->Texture, pTexture + 4 ) !=
 		KMSTATUS_SUCCESS )
 	{
 		syFree( pTexture );
@@ -257,12 +257,12 @@ int TEX_SetTextureForGlyphSet( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 		return 1;
 	}
 
-	syFree( pTexture );
+	syFree( pTexture );*/
 
-	return 0;
+	return TEX_LoadTexture( &p_pGlyphSet->Texture, p_pFileName );
 }
 
-void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
+void TXT_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 	float p_X, float p_Y, char *p_pString )
 {
 	size_t StringLength;
@@ -277,12 +277,12 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 
 	StringLength = strlen( p_pString );
 
-	kmChangeStripTextureSurface( &TEX_StripHead, KM_IMAGE_PARAM1,
-		&( p_pGlyphSet )->Texture );
+	kmChangeStripTextureSurface( &TXT_StripHead, KM_IMAGE_PARAM1,
+		&p_pGlyphSet->Texture.SurfaceDescription );
 
 	if( p_pColour )
 	{
-		kmChangeStripSpriteBaseColor( &TEX_StripHead, *( p_pColour ) );
+		kmChangeStripSpriteBaseColor( &TXT_StripHead, *( p_pColour ) );
 	}
 
 	for( Char = 0; Char < StringLength - 1; ++Char )
@@ -290,28 +290,28 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 		IndexChar = p_pString[ Char ] < 0 ?
 			( p_pString[ Char ] & 0x7F ) + 128 : p_pString[ Char ];
 
-		TEX_TextBuffer[ Char ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
-		TEX_TextBuffer[ Char ].fAX = XPos +
+		TXT_TextBuffer[ Char ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+		TXT_TextBuffer[ Char ].fAX = XPos +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].XOffset;
-		TEX_TextBuffer[ Char ].fAY = YPos +
+		TXT_TextBuffer[ Char ].fAY = YPos +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].YOffset;
-		TEX_TextBuffer[ Char ].uA.fAZ = 256.0f;
-		TEX_TextBuffer[ Char ].fBX = XPos +
+		TXT_TextBuffer[ Char ].uA.fAZ = 256.0f;
+		TXT_TextBuffer[ Char ].fBX = XPos +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].Width +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].XOffset;
-		TEX_TextBuffer[ Char ].fBY = YPos +
+		TXT_TextBuffer[ Char ].fBY = YPos +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].YOffset;
-		TEX_TextBuffer[ Char ].uB.fBZ = 256.0f;
-		TEX_TextBuffer[ Char ].fCX = XPos +
+		TXT_TextBuffer[ Char ].uB.fBZ = 256.0f;
+		TXT_TextBuffer[ Char ].fCX = XPos +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].Width +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].XOffset;
-		TEX_TextBuffer[ Char ].fCY = YPos +
+		TXT_TextBuffer[ Char ].fCY = YPos +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].Height +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].YOffset;
-		TEX_TextBuffer[ Char ].uC.fCZ = 256.0f;
-		TEX_TextBuffer[ Char ].fDX = XPos +
+		TXT_TextBuffer[ Char ].uC.fCZ = 256.0f;
+		TXT_TextBuffer[ Char ].fDX = XPos +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].XOffset;
-		TEX_TextBuffer[ Char ].fDY = YPos +
+		TXT_TextBuffer[ Char ].fDY = YPos +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].Height +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].YOffset;
 
@@ -319,7 +319,7 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 			( float )p_pGlyphSet->Width;
 		F.F[ 0 ] = ( float )p_pGlyphSet->Glyphs[ IndexChar ].Y /
 			( float )p_pGlyphSet->Height;
-		TEX_TextBuffer[ Char ].dwUVA = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
+		TXT_TextBuffer[ Char ].dwUVA = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
 			( KMDWORD )F.F16[ 1 ];
 
 		F.F[ 1 ] = ( ( float )p_pGlyphSet->Glyphs[ IndexChar ].X +
@@ -327,7 +327,7 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 			( float )p_pGlyphSet->Width;
 		F.F[ 0 ] = ( float )p_pGlyphSet->Glyphs[ IndexChar ].Y /
 			( float )p_pGlyphSet->Height;
-		TEX_TextBuffer[ Char ].dwUVB = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
+		TXT_TextBuffer[ Char ].dwUVB = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
 			( KMDWORD )F.F16[ 1 ];
 
 		F.F[ 1 ] = ( ( float )p_pGlyphSet->Glyphs[ IndexChar ].X +
@@ -336,7 +336,7 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 		F.F[ 0 ] = ( ( float )p_pGlyphSet->Glyphs[ IndexChar ].Y +
 			( float )p_pGlyphSet->Glyphs[ IndexChar ].Height ) /
 			( float )p_pGlyphSet->Height;
-		TEX_TextBuffer[ Char ].dwUVC = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
+		TXT_TextBuffer[ Char ].dwUVC = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
 			( KMDWORD )F.F16[ 1 ];
 
 		XPos += ( float )p_pGlyphSet->Glyphs[ IndexChar ].XAdvance;
@@ -345,28 +345,28 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 	IndexChar = p_pString[ Char ] < 0 ? p_pString[ Char ] + 128 :
 		p_pString[ Char ];
 
-	TEX_TextBuffer[ Char ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
-	TEX_TextBuffer[ Char ].fAX = XPos +
+	TXT_TextBuffer[ Char ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
+	TXT_TextBuffer[ Char ].fAX = XPos +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].XOffset;
-	TEX_TextBuffer[ Char ].fAY = YPos +
+	TXT_TextBuffer[ Char ].fAY = YPos +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].YOffset;
-	TEX_TextBuffer[ Char ].uA.fAZ = 256.0f;
-	TEX_TextBuffer[ Char ].fBX = XPos +
+	TXT_TextBuffer[ Char ].uA.fAZ = 256.0f;
+	TXT_TextBuffer[ Char ].fBX = XPos +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].Width +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].XOffset;
-	TEX_TextBuffer[ Char ].fBY = YPos +
+	TXT_TextBuffer[ Char ].fBY = YPos +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].YOffset;
-	TEX_TextBuffer[ Char ].uB.fBZ = 256.0f;
-	TEX_TextBuffer[ Char ].fCX = XPos +
+	TXT_TextBuffer[ Char ].uB.fBZ = 256.0f;
+	TXT_TextBuffer[ Char ].fCX = XPos +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].Width +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].XOffset;
-	TEX_TextBuffer[ Char ].fCY = YPos +
+	TXT_TextBuffer[ Char ].fCY = YPos +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].Height +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].YOffset;
-	TEX_TextBuffer[ Char ].uC.fCZ = 256.0f;
-	TEX_TextBuffer[ Char ].fDX = XPos +
+	TXT_TextBuffer[ Char ].uC.fCZ = 256.0f;
+	TXT_TextBuffer[ Char ].fDX = XPos +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].XOffset;
-	TEX_TextBuffer[ Char ].fDY = YPos +
+	TXT_TextBuffer[ Char ].fDY = YPos +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].Height +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].YOffset;
 
@@ -374,7 +374,7 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 		( float )p_pGlyphSet->Width;
 	F.F[ 0 ] = ( float )p_pGlyphSet->Glyphs[ IndexChar ].Y /
 		( float )p_pGlyphSet->Height;
-	TEX_TextBuffer[ Char ].dwUVA = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
+	TXT_TextBuffer[ Char ].dwUVA = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
 		( KMDWORD )F.F16[ 1 ];
 
 	F.F[ 1 ] = ( ( float )p_pGlyphSet->Glyphs[ IndexChar ].X +
@@ -382,7 +382,7 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 		( float )p_pGlyphSet->Width;
 	F.F[ 0 ] = ( float )p_pGlyphSet->Glyphs[ IndexChar ].Y /
 		( float )p_pGlyphSet->Height;
-	TEX_TextBuffer[ Char ].dwUVB = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
+	TXT_TextBuffer[ Char ].dwUVB = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
 		( KMDWORD )F.F16[ 1 ];
 
 	F.F[ 1 ] = ( ( float )p_pGlyphSet->Glyphs[ IndexChar ].X +
@@ -391,13 +391,13 @@ void TEX_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 	F.F[ 0 ] = ( ( float )p_pGlyphSet->Glyphs[ IndexChar ].Y +
 		( float )p_pGlyphSet->Glyphs[ IndexChar ].Height ) /
 		( float )p_pGlyphSet->Height;
-	TEX_TextBuffer[ Char ].dwUVC = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
+	TXT_TextBuffer[ Char ].dwUVC = ( ( KMDWORD )F.F16[ 3 ] << 16 ) |
 		( KMDWORD )F.F16[ 1 ];
 
-	REN_DrawPrimitives16( &TEX_StripHead, TEX_TextBuffer, StringLength );
+	REN_DrawPrimitives16( &TXT_StripHead, TXT_TextBuffer, StringLength );
 }
 
-void TEX_MeasureString( GLYPHSET *p_pGlyphSet, char *p_pString,
+void TXT_MeasureString( GLYPHSET *p_pGlyphSet, char *p_pString,
 	float *p_pWidth )
 {
 	size_t StringLength;

@@ -1,5 +1,6 @@
 #include <Model.h>
 #include <FileSystem.h>
+#include <Log.h>
 
 typedef struct _tagCHUNK
 {
@@ -59,8 +60,8 @@ int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName )
 		return 1;
 	}
 
-	LOG_Debug( "Attempting to load model" );//: %s", Header.Name );
-	LOG_Debug( "\tmeshes found" );//, Header.MeshCount );
+	LOG_Debug( "Attempting to load model: %s", Header.Name );
+	LOG_Debug( "\t%d meshes found", Header.MeshCount );
 	p_pModel->MeshCount = Header.MeshCount;
 
 	p_pModel->pMeshes = syMalloc( Header.MeshCount * sizeof( MESH ) );
