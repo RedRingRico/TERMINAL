@@ -1,3 +1,4 @@
+#include <Renderer.h>
 #include <GitVersion.h>
 #include <sn_fcntl.h>
 #include <usrsnasm.h>
@@ -5,7 +6,6 @@
 #include <Log.h>
 #include <Hardware.h>
 #include <Peripheral.h>
-#include <Renderer.h>
 #include <Memory.h>
 #include <Text.h>
 #include <kamui2.h>
@@ -278,6 +278,14 @@ void main( void )
 		KMPACKEDARGB TextColour;
 		Uint32 UpdateTime = 0UL;
 		static Uint32 RenderTime = 0UL;
+		int i;
+		MATRIX4X4 View, ViewProjection;
+		MATRIX4X4 World;
+		VECTOR3 LightWorldPos;
+		VECTOR3 LightPosition = { 15.0f, 15.0f, -15.0f };
+		VECTOR3 CubeRotate = { 1.0f, 1.0f, 1.0f };
+		VECTOR3 CubePosition = { 0.0f, 0.0f, 100.0f };
+		MATRIX4X4 Rotation;
 
 		StartTime = syTmrGetCount( );
 
@@ -285,6 +293,20 @@ void main( void )
 		{
 			Run = 0;
 		}
+
+		MAT44_SetIdentity( &World );
+		MAT44_SetIdentity( &Rotation );
+
+		MAT44_RotateAxisAngle( &World, &CubeRotate, YRotation );
+		MAT44_RotateAxisAngle( &Rotation, &CubeRotate, YRotation );
+		MAT44_Translate( &World, &CubePosition );
+
+		CAM_CalculateViewMatrix( &View, &TestCamera );
+		MAT44_Multiply( &ViewProjection, &World, &View );
+		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
+
+		MDL_CalculateLighting( &TestModel, &Rotation,
+			&LightPosition );
 
 		UpdateTime = syTmrGetCount( );
 		UpdateTime =
@@ -294,73 +316,7 @@ void main( void )
 
 		RenderStartTime = syTmrGetCount( );
 
-		{
-			int i;
-			MATRIX4X4 View, ViewProjection;
-			MATRIX4X4 World;
-			VECTOR3 LightWorldPos;
-			VECTOR3 LightPosition = { 15.0f, 15.0f, -15.0f };
-			VECTOR3 CubeRotate = { 1.0f, 1.0f, 1.0f };
-			VECTOR3 CubePosition = { 0.0f, 0.0f, 100.0f };
-			MATRIX4X4 Rotation;
-
-			MAT44_SetIdentity( &World );
-			MAT44_SetIdentity( &Rotation );
-
-			MAT44_RotateAxisAngle( &World, &CubeRotate, YRotation );
-			MAT44_RotateAxisAngle( &Rotation, &CubeRotate, YRotation );
-			MAT44_Translate( &World, &CubePosition );
-
-			CAM_CalculateViewMatrix( &View, &TestCamera );
-			MAT44_Multiply( &ViewProjection, &World, &View );
-			MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
-
-			MDL_RenderModel( &TestModel, &ViewProjection );
-
-			/*MAT44_TransformVerticesRHW( ( float * )Cube, ( float * )CubeVerts,
-				10, sizeof( Cube[ 0 ] ), sizeof( CubeVerts[ 0 ] ),
-				&ViewProjection );
-
-			MAT44_TransformVertices( ( float * )( TNormals ),
-				( float * )( CubeVerts )+3, 10, sizeof( TNormals[ 0 ] ),
-				sizeof( CubeVerts[ 0 ] ), &Rotation );
-
-			for( i = 0; i < 10; ++i )
-			{
-				VECTOR3 Colour = { 1.0f, 1.0f, 1.0f };
-				VECTOR3 LightColour = { 1.0f, 1.0f, 1.0f };
-				VECTOR3 DiffuseLight;
-				VECTOR3 LightNormal;
-				VERTEX LightPos;
-				RENDER_VERTEX LightPosRender;
-				float LightIntensity;
-
-				VEC3_Subtract( &LightNormal, &LightPosition,
-					&CubeVerts[ i ].Position );
-				VEC3_Normalise( &LightNormal );
-				LightIntensity = VEC3_Dot( &TNormals[ i ], &LightNormal );
-				if( LightIntensity < 0.0f )
-				{
-					LightIntensity = 0.0f;
-				}
-				VEC3_MultiplyV( &DiffuseLight, &Colour, &LightColour );
-				VEC3_MultiplyF( &DiffuseLight, &DiffuseLight, LightIntensity );
-
-				CubeKMVerts[ i ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
-				CubeKMVerts[ i ].fX = Cube[ i ].X;
-				CubeKMVerts[ i ].fY = Cube[ i ].Y;
-				CubeKMVerts[ i ].u.fInvW = Cube[ i ].InvW;
-				CubeKMVerts[ i ].fBaseAlpha = 1.0f;
-				
-				CubeKMVerts[ i ].fBaseRed = DiffuseLight.X;
-				CubeKMVerts[ i ].fBaseGreen = DiffuseLight.Y;
-				CubeKMVerts[ i ].fBaseBlue = DiffuseLight.Z;
-			}
-
-			CubeKMVerts[ 9 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;*/
-		}
-
-		//REN_DrawPrimitives01( NULL, CubeKMVerts, 10 );
+		MDL_RenderModel( &TestModel, &ViewProjection );
 
 		DrawOverlayText( &GlyphSet );
 

@@ -47,7 +47,7 @@ int HW_Initialise( KMBPPMODE p_BPP, SYE_CBL *p_pCableType )
 
     kmSetDisplayMode( DisplayMode, p_BPP, TRUE, FALSE);
 
-    kmSetWaitVsyncCount (0);
+    kmSetWaitVsyncCount( 1 );
 	syHwInit2( );
 
 	PER_Initialise( );

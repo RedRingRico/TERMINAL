@@ -25,6 +25,7 @@ typedef struct _tagMESH
 	Uint32			IndexCount;
 	PRIMITIVE_TYPE	Type;
 	MODEL_VERTEX	*pVertices;
+	MODEL_VERTEX	*pTransformedVertices;
 	Uint32			*pIndices;
 	KMVERTEX_05		*pKamuiVertices;
 	/* Change to a material type later */

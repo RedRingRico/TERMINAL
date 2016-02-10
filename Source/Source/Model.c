@@ -41,9 +41,9 @@ int MDL_Initialise( void )
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].bDSTSelect = KM_FALSE;
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].nFogMode = KM_NOFOG;
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].bColorClamp = KM_FALSE;
-	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].bUseAlpha = KM_TRUE;
+	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].bUseAlpha = KM_FALSE;
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].bIgnoreTextureAlpha =
-		KM_FALSE;
+		KM_TRUE;
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].nFlipUV = KM_NOFLIP;
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].nClampUV = KM_CLAMP_UV;
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].nFilterMode = KM_BILINEAR;
@@ -51,7 +51,7 @@ int MDL_Initialise( void )
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].dwMipmapAdjust = 
 		KM_MIPMAP_D_ADJUST_1_00;
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].nTextureShadingMode =
-		KM_MODULATE_ALPHA;
+		KM_MODULATE;
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].pTextureSurfaceDesc =
 		&ModelTexture.SurfaceDescription;
 
@@ -198,13 +198,59 @@ void MDL_DeleteModel( PMODEL p_pModel )
 	}
 }
 
+void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
+	const VECTOR3 *p_pLightPosition )
+{
+	size_t Mesh;
+	for( Mesh = 0; Mesh < p_pModel->MeshCount; ++Mesh )
+	{
+		size_t Vertex;
+		MAT44_TransformVertices(
+			( float * )( p_pModel->pMeshes[ Mesh ].pTransformedVertices ) + 3,
+			( float * )( p_pModel->pMeshes[ Mesh ].pVertices ) + 3,
+			p_pModel->pMeshes[ Mesh ].IndexCount,
+			sizeof( MODEL_VERTEX ), sizeof( MODEL_VERTEX ), p_pTransform );
+
+		for( Vertex = 0; Vertex < p_pModel->pMeshes[ Mesh ].IndexCount;
+			++Vertex )
+		{
+			VECTOR3 Colour = { 1.0f, 1.0f, 1.0f };
+			VECTOR3 LightColour = { 1.0f, 1.0f, 1.0f };
+			VECTOR3 DiffuseLight;
+			VECTOR3 LightNormal;
+			float LightIntensity;
+
+			VEC3_Subtract( &LightNormal, p_pLightPosition,
+				&p_pModel->pMeshes[ Mesh ].pTransformedVertices[ 
+					Vertex ].Position );
+			VEC3_Normalise( &LightNormal );
+
+			LightIntensity = VEC3_Dot(
+				&p_pModel->pMeshes[ Mesh ].pTransformedVertices[
+					Vertex ].Normal,
+				&LightNormal );
+			if( LightIntensity < 0.0f )
+			{
+				LightIntensity = 0.0f;
+			}
+			VEC3_MultiplyV( &DiffuseLight, &Colour, &LightColour );
+			VEC3_MultiplyF( &DiffuseLight, &DiffuseLight, LightIntensity );
+
+			p_pModel->pMeshes[ Mesh ].pKamuiVertices[ Vertex ].fBaseRed =
+				DiffuseLight.X;
+			p_pModel->pMeshes[ Mesh ].pKamuiVertices[ Vertex ].fBaseGreen =
+				DiffuseLight.Y;
+			p_pModel->pMeshes[ Mesh ].pKamuiVertices[ Vertex ].fBaseBlue =
+				DiffuseLight.Z;
+		}
+	}
+}
+
 void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pTransform )
 {
 	size_t Mesh = 0;
 	for( Mesh = 0; Mesh < p_pModel->MeshCount; ++Mesh )
 	{
-		size_t Triangle = 0;
-
 		MAT44_TransformVerticesRHW(
 			( float * )( p_pModel->pMeshes[ Mesh ].pKamuiVertices ) + 1,
 			( float * )p_pModel->pMeshes[ Mesh ].pVertices,
@@ -215,7 +261,6 @@ void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pTransform )
 			p_pModel->pMeshes[ Mesh ].pKamuiVertices,
 			p_pModel->pMeshes[ Mesh ].IndexCount );
 	}
-
 }
 
 int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
@@ -231,6 +276,8 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 
 	p_pMesh->FaceCount = MeshChunk.ListCount / 3;
 	p_pMesh->pVertices = syMalloc( sizeof( MODEL_VERTEX ) *
+		MeshChunk.ListCount );
+	p_pMesh->pTransformedVertices = syMalloc( sizeof( MODEL_VERTEX ) *
 		MeshChunk.ListCount );
 	p_pMesh->pIndices = syMalloc( sizeof( Uint32 ) * MeshChunk.ListCount );
 	p_pMesh->pKamuiVertices =

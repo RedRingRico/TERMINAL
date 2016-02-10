@@ -1,6 +1,12 @@
 #include <Renderer.h>
 #include <Memory.h>
 
+/* Using the macro interface seems to make things worse */
+#define _KM_USE_VERTEX_MACRO_
+#define _KM_USE_VERTEX_MACRO_L5_
+#include <kamui2.h>
+#include <kamuix.h>
+
 static KMSYSTEMCONFIGSTRUCT	g_Kamui2Config;
 static KMSTRIPCONTEXT		g_DefaultStripContext =
 {
@@ -194,20 +200,30 @@ void REN_DrawPrimitives00( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_00 p_pVertices,
 {
 	KMUINT32 VertexIndex;
 
+	kmxxGetCurrentPtr( g_Kamui2Config.pBufferDesc );
+
 	if( p_pStripHead )
 	{
-		kmStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc,
+			p_pStripHead );
 	}
 	else
 	{
-		kmStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead00 );
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc,
+			&g_StripHead00 );
 	}
 
 	for( VertexIndex = 0; VertexIndex < p_Count; ++VertexIndex )
 	{
-		kmSetVertex( g_Kamui2Config.pBufferDesc, &p_pVertices[ VertexIndex ],
-			KM_VERTEXTYPE_00, sizeof( KMVERTEX_00 ) );
+		kmxxSetVertex_0(
+			p_pVertices[ VertexIndex ].ParamControlWord,
+			p_pVertices[ VertexIndex ].fX,
+			p_pVertices[ VertexIndex ].fY,
+			p_pVertices[ VertexIndex ].u.fZ,
+			p_pVertices[ VertexIndex ].uBaseRGB.dwPacked );
 	}
+
+	kmxxReleaseCurrentPtr( g_Kamui2Config.pBufferDesc );
 
 	kmEndStrip( g_Kamui2Config.pBufferDesc );
 }
@@ -217,20 +233,31 @@ void REN_DrawPrimitives01( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_01 p_pVertices,
 {
 	KMUINT32 VertexIndex;
 
+	kmxxGetCurrentPtr( g_Kamui2Config.pBufferDesc );
+
 	if( p_pStripHead )
 	{
-		kmStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
 	}
 	else
 	{
-		kmStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead01 );
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead01 );
 	}
 
 	for( VertexIndex = 0; VertexIndex < p_Count; ++VertexIndex )
 	{
-		kmSetVertex( g_Kamui2Config.pBufferDesc, &p_pVertices[ VertexIndex ],
-			KM_VERTEXTYPE_01, sizeof( KMVERTEX_01 ) );
+		kmxxSetVertex_1(
+			p_pVertices[ VertexIndex ].ParamControlWord,
+			p_pVertices[ VertexIndex ].fX,
+			p_pVertices[ VertexIndex ].fY,
+			p_pVertices[ VertexIndex ].u.fZ,
+			p_pVertices[ VertexIndex ].fBaseAlpha,
+			p_pVertices[ VertexIndex ].fBaseRed,
+			p_pVertices[ VertexIndex ].fBaseGreen,
+			p_pVertices[ VertexIndex ].fBaseBlue );
 	}
+
+	kmxxReleaseCurrentPtr( g_Kamui2Config.pBufferDesc );
 
 	kmEndStrip( g_Kamui2Config.pBufferDesc );
 }
@@ -240,20 +267,37 @@ void REN_DrawPrimitives05( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_05 p_pVertices,
 {
 	KMUINT32 VertexIndex;
 
+	kmxxGetCurrentPtr( g_Kamui2Config.pBufferDesc );
+
 	if( p_pStripHead )
 	{
-		kmStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
 	}
 	else
 	{
-		kmStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead05 );
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead05 );
 	}
 
 	for( VertexIndex = 0; VertexIndex < p_Count; ++VertexIndex )
 	{
-		kmSetVertex( g_Kamui2Config.pBufferDesc, &p_pVertices[ VertexIndex ],
-			KM_VERTEXTYPE_05, sizeof( KMVERTEX_05 ) );
+		kmxxSetVertex_5(
+			p_pVertices[ VertexIndex ].ParamControlWord,
+			p_pVertices[ VertexIndex ].fX,
+			p_pVertices[ VertexIndex ].fY,
+			p_pVertices[ VertexIndex ].u.fInvW,
+			p_pVertices[ VertexIndex ].fU,
+			p_pVertices[ VertexIndex ].fV,
+			p_pVertices[ VertexIndex ].fBaseAlpha,
+			p_pVertices[ VertexIndex ].fBaseRed,
+			p_pVertices[ VertexIndex ].fBaseGreen,
+			p_pVertices[ VertexIndex ].fBaseBlue,
+			p_pVertices[ VertexIndex ].fOffsetAlpha,
+			p_pVertices[ VertexIndex ].fOffsetRed,
+			p_pVertices[ VertexIndex ].fOffsetGreen,
+			p_pVertices[ VertexIndex ].fOffsetBlue );
 	}
+
+	kmxxReleaseCurrentPtr( g_Kamui2Coinfig.pBufferDesc );
 
 	kmEndStrip( g_Kamui2Config.pBufferDesc );
 }
@@ -263,20 +307,38 @@ void REN_DrawPrimitives16( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_16 p_pVertices,
 {
 	KMUINT32 VertexIndex;
 
+	kmxxGetCurrentPtr( g_Kamui2Config.pBufferDesc );
+
 	if( p_pStripHead )
 	{
-		kmStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
 	}
 	else
 	{
-		kmStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead16 );
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead16 );
 	}
 
 	for( VertexIndex = 0; VertexIndex < p_Count; ++VertexIndex )
 	{
-		kmSetVertex( g_Kamui2Config.pBufferDesc, &p_pVertices[ VertexIndex ],
-			KM_VERTEXTYPE_16, sizeof( KMVERTEX_16 ) );
+		kmxxSetVertex_16(
+			p_pVertices[ VertexIndex ].ParamControlWord,
+			p_pVertices[ VertexIndex ].fAX,
+			p_pVertices[ VertexIndex ].fAY,
+			p_pVertices[ VertexIndex ].uA.fAZ,
+			p_pVertices[ VertexIndex ].fBX,
+			p_pVertices[ VertexIndex ].fBY,
+			p_pVertices[ VertexIndex ].uB.fBZ,
+			p_pVertices[ VertexIndex ].fCX,
+			p_pVertices[ VertexIndex ].fCY,
+			p_pVertices[ VertexIndex ].uC.fCZ,
+			p_pVertices[ VertexIndex ].fDX,
+			p_pVertices[ VertexIndex ].fDY,
+			p_pVertices[ VertexIndex ].dwUVA,
+			p_pVertices[ VertexIndex ].dwUVB,
+			p_pVertices[ VertexIndex ].dwUVC );
 	}
+
+	kmxxReleaseCurrentPtr( g_Kamui2config.pBufferDesc );
 
 	kmEndStrip( g_Kamui2Config.pBufferDesc );
 }
