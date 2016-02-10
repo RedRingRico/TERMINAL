@@ -19,6 +19,9 @@ typedef struct _tagMODEL
 	MESH	*pMeshes;
 }MODEL,*PMODEL;
 
+int MDL_Initialise( void );
+void MDL_Terminate( void );
+
 int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName );
 void MDL_DeleteModel( PMODEL p_pModel );
 void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pTransform );

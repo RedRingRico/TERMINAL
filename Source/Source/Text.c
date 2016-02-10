@@ -215,50 +215,6 @@ int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 
 int TXT_SetTextureForGlyphSet( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 {
-	/*GDFS FileHandle;
-	long FileBlocks;
-	PKMDWORD pTexture;
-
-	if( !( FileHandle = FS_OpenFile( p_pFileName ) ) )
-	{
-		LOG_Debug( "Failed to open texture for the glyph set" );
-
-		return 1;
-	}
-
-	gdFsGetFileSctSize( FileHandle, &FileBlocks );
-	pTexture = syMalloc( FileBlocks * 2048 );
-
-	if( gdFsReqRd32( FileHandle, FileBlocks, pTexture ) < 0 )
-	{
-		LOG_Debug( "Failed to load the glyph set texture into memory" );
-
-		return 1;
-	}
-
-	while( gdFsGetStat( FileHandle ) != GDD_STAT_COMPLETE )
-	{
-	}
-
-	gdFsClose( FileHandle );
-
-	kmCreateTextureSurface( &p_pGlyphSet->Texture, p_pGlyphSet->Width,
-		p_pGlyphSet->Height,
-		( KM_TEXTURE_TWIDDLED | KM_TEXTURE_ARGB4444 ) );*/
-
-	/* Add 16 bytes to skip the PVRT header */
-	/*if( kmLoadTexture( &( p_pGlyphSet )->Texture, pTexture + 4 ) !=
-		KMSTATUS_SUCCESS )
-	{
-		syFree( pTexture );
-
-		LOG_Debug( "Failed to load the glyph texture into video memory" );
-
-		return 1;
-	}
-
-	syFree( pTexture );*/
-
 	return TEX_LoadTexture( &p_pGlyphSet->Texture, p_pFileName );
 }
 

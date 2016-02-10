@@ -4,6 +4,7 @@
 #include <shinobi.h>
 #include <Vector3.h>
 #include <Renderer.h>
+#include <Texture.h>
 
 typedef enum _tagPRIMITIVE_TYPE
 {
@@ -25,7 +26,9 @@ typedef struct _tagMESH
 	PRIMITIVE_TYPE	Type;
 	MODEL_VERTEX	*pVertices;
 	Uint32			*pIndices;
-	KMVERTEX_01		*pKamuiVertices;
+	KMVERTEX_05		*pKamuiVertices;
+	/* Change to a material type later */
+	TEXTURE			Texture;
 }MESH,*PMESH;
 
 typedef struct _tagMESH_CHUNK

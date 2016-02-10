@@ -45,6 +45,7 @@ static KMSTRIPCONTEXT		g_DefaultStripContext =
 };
 static KMSTRIPHEAD g_StripHead00;
 static KMSTRIPHEAD g_StripHead01;
+static KMSTRIPHEAD g_StripHead05;
 static KMSTRIPHEAD g_StripHead16;
 
 int REN_Initialise( DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration )
@@ -110,6 +111,9 @@ int REN_Initialise( DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration )
 
 	memset( &g_StripHead01, 0, sizeof( g_StripHead01 ) );
 	kmGenerateStripHead01( &g_StripHead01, &g_DefaultStripContext );
+
+	memset( &g_StripHead01, 0, sizeof( g_StripHead05 ) );
+	kmGenerateStripHead05( &g_StripHead05, &g_DefaultStripContext );
 
 	memset( &g_StripHead16, 0, sizeof( g_StripHead16 ) );
 	kmGenerateStripHead16( &g_StripHead16, &g_DefaultStripContext );
@@ -226,6 +230,29 @@ void REN_DrawPrimitives01( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_01 p_pVertices,
 	{
 		kmSetVertex( g_Kamui2Config.pBufferDesc, &p_pVertices[ VertexIndex ],
 			KM_VERTEXTYPE_01, sizeof( KMVERTEX_01 ) );
+	}
+
+	kmEndStrip( g_Kamui2Config.pBufferDesc );
+}
+
+void REN_DrawPrimitives05( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_05 p_pVertices,
+	KMUINT32 p_Count )
+{
+	KMUINT32 VertexIndex;
+
+	if( p_pStripHead )
+	{
+		kmStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
+	}
+	else
+	{
+		kmStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead05 );
+	}
+
+	for( VertexIndex = 0; VertexIndex < p_Count; ++VertexIndex )
+	{
+		kmSetVertex( g_Kamui2Config.pBufferDesc, &p_pVertices[ VertexIndex ],
+			KM_VERTEXTYPE_05, sizeof( KMVERTEX_05 ) );
 	}
 
 	kmEndStrip( g_Kamui2Config.pBufferDesc );

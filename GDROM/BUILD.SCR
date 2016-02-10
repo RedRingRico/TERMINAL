@@ -85,13 +85,18 @@ Gd	"TERMINAL.cim"
 			Directory MODELS
 				File CUBE.TML
 					Location 3
-					FileSource "[DATAPATH]\MODELS\CUBE.TML
+					FileSource "[DATAPATH]\MODELS\CUBE.TML"
+					EndFileSource
+				EndFile
+				File CUBE.PVR
+					Location 4
+					FileSource "[DATAPATH]\MODELS\CUBE.PVR"
 					EndFileSource
 				EndFile
 			EndDirectory
 
 			File 0GDTEX.PVR
-				Location 4
+				Location 5
 				FileSource "[DATAPATH]\0GDTEX.pvr"
 				EndFileSource
 			EndFile

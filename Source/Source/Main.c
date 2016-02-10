@@ -243,9 +243,19 @@ void main( void )
 
 	TestCamera.AspectRatio = TestAspectRatio( &GlyphSet );
 
+	if( MDL_Initialise( ) != 0 )
+	{
+		LOG_Debug( "Failed to initialise the model library" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
 	if( MDL_LoadModel( &TestModel, "/MODELS/CUBE.TML" ) != 0 )
 	{
-		LOG_Debug( "Faile dto load the test model" );
+		LOG_Debug( "Failed to load the test model" );
 
 		REN_Terminate( );
 		LOG_Terminate( );
@@ -290,7 +300,7 @@ void main( void )
 			MATRIX4X4 World;
 			VECTOR3 LightWorldPos;
 			VECTOR3 LightPosition = { 15.0f, 15.0f, -15.0f };
-			VECTOR3 CubeRotate = { 0.0f, 1.0f, 1.0f };
+			VECTOR3 CubeRotate = { 1.0f, 1.0f, 1.0f };
 			VECTOR3 CubePosition = { 0.0f, 0.0f, 100.0f };
 			MATRIX4X4 Rotation;
 
