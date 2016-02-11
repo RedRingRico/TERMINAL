@@ -24,6 +24,10 @@ void MAT44_SetAsScaleF( PMATRIX4X4 p_pOut, const float p_Scale );
 void MAT44_RotateAxisAngle( PMATRIX4X4 p_pMatrix, const PVECTOR3 p_pAxis,
 	const float p_Angle );
 
+void MAT44_Inverse( PMATRIX4X4 p_pMatrix );
+
+void MAT44_Copy( PMATRIX4X4 p_pMatrix, const PMATRIX4X4 p_pOriginal );
+
 void MAT44_TransformVertices( float *p_pTransformedVertices,
 	const float *p_pVertices, const size_t p_VertexCount,
 	const size_t p_TransformedStride,const size_t p_UntransformedStride,

@@ -1,6 +1,8 @@
 #include <Model.h>
 #include <FileSystem.h>
 #include <Log.h>
+#include <SHC/umachine.h>
+#include <SHC/private.h>
 
 typedef struct _tagCHUNK
 {
@@ -173,9 +175,9 @@ void MDL_DeleteModel( PMODEL p_pModel )
 	{
 		for( Mesh = 0; Mesh < p_pModel->MeshCount; ++Mesh )
 		{
-			if( p_pModel->pMeshes[ Mesh ].pVertices )
+			if( p_pModel->pMeshes[ Mesh ].Vertices.pPosition )
 			{
-				syFree( p_pModel->pMeshes[ Mesh ].pVertices );
+				syFree( p_pModel->pMeshes[ Mesh ].Vertices.pPosition );
 			}
 
 			if( p_pModel->pMeshes[ Mesh ].pIndices )
@@ -202,46 +204,65 @@ void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 	const VECTOR3 *p_pLightPosition )
 {
 	size_t Mesh;
+	MATRIX4X4 Inverse;
+	VECTOR3 Light, LightT;
+	float Normal[ 4 ], LightDirection[ 4 ];
+	float *pNormals;
+
+	MAT44_Copy( &Inverse, p_pTransform );
+	MAT44_Inverse( &Inverse );
+
+	Light.X = -p_pLightPosition->X;
+	Light.Y = -p_pLightPosition->Y;
+	Light.Z = -p_pLightPosition->Z;
+
+	VEC3_Normalise( &Light );
+
+	LightT.X =	Light.X * Inverse.M00 +
+				Light.Y * Inverse.M10 +
+				Light.Z * Inverse.M20;
+	LightT.Y =	Light.X * Inverse.M01 +
+				Light.Y * Inverse.M11 +
+				Light.Z * Inverse.M21;
+	LightT.Z =	Light.X * Inverse.M02 +
+				Light.Y * Inverse.M12 +
+				Light.Z * Inverse.M22;
+	
+	LightDirection[ 0 ] = LightT.X;
+	LightDirection[ 1 ] = LightT.Y;
+	LightDirection[ 2 ] = LightT.Z;
+	LightDirection[ 3 ] = 0.0f;
+
+	//LOG_Debug( "Light: %f %f %f", LightT.X, LightT.Y, LightT.Z );
+
 	for( Mesh = 0; Mesh < p_pModel->MeshCount; ++Mesh )
 	{
 		size_t Vertex;
-		MAT44_TransformVertices(
-			( float * )( p_pModel->pMeshes[ Mesh ].pTransformedVertices ) + 3,
-			( float * )( p_pModel->pMeshes[ Mesh ].pVertices ) + 3,
-			p_pModel->pMeshes[ Mesh ].IndexCount,
-			sizeof( MODEL_VERTEX ), sizeof( MODEL_VERTEX ), p_pTransform );
+		KMVERTEX_05 *pTLVertex = p_pModel->pMeshes[ Mesh ].pKamuiVertices;
+
+		Normal[ 0 ] = 0.0f;
+		pNormals = ( float * )p_pModel->pMeshes[ Mesh ].Vertices.pNormal;
 
 		for( Vertex = 0; Vertex < p_pModel->pMeshes[ Mesh ].IndexCount;
 			++Vertex )
 		{
-			VECTOR3 Colour = { 1.0f, 1.0f, 1.0f };
-			VECTOR3 LightColour = { 1.0f, 1.0f, 1.0f };
-			VECTOR3 DiffuseLight;
-			VECTOR3 LightNormal;
-			float LightIntensity;
+			float Intensity;
+			Normal[ 0 ] = *pNormals++;
+			Normal[ 1 ] = *pNormals++;
+			Normal[ 2 ] = *pNormals++;
 
-			VEC3_Subtract( &LightNormal, p_pLightPosition,
-				&p_pModel->pMeshes[ Mesh ].pTransformedVertices[ 
-					Vertex ].Position );
-			VEC3_Normalise( &LightNormal );
+			Intensity = fipr( Normal, LightDirection );
 
-			LightIntensity = VEC3_Dot(
-				&p_pModel->pMeshes[ Mesh ].pTransformedVertices[
-					Vertex ].Normal,
-				&LightNormal );
-			if( LightIntensity < 0.0f )
+			if( Intensity < 0.0f )
 			{
-				LightIntensity = 0.0f;
+				Intensity = 0.0f;
 			}
-			VEC3_MultiplyV( &DiffuseLight, &Colour, &LightColour );
-			VEC3_MultiplyF( &DiffuseLight, &DiffuseLight, LightIntensity );
 
-			p_pModel->pMeshes[ Mesh ].pKamuiVertices[ Vertex ].fBaseRed =
-				DiffuseLight.X;
-			p_pModel->pMeshes[ Mesh ].pKamuiVertices[ Vertex ].fBaseGreen =
-				DiffuseLight.Y;
-			p_pModel->pMeshes[ Mesh ].pKamuiVertices[ Vertex ].fBaseBlue =
-				DiffuseLight.Z;
+			pTLVertex->fBaseRed = Intensity;
+			pTLVertex->fBaseGreen = Intensity;
+			pTLVertex->fBaseBlue = Intensity;
+
+			++pTLVertex;
 		}
 	}
 }
@@ -253,9 +274,9 @@ void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pTransform )
 	{
 		MAT44_TransformVerticesRHW(
 			( float * )( p_pModel->pMeshes[ Mesh ].pKamuiVertices ) + 1,
-			( float * )p_pModel->pMeshes[ Mesh ].pVertices,
+			( float * )p_pModel->pMeshes[ Mesh ].Vertices.pPosition,
 			p_pModel->pMeshes[ Mesh ].IndexCount,
-			sizeof( KMVERTEX_05 ), sizeof( MODEL_VERTEX ), p_pTransform );
+			sizeof( KMVERTEX_05 ), sizeof( VECTOR3 ), p_pTransform );
 
 		REN_DrawPrimitives05( &MDL_ModelStripHead,
 			p_pModel->pMeshes[ Mesh ].pKamuiVertices,
@@ -269,13 +290,17 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 	size_t DataPosition = 0;
 	size_t Index = 0;
 	size_t EndStrip = 0;
-	MODEL_VERTEX *pOriginalVertices;
+	MODEL_VERTEX_PACKED *pOriginalVertices;
 
 	memcpy( &MeshChunk, p_pData, sizeof( MESH_CHUNK ) );
 	DataPosition += sizeof( MESH_CHUNK );
 
 	p_pMesh->FaceCount = MeshChunk.ListCount / 3;
-	p_pMesh->pVertices = syMalloc( sizeof( MODEL_VERTEX ) *
+	p_pMesh->Vertices.pPosition = syMalloc( sizeof( VECTOR3 ) *
+		MeshChunk.ListCount );
+	p_pMesh->Vertices.pNormal = syMalloc( sizeof( VECTOR3 ) *
+		MeshChunk.ListCount );
+	p_pMesh->Vertices.pUV = syMalloc( sizeof( UV ) *
 		MeshChunk.ListCount );
 	p_pMesh->pTransformedVertices = syMalloc( sizeof( MODEL_VERTEX ) *
 		MeshChunk.ListCount );
@@ -284,12 +309,12 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 		syMalloc( sizeof( KMVERTEX_05 ) * MeshChunk.ListCount );
 	p_pMesh->IndexCount = MeshChunk.ListCount;
 
-	pOriginalVertices = syMalloc( sizeof( MODEL_VERTEX ) *
+	pOriginalVertices = syMalloc( sizeof( MODEL_VERTEX_PACKED ) *
 		MeshChunk.VertexCount );
 
 	memcpy( pOriginalVertices, &p_pData[ DataPosition ],
-		sizeof( MODEL_VERTEX ) * MeshChunk.VertexCount );
-	DataPosition += sizeof( MODEL_VERTEX ) * MeshChunk.VertexCount;
+		sizeof( MODEL_VERTEX_PACKED ) * MeshChunk.VertexCount );
+	DataPosition += sizeof( MODEL_VERTEX_PACKED ) * MeshChunk.VertexCount;
 
 	memcpy( p_pMesh->pIndices, &p_pData[ DataPosition ],
 		sizeof( Uint32 ) * MeshChunk.ListCount );
@@ -297,9 +322,17 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 
 	for( Index = 0; Index < MeshChunk.ListCount; ++Index )
 	{
-		memcpy( &p_pMesh->pVertices[ Index ], 
+		/*memcpy( &p_pMesh->pVertices[ Index ], 
 			&pOriginalVertices[ p_pMesh->pIndices[ Index ] ],
-			sizeof( MODEL_VERTEX ) );
+			sizeof( MODEL_VERTEX ) );*/
+
+		memcpy( &p_pMesh->Vertices.pPosition[ Index ],
+			&pOriginalVertices[ p_pMesh->pIndices[ Index ] ].Position,
+			sizeof( VECTOR3 ) );
+
+		memcpy( &p_pMesh->Vertices.pNormal[ Index ],
+			&pOriginalVertices[ p_pMesh->pIndices[ Index ] ].Normal,
+			sizeof( VECTOR3 ) );
 
 		if( EndStrip == 2 )
 		{
@@ -315,9 +348,9 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 		}
 
 		p_pMesh->pKamuiVertices[ Index ].fU =
-			p_pMesh->pVertices[ Index ].UV[ 0 ];
+			pOriginalVertices[ p_pMesh->pIndices[ Index ] ].UV.U;
 		p_pMesh->pKamuiVertices[ Index ].fV =
-			p_pMesh->pVertices[ Index ].UV[ 1 ];
+			pOriginalVertices[ p_pMesh->pIndices[ Index ] ].UV.V;
 
 		p_pMesh->pKamuiVertices[ Index ].fBaseAlpha = 1.0f;
 		p_pMesh->pKamuiVertices[ Index ].fBaseRed = 1.0f;

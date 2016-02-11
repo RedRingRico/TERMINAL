@@ -12,19 +12,32 @@ typedef enum _tagPRIMITIVE_TYPE
 	PRIMITIVE_TYPE_TRIANGLE_STRIP
 }PRIMITIVE_TYPE;
 
+typedef struct _tagUV
+{
+	float U;
+	float V;
+}UV,*PUV;
+
 typedef struct _tagMODEL_VERTEX
+{
+	VECTOR3	*pPosition;
+	VECTOR3	*pNormal;
+	UV		*pUV;
+}MODEL_VERTEX,*PMODEL_VERTEX;
+
+typedef struct _tagMODEL_VERTEX_PACKED
 {
 	VECTOR3	Position;
 	VECTOR3	Normal;
-	float	UV[ 2 ];
-}MODEL_VERTEX,*PMODEL_VERTEX;
+	UV		UV;
+}MODEL_VERTEX_PACKED,*PMODEL_VERTEX_PACKED;
 
 typedef struct _tagMESH
 {
 	Uint32			FaceCount;
 	Uint32			IndexCount;
 	PRIMITIVE_TYPE	Type;
-	MODEL_VERTEX	*pVertices;
+	MODEL_VERTEX	Vertices;
 	MODEL_VERTEX	*pTransformedVertices;
 	Uint32			*pIndices;
 	KMVERTEX_05		*pKamuiVertices;

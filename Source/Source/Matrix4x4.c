@@ -1,6 +1,7 @@
 #include <Matrix4x4.h>
 #include <machine.h>
 #include <SHC/private.h>
+#include <Log.h>
 
 static float g_SH4Vector[ 4 ];
 static float g_Result[ 4 ];
@@ -127,6 +128,122 @@ void MAT44_RotateAxisAngle( PMATRIX4X4 p_pMatrix, const PVECTOR3 p_pAxis,
 	Rotation.M33 = 1.0f;
 
 	MAT44_Multiply( p_pMatrix, p_pMatrix, &Rotation );
+}
+
+void MAT44_Inverse( PMATRIX4X4 p_pMatrix )
+{
+	MATRIX4X4 TempMatrix;
+	float Determinate;
+	float Positive, Negative, Temp;
+
+	Positive = Negative = 0.0f;
+
+	Temp = p_pMatrix->M00 * p_pMatrix->M11 * p_pMatrix->M22;
+	if( Temp >= 0.0f )
+	{
+		Positive += Temp;
+	}
+	else
+	{
+		Negative += Temp;
+	}
+	Temp = p_pMatrix->M01 * p_pMatrix->M12 * p_pMatrix->M20;
+	if( Temp >= 0.0f )
+	{
+		Positive += Temp;
+	}
+	else
+	{
+		Negative += Temp;
+	}
+	Temp = p_pMatrix->M02 * p_pMatrix->M10 * p_pMatrix->M21;
+	if( Temp >= 0.0f )
+	{
+		Positive += Temp;
+	}
+	else
+	{
+		Negative += Temp;
+	}
+	Temp = -p_pMatrix->M02 * p_pMatrix->M11 * p_pMatrix->M20;
+	if( Temp >= 0.0f )
+	{
+		Positive += Temp;
+	}
+	else
+	{
+		Negative += Temp;
+	}
+	Temp = -p_pMatrix->M01 * p_pMatrix->M10 * p_pMatrix->M22;
+	if( Temp >= 0.0f )
+	{
+		Positive += Temp;
+	}
+	else
+	{
+		Negative += Temp;
+	}
+	Temp = -p_pMatrix->M00 * p_pMatrix->M12 * p_pMatrix->M21;
+	if( Temp >= 0.0f )
+	{
+		Positive += Temp;
+	}
+	else
+	{
+		Negative += Temp;
+	}
+
+	Determinate = Positive + Negative;
+
+	if( ARI_IsZero( Determinate ) ||
+		ARI_IsZero( Determinate / ( Positive - Negative ) ) )
+	{
+		LOG_Debug( "No inverse" );
+		return;
+	}
+
+	Determinate = 1.0f / Determinate;
+
+	TempMatrix.M00 = ( ( p_pMatrix->M11 * p_pMatrix->M22 ) -
+		( p_pMatrix->M12 * p_pMatrix->M21 ) ) * Determinate;
+	TempMatrix.M10 = -( ( p_pMatrix->M10 * p_pMatrix->M22 ) -
+		( p_pMatrix->M12 * p_pMatrix->M20 ) ) * Determinate;
+	TempMatrix.M20 = ( ( p_pMatrix->M10 * p_pMatrix->M21 ) -
+		( p_pMatrix->M11 * p_pMatrix->M20 ) ) * Determinate;
+
+	TempMatrix.M01 = -( ( p_pMatrix->M01 * p_pMatrix->M22 ) -
+		( p_pMatrix->M02 * p_pMatrix->M21 ) ) * Determinate;
+	TempMatrix.M11 = ( ( p_pMatrix->M00 * p_pMatrix->M22 ) -
+		( p_pMatrix->M02 * p_pMatrix->M20 ) ) * Determinate;
+	TempMatrix.M21 = -( ( p_pMatrix->M00 * p_pMatrix->M21 ) -
+		( p_pMatrix->M01 * p_pMatrix->M20 ) ) * Determinate;
+	
+	TempMatrix.M02 = ( ( p_pMatrix->M01 * p_pMatrix->M12 ) -
+		( p_pMatrix->M02 * p_pMatrix->M11 ) ) * Determinate;
+	TempMatrix.M12 = -( ( p_pMatrix->M00 * p_pMatrix->M12 ) -
+		( p_pMatrix->M02 *  p_pMatrix->M10 ) ) * Determinate;
+	TempMatrix.M22 = ( ( p_pMatrix->M00 * p_pMatrix->M11 ) -
+		( p_pMatrix->M01 * p_pMatrix->M10 ) ) * Determinate;
+
+	TempMatrix.M30 = -( p_pMatrix->M30 * TempMatrix.M00 +
+		p_pMatrix->M31 * TempMatrix.M10 +
+		p_pMatrix->M32 * TempMatrix.M20 );
+	TempMatrix.M31 = -( p_pMatrix->M30 * TempMatrix.M01 +
+		p_pMatrix->M31 * TempMatrix.M11 +
+		p_pMatrix->M32 * TempMatrix.M21 );
+	TempMatrix.M32 = -( p_pMatrix->M30 * TempMatrix.M02 +
+		p_pMatrix->M31 * TempMatrix.M12 +
+		p_pMatrix->M32 * TempMatrix.M22 );
+
+	TempMatrix.M03 = TempMatrix.M13 = TempMatrix.M23 = 0.0f;
+	TempMatrix.M33 = 1.0f;
+
+	MAT44_Copy( p_pMatrix, &TempMatrix );
+}
+
+void MAT44_Copy( PMATRIX4X4 p_pMatrix, const PMATRIX4X4 p_pOriginal )
+{
+	memcpy( p_pMatrix, p_pOriginal, sizeof( MATRIX4X4 ) );
 }
 
 void MAT44_TransformVertices( float *p_pTransformedVertices,

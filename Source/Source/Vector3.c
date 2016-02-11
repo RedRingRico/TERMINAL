@@ -1,6 +1,11 @@
 #include <Vector3.h>
 #include <Arithmetic.h>
 #include <mathf.h>
+#include <SHC/umachine.h>
+#include <SHC/private.h>
+
+static float g_SH4Vector1[ 4 ];
+static float g_SH4Vector2[ 4 ];
 
 void VEC3_Add( PVECTOR3 p_pOut, PVECTOR3 p_pLeft, PVECTOR3 p_pRight )
 {
@@ -87,7 +92,7 @@ void VEC3_Normalise( PVECTOR3 p_pVector )
 		return;
 	}
 
-	Factor = 1.0f / sqrtf( Squared );
+	Factor = ( float )fsrra( Squared );
 
 	p_pVector->X *= Factor;
 	p_pVector->Y *= Factor;
@@ -96,6 +101,19 @@ void VEC3_Normalise( PVECTOR3 p_pVector )
 
 float VEC3_Dot( PVECTOR3 p_pLeft, PVECTOR3 p_pRight )
 {
+	/* This may be faster if there was no copying involved */
+	/*g_SH4Vector1[ 0 ] = p_pLeft->X;
+	g_SH4Vector1[ 1 ] = p_pLeft->Y;
+	g_SH4Vector1[ 2 ] = p_pLeft->Z;
+	g_SH4Vector1[ 3 ] = 0.0f;
+
+	g_SH4Vector2[ 0 ] = p_pRight->X;
+	g_SH4Vector2[ 1 ] = p_pRight->Y;
+	g_SH4Vector2[ 2 ] = p_pRight->Z;
+	g_SH4Vector2[ 3 ] = 0.0f;
+
+	return ( fipr( g_SH4Vector1, g_SH4Vector2 ) );*/
+
 	return ( ( p_pLeft->X * p_pRight->X ) +
 		( p_pLeft->Y * p_pRight->Y ) +
 		( p_pLeft->Z * p_pRight->Z ) );

@@ -1,9 +1,10 @@
 #include <Renderer.h>
 #include <Memory.h>
 
-/* Using the macro interface seems to make things worse */
+/* Using the macro interface seems to make things worse
+ * The recommended L5 is slower than L4 and L3 */
 #define _KM_USE_VERTEX_MACRO_
-#define _KM_USE_VERTEX_MACRO_L5_
+#define _KM_USE_VERTEX_MACRO_L3_
 #include <kamui2.h>
 #include <kamuix.h>
 

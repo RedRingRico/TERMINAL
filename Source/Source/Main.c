@@ -282,8 +282,8 @@ void main( void )
 		MATRIX4X4 View, ViewProjection;
 		MATRIX4X4 World;
 		VECTOR3 LightWorldPos;
-		VECTOR3 LightPosition = { 15.0f, 15.0f, -15.0f };
-		VECTOR3 CubeRotate = { 1.0f, 1.0f, 1.0f };
+		VECTOR3 LightPosition = { 100.0f, 0.0f, 0.0f };
+		VECTOR3 CubeRotate = { 0.0f, 1.0f, 0.0f };
 		VECTOR3 CubePosition = { 0.0f, 0.0f, 100.0f };
 		MATRIX4X4 Rotation;
 
@@ -305,7 +305,7 @@ void main( void )
 		MAT44_Multiply( &ViewProjection, &World, &View );
 		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
 
-		MDL_CalculateLighting( &TestModel, &Rotation,
+		MDL_CalculateLighting( &TestModel, &World,
 			&LightPosition );
 
 		UpdateTime = syTmrGetCount( );
