@@ -14,6 +14,7 @@
 #include <mathf.h>
 #include <Camera.h>
 #include <Model.h>
+#include <DA.h>
 
 #define MAX_TEXTURES ( 4096 )
 #define MAX_SMALLVQ ( 0 )
@@ -282,12 +283,25 @@ void main( void )
 		MATRIX4X4 View, ViewProjection;
 		MATRIX4X4 World;
 		VECTOR3 LightWorldPos;
-		VECTOR3 LightPosition = { 100.0f, 0.0f, 0.0f };
+		VECTOR3 LightPosition = { 0.0f, 1.0f, 0.0f };
 		VECTOR3 CubeRotate = { 0.0f, 1.0f, 0.0f };
 		VECTOR3 CubePosition = { 0.0f, 0.0f, 100.0f };
 		MATRIX4X4 Rotation;
+		Uint32 DAVal;
 
 		StartTime = syTmrGetCount( );
+
+		if( DAVal == 0 )
+		{
+			LOG_Debug( "OK" );
+		}
+
+		/*LOG_Debug( "Channel 4 status: %02X", DA_GetChannelStatus( 3 ) );*/
+
+		/*if( DA_Poll( &DAVal ) == 0 )
+		{
+			LOG_Debug( "Got: 0x%08X from DA", DAVal );
+		}*/
 
 		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
 		{
@@ -311,6 +325,7 @@ void main( void )
 		UpdateTime = syTmrGetCount( );
 		UpdateTime =
 			syTmrCountToMicro( syTmrDiffCount( StartTime, UpdateTime ) );
+
 
 		REN_Clear( );
 
@@ -365,6 +380,14 @@ void main( void )
 		TXT_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
 		TXT_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
 			480.0f - ( float )GlyphSet.LineHeight * 4.0f, PrintBuffer );
+
+		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
+		{
+			sprintf( PrintBuffer, "DATA READY" );
+			TXT_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
+			TXT_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
+				( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );
+		}
 
 		RenderEndTime = syTmrGetCount( );
 

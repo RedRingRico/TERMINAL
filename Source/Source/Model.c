@@ -212,9 +212,9 @@ void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 	MAT44_Copy( &Inverse, p_pTransform );
 	MAT44_Inverse( &Inverse );
 
-	Light.X = -p_pLightPosition->X;
-	Light.Y = -p_pLightPosition->Y;
-	Light.Z = -p_pLightPosition->Z;
+	Light.X = p_pLightPosition->X;
+	Light.Y = p_pLightPosition->Y;
+	Light.Z = p_pLightPosition->Z;
 
 	VEC3_Normalise( &Light );
 

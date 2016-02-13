@@ -1,0 +1,58 @@
+#include <DA.h>
+#pragma inline_asm( DA_Poll )
+#pragma inline_asm( DA_GetChannelStatus )
+
+int DA_Poll( Uint32 *p_pStatus )
+{
+	add		#-4, r15
+	mov.l	r4, r5
+	mov.b	#0, r0
+	mov.b	r0, @r5
+	mov.b	r0, @( 1, r5 )
+	mov.b	r0, @( 2, r5 )
+	mov.b	r0,	@( 3, r5 )
+	mov.l	#H'900,	r4
+	trapa	#02
+	nop
+	mov		r5, r4
+	add		#4, r15
+	; R0 is already set
+}
+
+Uint8 DA_GetChannelStatus( Uint32 p_Channel )
+{
+	add		#-8, r15
+	mov.l	r4, @( 4, r15 ) ; Store the channel for the end of the function
+	mov.l	r15, r5 ; Use a local variable for the loc parameter
+	mov.l	#0, r0
+	mov.l	r0, @r5
+	mov.l	#H'900, r4
+	trapa	#02
+	nop
+	mov.l	@( 4, r15 ), r4
+	mov.l	r4, r0
+	tst		r0, r0 ; Channel 1
+	bf		Check2
+	mov.b	@r5, r0
+	bra		ChannelStatReturn
+	nop
+Check2:
+	tst		#1, r0 ; Channel 2
+	bf		Check3
+	mov.b	@( 1, r5 ), r0
+	bra		ChannelStatReturn
+	nop
+Check3:
+	tst		#2, r0 ; Channel 3
+	bf		Check4
+	mov.b	@( 2, r5 ), r0
+	bra		ChannelStatReturn
+	nop
+Check4:
+	mov.b	@( 3, r5 ), r0	; Channel 4 (if any value other than 0-3 is used
+							; for the channel number, channel 4 is always
+							; returned )
+ChannelStatReturn:
+	add		#8, r15
+}
+
