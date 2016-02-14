@@ -47,9 +47,18 @@ typedef struct _tagVERTEX
 	VECTOR3 Normal;
 }VERTEX;
 
+typedef struct _tagPERF_INFO
+{
+	Uint32	UpdateTime;
+	Uint32	RenderTime;
+	Uint32	LoopTime;
+	Uint32	FPS;
+}PERF_INFO, *PPERF_INFO;
+
 bool SelectPALRefresh( GLYPHSET *p_pGlyphSet );
 float TestAspectRatio( GLYPHSET *p_pGlyphSet );
 void DrawOverlayText( GLYPHSET *p_pGlyphSet );
+void DrawDebugOverlay( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo );
 
 void main( void )
 {
@@ -71,6 +80,7 @@ void main( void )
 	Uint32 TimeDifference = 0UL;
 	Uint32 RenderStartTime = 0UL, RenderEndTime = 0UL;
 	char PrintBuffer[ 80 ];
+	PERF_INFO PerfInfo;
 
 	CAMERA TestCamera;
 	float YRotation = 0.0f;
@@ -268,6 +278,7 @@ void main( void )
 	CAM_CalculateProjectionMatrix( &Projection, &TestCamera );
 
 	g_Peripherals[ 0 ].press = 0;
+	memset( &PerfInfo, 0, sizeof( PerfInfo ) );
 
 	StartTime = syTmrGetCount( );
 
@@ -297,13 +308,6 @@ void main( void )
 			LOG_Debug( "OK" );
 		}
 
-		/*LOG_Debug( "Channel 4 status: %02X", DA_GetChannelStatus( 3 ) );*/
-
-		/*if( DA_Poll( &DAVal ) == 0 )
-		{
-			LOG_Debug( "Got: 0x%08X from DA", DAVal );
-		}*/
-
 		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
 		{
 			Run = 0;
@@ -326,15 +330,13 @@ void main( void )
 		UpdateTime = syTmrGetCount( );
 		UpdateTime =
 			syTmrCountToMicro( syTmrDiffCount( StartTime, UpdateTime ) );
-
+		PerfInfo.UpdateTime = UpdateTime;
 
 		REN_Clear( );
 
 		RenderStartTime = syTmrGetCount( );
 
 		MDL_RenderModel( &TestModel, &ViewProjection );
-
-		DrawOverlayText( &GlyphSet );
 
 		TextColour.dwPacked = 0xFFFFFFFF;
 
@@ -357,31 +359,6 @@ void main( void )
 			320.0f -( TextLength / 2.0f ),
 			360.0f, "PRESS START" );
 
-		sprintf( PrintBuffer, "%lu [%lu]", FPS, TimeDifference );
-
-		if( FPS >= 40 )
-		{
-			TextColour.dwPacked = 0xFF00FF00;
-		}
-		else if( FPS >= 15 )
-		{
-			TextColour.dwPacked = 0xFFFFFF00;
-		}
-		else
-		{
-			TextColour.dwPacked = 0xFFFF0000;
-		}
-
-		TXT_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
-		TXT_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
-			480.0f - ( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );
-
-		TextColour.dwPacked = 0xFFFFFFFF;
-		sprintf( PrintBuffer, "%lu | %lu", UpdateTime, RenderTime );
-		TXT_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
-		TXT_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
-			480.0f - ( float )GlyphSet.LineHeight * 4.0f, PrintBuffer );
-
 		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
 		{
 			if( DA_GetData( PrintBuffer, 80, 3 ) )
@@ -392,10 +369,16 @@ void main( void )
 
 		RenderEndTime = syTmrGetCount( );
 
+		DrawOverlayText( &GlyphSet );
+#if defined ( DEBUG )
+		DrawDebugOverlay( &GlyphSet, &PerfInfo );
+#endif
+
 		REN_SwapBuffers( );
 
 		RenderTime = syTmrCountToMicro(
 			syTmrDiffCount( RenderStartTime, RenderEndTime ) );
+		PerfInfo.RenderTime = RenderTime;
 
 		++FPSCounter;
 
@@ -419,6 +402,7 @@ void main( void )
 
 		TimeDifference =
 			syTmrCountToMicro( syTmrDiffCount( StartTime, EndTime ) );
+		PerfInfo.LoopTime = TimeDifference;
 
 		ElapsedTime += TimeDifference;
 		FPSTimer += TimeDifference;
@@ -428,6 +412,7 @@ void main( void )
 			FPSTimer = 0UL;
 			FPS = FPSCounter;
 			FPSCounter = 0UL;
+			PerfInfo.FPS = FPS;
 		}
 	}
 
@@ -460,6 +445,15 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 		KMBYTE AlphaByte;
 		float TextLength;
 		KMPACKEDARGB TextColour;
+
+		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
+		{
+			char PrintBuffer[ 80 ];
+			if( DA_GetData( PrintBuffer, 80, 3 ) )
+			{
+				g_ConnectedToDA = true;
+			}
+		}
 
 		if( ModeSelected )
 		{
@@ -684,6 +678,9 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 		}
 
 		DrawOverlayText( p_pGlyphSet );
+#if defined ( DEBUG )
+		DrawDebugOverlay( p_pGlyphSet, NULL );
+#endif
 
 		REN_SwapBuffers( );
 
@@ -815,6 +812,15 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 
 	while( SelectAspect )
 	{
+		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
+		{
+			char PrintBuffer[ 80 ];
+			if( DA_GetData( PrintBuffer, 80, 3 ) )
+			{
+				g_ConnectedToDA = true;
+			}
+		}
+
 		if( !AButtonHeld )
 		{
 			if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
@@ -939,6 +945,9 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 		}
 
 		DrawOverlayText( p_pGlyphSet );
+#if defined ( DEBUG )
+		DrawDebugOverlay( p_pGlyphSet, NULL );
+#endif
 
 		REN_SwapBuffers( );
 	}
@@ -969,6 +978,12 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 	TXT_MeasureString( p_pGlyphSet, g_ConsoleIDPrint, &TextLength );
 	TXT_RenderString( p_pGlyphSet, &TextColour, 640.0f - TextLength,
 		480.0f - ( float )p_pGlyphSet->LineHeight * 2.0f, g_ConsoleIDPrint );
+}
+
+void DrawDebugOverlay( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo )
+{
+	float TextLength;
+	KMPACKEDARGB TextColour;
 
 	if( g_ConnectedToDA )
 	{
@@ -981,6 +996,38 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 		TextColour.dwPacked = 0x9FFF0000;
 		TXT_RenderString( p_pGlyphSet, &TextColour,
 			0.0f, 0.0f, "[DA: OFFLINE]" );
+	}
+
+	if( p_pPerfInfo )
+	{
+		char PrintBuffer[ 80 ];
+		TextColour.dwPacked = 0xFFFFFFFF;
+		sprintf( PrintBuffer, "%lu [%lu]", p_pPerfInfo->FPS,
+			p_pPerfInfo->LoopTime );
+
+		if( p_pPerfInfo->FPS >= 40 )
+		{
+			TextColour.dwPacked = 0xFF00FF00;
+		}
+		else if( p_pPerfInfo->FPS >= 15 )
+		{
+			TextColour.dwPacked = 0xFFFFFF00;
+		}
+		else
+		{
+			TextColour.dwPacked = 0xFFFF0000;
+		}
+
+		TXT_MeasureString( p_pGlyphSet, PrintBuffer, &TextLength );
+		TXT_RenderString( p_pGlyphSet, &TextColour, 640.0f - TextLength,
+			480.0f - ( float )p_pGlyphSet->LineHeight * 3.0f, PrintBuffer );
+
+		TextColour.dwPacked = 0xFFFFFFFF;
+		sprintf( PrintBuffer, "%lu | %lu", p_pPerfInfo->UpdateTime,
+			p_pPerfInfo->RenderTime );
+		TXT_MeasureString( p_pGlyphSet, PrintBuffer, &TextLength );
+		TXT_RenderString( p_pGlyphSet, &TextColour, 640.0f - TextLength,
+			480.0f - ( float )p_pGlyphSet->LineHeight * 4.0f, PrintBuffer );
 	}
 }
 
