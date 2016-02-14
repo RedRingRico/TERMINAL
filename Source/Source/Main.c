@@ -32,6 +32,7 @@ unsigned char SendBuf[ 1024 * 8 ];
 char g_VersionString[ 256 ];
 Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
 char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
+bool g_ConnectedToDA = false;
 
 typedef struct _tagRENDER_VERTEX
 {
@@ -383,10 +384,10 @@ void main( void )
 
 		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
 		{
-			sprintf( PrintBuffer, "DATA READY" );
-			TXT_MeasureString( &GlyphSet, PrintBuffer, &TextLength );
-			TXT_RenderString( &GlyphSet, &TextColour, 640.0f - TextLength,
-				( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );
+			if( DA_GetData( PrintBuffer, 80, 3 ) )
+			{
+				g_ConnectedToDA = true;
+			}
 		}
 
 		RenderEndTime = syTmrGetCount( );
@@ -968,5 +969,18 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 	TXT_MeasureString( p_pGlyphSet, g_ConsoleIDPrint, &TextLength );
 	TXT_RenderString( p_pGlyphSet, &TextColour, 640.0f - TextLength,
 		480.0f - ( float )p_pGlyphSet->LineHeight * 2.0f, g_ConsoleIDPrint );
+
+	if( g_ConnectedToDA )
+	{
+		TextColour.dwPacked = 0x9F00FF00;
+		TXT_RenderString( p_pGlyphSet, &TextColour,
+			0.0f, 0.0f, "[DA: ONLINE]" );
+	}
+	else
+	{
+		TextColour.dwPacked = 0x9FFF0000;
+		TXT_RenderString( p_pGlyphSet, &TextColour,
+			0.0f, 0.0f, "[DA: OFFLINE]" );
+	}
 }
 

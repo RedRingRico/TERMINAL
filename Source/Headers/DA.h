@@ -20,5 +20,8 @@ int DA_Poll( Uint32 *p_pStatus );
    pointer to the byte being a parameter */
 Uint8 DA_GetChannelStatus( Uint32 p_Channel );
 
+/* Returns the amount of data read, up to p_Size */
+int DA_GetData( void *p_pData, int p_Size, int p_Channel );
+
 #endif /* __TERMINAL_DA_H__ */
 

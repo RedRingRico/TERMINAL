@@ -1,6 +1,7 @@
 #include <DA.h>
 #pragma inline_asm( DA_Poll )
 #pragma inline_asm( DA_GetChannelStatus )
+#pragma inline_asm( DA_GetData )
 
 int DA_Poll( Uint32 *p_pStatus )
 {
@@ -13,7 +14,6 @@ int DA_Poll( Uint32 *p_pStatus )
 	mov.b	r0,	@( 3, r5 )
 	mov.l	#H'900,	r4
 	trapa	#02
-	nop
 	mov		r5, r4
 	add		#4, r15
 	; R0 is already set
@@ -28,7 +28,6 @@ Uint8 DA_GetChannelStatus( Uint32 p_Channel )
 	mov.l	r0, @r5
 	mov.l	#H'900, r4
 	trapa	#02
-	nop
 	mov.l	@( 4, r15 ), r4
 	mov.l	r4, r0
 	tst		r0, r0 ; Channel 1
@@ -54,5 +53,29 @@ Check4:
 							; returned )
 ChannelStatReturn:
 	add		#8, r15
+}
+
+int DA_GetData( void *p_pData, int p_Size, int p_Channel )
+{
+	add		#-H'10, r15 ; Set up a local variable for R7
+	mov.l	r4, @( H'C, r15 ) ; Store the parameters
+	mov.l	r5, @( 8, r15 )
+	mov.l	r6, @( 4, r15 )
+	mov.l	#H'A08, r5			; Set the address to use (0xA08 + channel)
+	mov.l	@( 4, r15 ), r4		; Get p_Channel out (stored from R6)
+	add		r5, r4				; Add 0xA08
+	mov.l	@( 8, r15 ), r5		; Byte count
+	mov.l	@( H'C, r15 ), r6	; Destination address
+	mov.l	r15, r7				; Address to store the byte count
+	trapa	#02
+	tst		r0, r0
+	bf		ReturnFail
+	mov.l	@( r15 ), r0		; Return the amount of bytes read
+	bra		GetDataReturn
+	nop
+ReturnFail:
+	mov.l	#0, r0
+GetDataReturn:
+	add		#H'10, r15
 }
 
