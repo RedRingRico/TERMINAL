@@ -20,24 +20,25 @@ void CAM_CalculateViewMatrix( PMATRIX4X4 p_pMatrix, const PCAMERA p_pCamera )
 	VEC3_Cross( &Up, &Direction, &Right );
 	VEC3_Normalise( &Up );
 
-	/* R U D P
-	 * R U D P
-	 * R U D P
-	 * 0 0 0 1 */
+	/* R U D 0
+	 * R U D 0
+	 * R U D 0
+	 * P P P 1 */
 	p_pMatrix->M00 = Right.X;
 	p_pMatrix->M01 = Up.X;
 	p_pMatrix->M02 = Direction.X;
-	p_pMatrix->M03 = -VEC3_Dot( &Right, &p_pCamera->Position );
 
 	p_pMatrix->M10 = Right.Y;
 	p_pMatrix->M11 = Up.Y;
 	p_pMatrix->M12 = Direction.Y;
-	p_pMatrix->M13 = -VEC3_Dot( &Up, &p_pCamera->Position );
 
 	p_pMatrix->M20 = Right.Z;
 	p_pMatrix->M21 = Up.Z;
 	p_pMatrix->M22 = Direction.Z;
-	p_pMatrix->M23 = -VEC3_Dot( &Direction, &p_pCamera->Position );
+
+	p_pMatrix->M30 = -VEC3_Dot( &Right, &p_pCamera->Position );
+	p_pMatrix->M31 = -VEC3_Dot( &Up, &p_pCamera->Position );
+	p_pMatrix->M32 = -VEC3_Dot( &Direction, &p_pCamera->Position );
 }
 
 void CAM_CalculateProjectionMatrix( PMATRIX4X4 p_pMatrix,
