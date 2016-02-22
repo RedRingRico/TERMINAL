@@ -83,14 +83,19 @@ Gd	"TERMINAL.cim"
 			EndDirectory
 
 			Directory MODELS
-				File CUBE.TML
+				File CUBE.PVR
 					Location 3
-					FileSource "[DATAPATH]\MODELS\CUBE.TML"
+					FileSource "[DATAPATH]\MODELS\CUBE.PVR"
 					EndFileSource
 				EndFile
-				File CUBE.PVR
+				File MOCK_LEVEL.TML
 					Location 4
-					FileSource "[DATAPATH]\MODELS\CUBE.PVR"
+					FileSource "[DATAPATH]\MODELS\MOCK_LEVEL.TML"
+					EndFileSource
+				EndFile
+				File HIRO.TML
+					Location 5
+					FileSource "[DATAPATH]\MODELS\HIRO.TML"
 					EndFileSource
 				EndFile
 			EndDirectory

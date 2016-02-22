@@ -23,5 +23,7 @@ Uint8 DA_GetChannelStatus( Uint32 p_Channel );
 /* Returns the amount of data read, up to p_Size */
 int DA_GetData( void *p_pData, int p_Size, int p_Channel );
 
+bool DA_GetConnectionStatus( void );
+
 #endif /* __TERMINAL_DA_H__ */
 

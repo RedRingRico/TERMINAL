@@ -3,6 +3,7 @@
 #include <Log.h>
 #include <SHC/umachine.h>
 #include <SHC/private.h>
+#include <mathf.h>
 
 typedef struct _tagCHUNK
 {

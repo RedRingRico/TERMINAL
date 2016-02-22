@@ -83,9 +83,8 @@ void main( void )
 	PERF_INFO PerfInfo;
 
 	CAMERA TestCamera;
-	float YRotation = 0.0f;
 	MATRIX4X4 Projection;
-	MODEL TestModel;
+	MODEL Level, Hiro;
 
 	if( HW_Initialise( KM_DSPBPP_RGB888, &AVCable ) != 0 )
 	{
@@ -222,11 +221,11 @@ void main( void )
 	REN_SetClearColour( 0.0f, 17.0f / 255.0f, 43.0f / 255.0f );
 
 	TestCamera.Position.X = 0.0f;
-	TestCamera.Position.Y = 0.0f;
-	TestCamera.Position.Z = 0.0f;
+	TestCamera.Position.Y = 200.0f;
+	TestCamera.Position.Z = -800.0f;
 
 	TestCamera.LookAt.X = 0.0f;
-	TestCamera.LookAt.Y = 0.0f;
+	TestCamera.LookAt.Y = 170.0f;
 	TestCamera.LookAt.Z = 1.0f;
 
 	TestCamera.WorldUp.X = 0.0f;
@@ -236,10 +235,9 @@ void main( void )
 	TestCamera.GateWidth = 640.0f;
 	TestCamera.GateHeight = 480.0f;
 
-	TestCamera.AspectRatio = 16.0f / 9.0f;
 	TestCamera.FieldOfView = ( 3.141592654f / 4.0f );
 	TestCamera.NearPlane = 1.0f;
-	TestCamera.FarPlane = 100000.0f;
+	TestCamera.FarPlane = 10000.0f;
 
 	if( AVCable == SYE_CBL_PAL )
 	{
@@ -265,9 +263,19 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( MDL_LoadModel( &TestModel, "/MODELS/CUBE.TML" ) != 0 )
+	if( MDL_LoadModel( &Hiro, "/MODELS/HIRO.TML" ) != 0 )
 	{
-		LOG_Debug( "Failed to load the test model" );
+		LOG_Debug( "Failed to load the Hiro model" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( MDL_LoadModel( &Level, "/MODELS/MOCK_LEVEL.TML" ) != 0 )
+	{
+		LOG_Debug( "Failed to load the level model" );
 
 		REN_Terminate( );
 		LOG_Terminate( );
@@ -296,17 +304,8 @@ void main( void )
 		MATRIX4X4 World;
 		VECTOR3 LightWorldPos;
 		VECTOR3 LightPosition = { 0.0f, 1.0f, 0.0f };
-		VECTOR3 CubeRotate = { 0.0f, 1.0f, 0.0f };
-		VECTOR3 CubePosition = { 0.0f, 0.0f, 100.0f };
-		MATRIX4X4 Rotation;
-		Uint32 DAVal;
 
 		StartTime = syTmrGetCount( );
-
-		if( DAVal == 0 )
-		{
-			LOG_Debug( "OK" );
-		}
 
 		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
 		{
@@ -314,18 +313,14 @@ void main( void )
 		}
 
 		MAT44_SetIdentity( &World );
-		MAT44_SetIdentity( &Rotation );
-
-		MAT44_RotateAxisAngle( &World, &CubeRotate, YRotation );
-		MAT44_RotateAxisAngle( &Rotation, &CubeRotate, YRotation );
-		MAT44_Translate( &World, &CubePosition );
 
 		CAM_CalculateViewMatrix( &View, &TestCamera );
 		MAT44_Multiply( &ViewProjection, &World, &View );
 		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
 
-		MDL_CalculateLighting( &TestModel, &World,
-			&LightPosition );
+		
+		MDL_CalculateLighting( &Hiro, &World, &LightPosition );
+		MDL_CalculateLighting( &Level, &World, &LightPosition );
 
 		UpdateTime = syTmrGetCount( );
 		UpdateTime =
@@ -336,7 +331,8 @@ void main( void )
 
 		RenderStartTime = syTmrGetCount( );
 
-		MDL_RenderModel( &TestModel, &ViewProjection );
+		MDL_RenderModel( &Hiro, &ViewProjection );
+		MDL_RenderModel( &Level, &ViewProjection );
 
 		TextColour.dwPacked = 0xFFFFFFFF;
 
@@ -354,10 +350,10 @@ void main( void )
 		}
 
 		TextColour.byte.bAlpha = AlphaByte;
-		TXT_MeasureString( &GlyphSet, "PRESS START", &TextLength );
+		/*TXT_MeasureString( &GlyphSet, "PRESS START", &TextLength );
 		TXT_RenderString( &GlyphSet, &TextColour,
 			320.0f -( TextLength / 2.0f ),
-			360.0f, "PRESS START" );
+			360.0f, "PRESS START" );*/
 
 		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
 		{
@@ -396,8 +392,6 @@ void main( void )
 			Alpha = 1.0f;
 		}
 
-		YRotation += 0.01f;
-
 		EndTime = syTmrGetCount( );
 
 		TimeDifference =
@@ -416,7 +410,8 @@ void main( void )
 		}
 	}
 
-	MDL_DeleteModel( &TestModel );
+	MDL_DeleteModel( &Hiro );
+	MDL_DeleteModel( &Level );
 
 	LOG_Debug( "Rebooting" );
 
