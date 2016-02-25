@@ -15,6 +15,10 @@
 #include <Camera.h>
 #include <Model.h>
 #include <DA.h>
+#include <FileSystem.h>
+
+#include <ac.h>
+#include <am.h>
 
 #define MAX_TEXTURES ( 4096 )
 #define MAX_SMALLVQ ( 0 )
@@ -33,6 +37,7 @@ char g_VersionString[ 256 ];
 Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
 char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
 bool g_ConnectedToDA = false;
+AC_ERROR *g_ACError = NULL;
 
 typedef struct _tagRENDER_VERTEX
 {
@@ -55,10 +60,22 @@ typedef struct _tagPERF_INFO
 	Uint32	FPS;
 }PERF_INFO, *PPERF_INFO;
 
+typedef struct _tagSOUND
+{
+	KTU32	*pMemoryLocation;
+	Sint32	Size;
+}SOUND;
+
 bool SelectPALRefresh( GLYPHSET *p_pGlyphSet );
 float TestAspectRatio( GLYPHSET *p_pGlyphSet );
 void DrawOverlayText( GLYPHSET *p_pGlyphSet );
 void DrawDebugOverlay( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo );
+
+bool LoadSoundBank( Uint32 *p_pAICA, char *p_pName, Sint32 *p_pSize );
+bool A64Setup( AC_DRIVER_TYPE p_DriverType, bool p_Poll,
+	AC_CALLBACK_HANDLER p_Callback );
+
+SOUND g_Select, g_Accept;
 
 void main( void )
 {
@@ -169,6 +186,48 @@ void main( void )
 	REN_Initialise( &RendererConfiguration );
 
 	scif_close( );
+
+	/* Initialise sound */
+	if( !A64Setup( AC_DRIVER_DA, false, KTNULL ) )
+	{
+		LOG_Debug( "Failed to set up the Audio64 interface" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	acSetTransferMode( AC_TRANSFER_DMA );
+	acSystemSetVolumeMode( USELINEAR );
+	acSystemSetMasterVolume( 14 );
+
+	g_Select.pMemoryLocation = acSystemGetFirstFreeSoundMemory( );
+
+	if( !LoadSoundBank( g_Select.pMemoryLocation, "/AUDIO/SELECT.WAV",
+		&g_Select.Size ) )
+	{
+		LOG_Debug( "Failed to load the audio sample: /AUDIO/SELECT.WAV" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	g_Accept.pMemoryLocation = acSystemGetFirstFreeSoundMemory( );
+	g_Accept.pMemoryLocation += ( g_Select.Size >> 2 );
+
+	if( !LoadSoundBank( g_Accept.pMemoryLocation, "/AUDIO/ACCEPT.WAV",
+		&g_Accept.Size ) )
+	{
+		LOG_Debug( "Failed to load the audio sample: /AUDIO/ACCEPT.WAV" );
+
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
 
 	if( TXT_Initialise( ) != 0 )
 	{
@@ -461,6 +520,11 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 		if( ( g_Peripherals[ 0 ].press & PDD_DGT_TA ) &&
 			( ModeTest == false ) )
 		{
+			acDigiOpen( 10, ( KTU32 )g_Accept.pMemoryLocation,
+				g_Select.Size, AC_16BIT, 44100 );
+			acDigiRequestEvent( 10, ( g_Accept.Size >> 1 ) - 1 );
+			acDigiPlay( 10, 0, AC_LOOP_OFF );
+
 			ModeTest = true;
 			TestStage = 0;
 		}
@@ -493,6 +557,11 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 					{
 						ElapsedTime = 0UL;
 						TestStage = 1;
+
+						acDigiOpen( 10, ( KTU32 )g_Accept.pMemoryLocation,
+							g_Select.Size, AC_16BIT, 44100 );
+						acDigiRequestEvent( 10, ( g_Accept.Size >> 1 ) - 1 );
+						acDigiPlay( 10, 0, AC_LOOP_OFF );
 
 						if( SixtyHz )
 						{
@@ -555,12 +624,22 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 					if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
 						( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
 					{
+						acDigiOpen( 10, ( KTU32 )g_Select.pMemoryLocation,
+							g_Select.Size, AC_16BIT, 44100 );
+						acDigiRequestEvent( 10, ( g_Select.Size >> 1 ) - 1 );
+						acDigiPlay( 10, 0, AC_LOOP_OFF );
+
 						TestPass = !TestPass;
 						Alpha = 1.0f;
 					}
 
 					if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
 					{
+						acDigiOpen( 10, ( KTU32 )g_Accept.pMemoryLocation,
+							g_Select.Size, AC_16BIT, 44100 );
+						acDigiRequestEvent( 10, ( g_Accept.Size >> 1 ) - 1 );
+						acDigiPlay( 10, 0, AC_LOOP_OFF );
+
 						ModeTest = false;
 						ModeSelected = true;
 					}
@@ -605,6 +684,11 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 			if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
 				( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
 			{
+				acDigiOpen( 10, ( KTU32 )g_Select.pMemoryLocation,
+					g_Select.Size, AC_16BIT, 44100 );
+				acDigiRequestEvent( 10, ( g_Select.Size >> 1 ) - 1 );
+				acDigiPlay( 10, 0, AC_LOOP_OFF );
+
 				SixtyHz = !SixtyHz;
 				Alpha = 1.0f;
 			}
@@ -820,6 +904,11 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 		{
 			if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
 			{
+				acDigiOpen( 11, ( KTU32 )g_Accept.pMemoryLocation,
+					g_Accept.Size, AC_16BIT, 44100 );
+				acDigiRequestEvent( 11, ( g_Accept.Size >> 1 ) - 1 );
+				acDigiPlay( 11, 0, AC_LOOP_OFF );
+
 				SelectAspect = false;
 			}
 		}
@@ -834,6 +923,11 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 		if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
 			( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
 		{
+			acDigiOpen( 10, ( KTU32 )g_Select.pMemoryLocation, g_Select.Size,
+				AC_16BIT, 44100 );
+			acDigiRequestEvent( 10, ( g_Select.Size >> 1 ) - 1 );
+			acDigiPlay( 10, 0, AC_LOOP_OFF );
+
 			FourThree = !FourThree;
 			Alpha = 1.0f;
 		}
@@ -1024,5 +1118,127 @@ void DrawDebugOverlay( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo )
 		TXT_RenderString( p_pGlyphSet, &TextColour, 640.0f - TextLength,
 			480.0f - ( float )p_pGlyphSet->LineHeight * 4.0f, PrintBuffer );
 	}
+}
+
+bool LoadSoundBank( Uint32 *p_pAICA, char *p_pName, Sint32 *p_pSize )
+{
+	KTU32 *pImage = KTNULL;
+	KTU32 ImageSize = 0;
+	GDFS FileHandle;
+	long FileBlocks;
+
+	if( !( FileHandle = FS_OpenFile( p_pName ) ) )
+	{
+		return false;
+	}
+
+	gdFsGetFileSize( FileHandle, p_pSize );
+	gdFsGetFileSctSize( FileHandle, &FileBlocks );
+
+	ImageSize = ALIGN( *p_pSize, SECTOR_SIZE );
+
+	/* Allocate a buffer to hold the file */
+	pImage = ( KTU32 * )syMalloc( ImageSize );
+
+	if( !pImage )
+	{
+		return false;
+	}
+
+	gdFsReqRd32( FileHandle, FileBlocks, pImage );
+
+	while( gdFsGetStat( FileHandle ) != GDD_STAT_COMPLETE )
+	{
+	}
+
+	gdFsClose( FileHandle );
+
+	acG2Write( p_pAICA, pImage, *p_pSize );
+
+	syFree( pImage );
+
+	//acSystemWaitUntilG2FifoIsEmpty( );
+
+	return true;
+}
+
+bool A64Setup( AC_DRIVER_TYPE p_DriverType, bool p_Poll,
+	AC_CALLBACK_HANDLER p_Callback )
+{
+	KTU32 *pDriverImage = KTNULL;
+	KTU32 DriverImageSize = 0;
+	Sint32 DriverSize = 0;
+	KTSTRING DriverName = KTNULL;
+	GDFS FileHandle;
+	long FileBlocks;
+	KTU8	Major, Minor;
+	KTCHAR	Local;
+
+	/* Get the error message pointer */
+	g_ACError = acErrorGetLast( );
+
+	acIntInstallCallbackHandler( p_Callback );
+
+	/* Initialise interrupt system */
+	if( !acIntInit( ) )
+	{
+		return false;
+	}
+
+	if( p_DriverType == AC_DRIVER_DA )
+	{
+		DriverName = "/AUDIO/AUDIO64.DRV";
+	}
+	else
+	{
+		acErrorSet( AC_OUT_OF_RANGE_PARAMETER,
+			"A64Setup - p_DriverType is invalid" );
+
+		return false;
+	}
+
+	if( !( FileHandle = FS_OpenFile( DriverName ) ) )
+	{
+		LOG_Debug( "Failed to open %s", DriverName );
+
+		return false;
+	}
+
+	gdFsGetFileSize( FileHandle, &DriverSize );
+	gdFsGetFileSctSize( FileHandle, &FileBlocks );
+
+	DriverImageSize = SECTOR_ALIGN( DriverSize );
+
+	/* Temporarily allocate a buffer for the driver image */
+	pDriverImage = ( KTU32 * )syMalloc( DriverImageSize );
+
+	if( !pDriverImage )
+	{
+		return false;
+	}
+
+	/* Load the driver */
+	gdFsReqRd32( FileHandle, FileBlocks, pDriverImage );
+
+	while( gdFsGetStat( FileHandle ) != GDD_STAT_COMPLETE )
+	{
+	}
+
+	gdFsClose( FileHandle );
+
+	if( !acSystemInit( p_DriverType, pDriverImage, DriverSize, p_Poll ) )
+	{
+		return false;
+	}
+
+#if defined ( DEBUG )
+	acSystemGetDriverRevision( pDriverImage, &Major, &Minor, &Local );
+	LOG_Debug( "Using sound driver %s version: %d.%d.%d",
+		DriverName, Major, Minor, Local );
+#endif /* DEBUG */
+
+	syFree( pDriverImage );
+
+	return true;
 }
 

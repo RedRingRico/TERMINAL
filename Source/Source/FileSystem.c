@@ -74,7 +74,7 @@ GDFS FS_OpenFile( char *p_pFilePath )
 	char File[ GDD_FS_FNAMESIZE ];
 	char FilePath[ 256 ];
 	GDFS_DIRREC Directory;
-	Uint32 DirectoryBuffer[ GDFS_DIRREC_SIZE( 64 ) ];
+	static Uint32 DirectoryBuffer[ GDFS_DIRREC_SIZE( 64 ) ];
 	GDFS ReturnFile;
 
 	/* Save the directory used before entering */

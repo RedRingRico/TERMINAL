@@ -100,6 +100,26 @@ Gd	"TERMINAL.cim"
 				EndFile
 			EndDirectory
 
+			Directory AUDIO
+				File SELECT.WAV
+					Location 6
+					FileSource "[DATAPATH]\AUDIO\SELECT.WAV"
+					EndFileSource
+				EndFile
+
+				File ACCEPT.WAV
+					Location 7
+					FileSource "[DATAPATH]\AUDIO\ACCEPT.WAV"
+					EndFileSource
+				EndFile
+
+				File AUDIO64.DRV
+					Location 8
+					FileSource "[DATAPATH]\AUDIO\AUDIO64.DRV"
+					EndFileSource
+				EndFile
+			EndDirectory
+
 			File 0GDTEX.PVR
 				Location 5
 				FileSource "[DATAPATH]\0GDTEX.pvr"

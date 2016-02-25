@@ -57,7 +57,7 @@ OPTIMISE_TYPE = size
 LIBDIR	= $(KATANA_ROOT)\lib
 DEFAULT_INCLUDE	= $(KATANA_ROOT)\include
 
-DEFAULT_LIBS	= kamui2 shinobi sh4nlfzn dmcast
+DEFAULT_LIBS	= kamui2 shinobi sh4nlfzn dmcast Audio64
 
 
 DEFAULT_OBJS = strt1.obj strt2.obj systemid.obj toc.obj sg_sec.obj \
