@@ -111,12 +111,12 @@ development: BUILD = Development
 development: BUILD_TYPE = development
 development: BUILD_DEF = DEVELOPMENT
 development: COPT_LINK = -g
-development: LINK = optlnksh.exe -op=st,sy,sam,b
+development: LINK = lnk.exe -noecho
 development: CDEBUG = -debug
 development: TARGET := $(TARGET)_Dev
 development: DEFAULT_LIBS += libcross sh4nlfzn
 development: OPTIMISE := 0
-development: OPTIMISE_LINK := 1
+development: OPTIMISE_LINK := 0
 development: CDEFS += DEBUG
 development: LINK_DEBUG = debug
 development: $(TARGET)

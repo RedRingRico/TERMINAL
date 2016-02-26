@@ -373,6 +373,9 @@ void main( void )
 		MATRIX4X4 World;
 		VECTOR3 LightWorldPos;
 		VECTOR3 LightPosition = { 0.0f, 1.0f, 0.0f };
+		static VECTOR3 PlayerMove = { 0.0f, 0.0f, 0.0f };
+		VECTOR3 CameraPos = { 0.0f, 200.0f, -800.0f };
+		VECTOR3 CameraLook = { 0.0f, 170.0f, 1.0f };
 
 		StartTime = syTmrGetCount( );
 
@@ -381,12 +384,32 @@ void main( void )
 			Run = 0;
 		}
 
+		if( g_Peripherals[ 0 ].x1 > 0 )
+		{
+			PlayerMove.X += ( float )( g_Peripherals[ 0 ].x1 / 127.0f ) * 10.0f;
+		}
+		if( g_Peripherals[ 0 ].x1 < 0 )
+		{
+			PlayerMove.X += ( float )( g_Peripherals[ 0 ].x1 / 128.0f ) * 10.0f;
+		}
+
+		if( g_Peripherals[ 0 ].y1 > 0 )
+		{
+			PlayerMove.Z -= ( float )( g_Peripherals[ 0 ].y1 / 127.0f ) * 10.0f;
+		}
+		if( g_Peripherals[ 0 ].y1 < 0 )
+		{
+			PlayerMove.Z -= ( float )( g_Peripherals[ 0 ].y1 / 128.0f ) * 10.0f;
+		}
+
+		VEC3_Add( &TestCamera.Position, &CameraPos, &PlayerMove );
+		VEC3_Add( &TestCamera.LookAt, &CameraLook, &PlayerMove );
+
 		MAT44_SetIdentity( &World );
 
 		CAM_CalculateViewMatrix( &View, &TestCamera );
 		MAT44_Multiply( &ViewProjection, &World, &View );
 		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
-
 		
 		MDL_CalculateLighting( &Hiro, &World, &LightPosition );
 		MDL_CalculateLighting( &Level, &World, &LightPosition );
@@ -400,8 +423,13 @@ void main( void )
 
 		RenderStartTime = syTmrGetCount( );
 
-		MDL_RenderModel( &Hiro, &ViewProjection );
 		MDL_RenderModel( &Level, &ViewProjection );
+
+		MAT44_SetIdentity( &World );
+		MAT44_Translate( &World, &PlayerMove );
+		MAT44_Multiply( &ViewProjection, &World, &View );
+		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
+		MDL_RenderModel( &Hiro, &ViewProjection );
 
 		TextColour.dwPacked = 0xFFFFFFFF;
 
