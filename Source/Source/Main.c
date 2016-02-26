@@ -374,8 +374,9 @@ void main( void )
 		VECTOR3 LightWorldPos;
 		VECTOR3 LightPosition = { 0.0f, 1.0f, 0.0f };
 		static VECTOR3 PlayerMove = { 0.0f, 0.0f, 0.0f };
-		VECTOR3 CameraPos = { 0.0f, 200.0f, -800.0f };
-		VECTOR3 CameraLook = { 0.0f, 170.0f, 1.0f };
+		VECTOR3 StickMove = { 0.0f, 0.0f, 0.0f };
+		VECTOR3 RotateAxis = { 0.0f, 1.0f, 0.0f };
+		static float Rotate = 0.0f;
 
 		StartTime = syTmrGetCount( );
 
@@ -386,24 +387,31 @@ void main( void )
 
 		if( g_Peripherals[ 0 ].x1 > 0 )
 		{
-			PlayerMove.X += ( float )( g_Peripherals[ 0 ].x1 / 127.0f ) * 10.0f;
+			StickMove.X = ( float )( g_Peripherals[ 0 ].x1 / 127.0f ) * 10.0f;
 		}
 		if( g_Peripherals[ 0 ].x1 < 0 )
 		{
-			PlayerMove.X += ( float )( g_Peripherals[ 0 ].x1 / 128.0f ) * 10.0f;
+			StickMove.X = ( float )( g_Peripherals[ 0 ].x1 / 128.0f ) * 10.0f;
 		}
 
 		if( g_Peripherals[ 0 ].y1 > 0 )
 		{
-			PlayerMove.Z -= ( float )( g_Peripherals[ 0 ].y1 / 127.0f ) * 10.0f;
+			StickMove.Z = -( float )( g_Peripherals[ 0 ].y1 / 127.0f ) * 10.0f;
 		}
 		if( g_Peripherals[ 0 ].y1 < 0 )
 		{
-			PlayerMove.Z -= ( float )( g_Peripherals[ 0 ].y1 / 128.0f ) * 10.0f;
+			StickMove.Z = -( float )( g_Peripherals[ 0 ].y1 / 128.0f ) * 10.0f;
 		}
 
-		VEC3_Add( &TestCamera.Position, &CameraPos, &PlayerMove );
-		VEC3_Add( &TestCamera.LookAt, &CameraLook, &PlayerMove );
+		VEC3_Add( &PlayerMove, &PlayerMove, &StickMove );
+		VEC3_Add( &TestCamera.Position, &TestCamera.Position, &StickMove );
+		VEC3_Add( &TestCamera.LookAt, &TestCamera.LookAt, &StickMove );
+
+		if( ARI_IsZero( StickMove.X ) == false ||
+			ARI_IsZero( StickMove.Z ) == false )
+		{
+			Rotate = atan2f( StickMove.X, StickMove.Z );
+		}
 
 		MAT44_SetIdentity( &World );
 
@@ -426,6 +434,7 @@ void main( void )
 		MDL_RenderModel( &Level, &ViewProjection );
 
 		MAT44_SetIdentity( &World );
+		MAT44_RotateAxisAngle( &World, &RotateAxis, Rotate );
 		MAT44_Translate( &World, &PlayerMove );
 		MAT44_Multiply( &ViewProjection, &World, &View );
 		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
