@@ -33,7 +33,7 @@ PLATFORM := Dreamcast
 BUILD_PLATFORM := DREAMCAST
 ARCH := SH4
 BITSIZE := 32
-BUILD_TYPE = debug
+BUILD_TYPE = development
 
 EXTENSION ?= elf
 
@@ -66,7 +66,7 @@ DEFAULT_OBJS = strt1.obj strt2.obj systemid.obj toc.obj sg_sec.obj \
 
 OPTIMISE ?= 0
 #LISTING
-#LISTING = -list="$(OBJSDIR)\$*.lst"
+LISTING = -list="$(OBJSDIR)\$*.lst"
 
 COPT_LINK = -g
 
@@ -79,21 +79,21 @@ COPT = -cpu=sh4 -division=cpu -endian=little -fpu=single -round=nearest \
 
 COPTIMISE = -optimize=$(OPTIMISE)
 
-CFLAGS = $(COPT) $(CDEBUG) $(DEBUGCFLAGS) $(COPT_LINK) $(C_LIST) $(COPTIMISE)
+CFLAGS = $(COPT) $(CDEBUG) $(DEBUGCFLAGS) $(COPT_LINK) $(LISTING) $(COPTIMISE)
 
 ## Assembly flags
-ASM_DEBUG = -debug=d
+debug: ASM_DEBUG = -debug=d
+development: ASM_DEBUG = -debug=d
+release: ASM_DEBUG =
 
-debug: ASM_LIST = -list="$(OBJSDIR)\$*.lst"
-release: ASM_LIST = 
+ASM_LIST = -list="$(OBJSDIR)\$*.lst"
 ASM_OPTIONS = -cpu=sh4 -endian=little -sjis -private
 
 ASM_FLAGS = $(ASM_OPTIONS) $(ASM_DEBUG) $(ASM_LIST)
 
 ## Linker
 LINK_DEBUG =
-LINK_LIST = 
-#print $*.map
+LINK_LIST = print $*.map
 
 L_OPT_LINK = op speed
 
@@ -107,13 +107,27 @@ LINK_OPTS = align_section udfcheck elf
 
 LINK_FLAGS = $(LINK_OPTS) $(LINK_DEBUG)
 
+development: BUILD = Development
+development: BUILD_TYPE = development
+development: BUILD_DEF = DEVELOPMENT
+development: COPT_LINK = -g
+development: LINK = optlnksh.exe -op=st,sy,sam,b
+development: CDEBUG = -debug
+development: TARGET := $(TARGET)_Dev
+development: DEFAULT_LIBS += libcross sh4nlfzn
+development: OPTIMISE := 0
+development: OPTIMISE_LINK := 1
+development: CDEFS += DEBUG
+development: LINK_DEBUG = debug
+development: $(TARGET)
+
 debug: BUILD = Debug
 debug: BUILD_TYPE = debug
 debug: BUILD_DEF = DEBUG
 debug: COPT_LINK =
-debug: LINK = lnk.exe
+debug: LINK = lnk.exe -noecho
 debug: CDEBUG = -debug
-debug: TARGET := $(TARGET)D
+debug: TARGET := $(TARGET)_Debug
 debug: DEFAULT_LIBS += libcross sh4nlfzn
 debug: OPTIMISE := 0
 debug: OPTIMISE_LINK := 0
@@ -124,7 +138,7 @@ debug: $(TARGET)
 release: BUILD = Release
 release: BUILD_TYPE = release
 release: BUILD_DEF = RELEASE
-release: LINK = lnk.exe
+release: LINK = optlnksh.exe -op=st,sy,sam,b
 release: COPT_LINK = -g
 release: CDEBUG = -nodebug
 release: EXTENSION = BIN
@@ -182,11 +196,12 @@ endif
 	for %%x in ($(SYSTEM_LIBS) $(DEFAULT_LIBS)) do echo library $(LIBDIR)\%%x.lib >> "$(OBJSDIR)\lnk.sub"
 	echo output $(TARGETDIR)\$(TARGET).elf >> "$(OBJSDIR)\lnk.sub"
 	echo exit >> "$(OBJSDIR)\lnk.sub"
-	$(LINK) -noecho -sub="$(OBJSDIR)\lnk.sub"
+	$(LINK) -sub="$(OBJSDIR)\lnk.sub"
 ifeq ($(EXTENSION),BIN)
 	$(ELF2BIN) -s 8C010000 "$(TARGETDIR)\$(TARGET).elf" $(OUTFILE)
 endif
 	echo Created $(OUTFILE)
+# Old link command was $(LINK) -noecho -sub="$(OBJSDIR)\lnk.sub"
 
 # C file compilation
 %.obj: %.c

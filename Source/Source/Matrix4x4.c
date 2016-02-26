@@ -293,10 +293,10 @@ void MAT44_TransformVertices( float *p_pTransformedVertices,
 
 void MAT44_TransformVerticesRHW( float *p_pTransformedVertices,
 	const float *p_pVertices, const size_t p_VertexCount,
-	const size_t p_TransformedStride,const size_t p_UntransformedStride,
+	const size_t p_TransformedStride, const size_t p_UntransformedStride,
 	const PMATRIX4X4 p_pMatrix )
 {
-	register float *pDestVector, RHW;
+	float *pDestVector, RHW;
 	size_t Index, UStrideGap, TStrideGap;
 
 #if defined ( DEBUG )

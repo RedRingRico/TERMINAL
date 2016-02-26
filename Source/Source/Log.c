@@ -1,3 +1,4 @@
+#if defined ( DEBUG )
 #include <Log.h>
 #include <shinobi.h>
 #include <sn_fcntl.h>
@@ -9,17 +10,14 @@ static int g_FileHandle;
 
 static void DebugOut( const char *p_pString )
 {
-#if defined DEBUG
 	if( p_pString != NULL )
 	{
 		debug_write( SNASM_STDOUT, p_pString, strlen( p_pString ) );
 	}
-#endif /* DEBUG */
 }
 
-int LOG_Initialise( const char *p_pLogFileName )
+int LOG_Initialise_Int( const char *p_pLogFileName )
 {
-#if defined DEBUG
 	char *pLogFile = NULL;
 
 	DebugOut( "Initialising log file" );
@@ -75,25 +73,21 @@ int LOG_Initialise( const char *p_pLogFileName )
 	free( pLogFile );
 
 	LOG_Debug( "Log initialised" );
-#endif /* DEBUG */
 
 	return 0;
 }
 
-void LOG_Terminate( void )
+void LOG_Terminate_Int( void )
 {
-#ifdef DEBUG
 	if( g_FileHandle != -1 )
 	{
 		debug_close( g_FileHandle );
 		g_FileHandle = -1;
 	}
-#endif /* DEBUG */
 }
 
-void LOG_Debug( const char *p_pMessage, ... )
+void LOG_Debug_Int( const char *p_pMessage, ... )
 {
-#ifdef DEBUG
 	if( strlen( p_pMessage ) && p_pMessage )
 	{
 		char Buffer[ 128 ];
@@ -108,6 +102,8 @@ void LOG_Debug( const char *p_pMessage, ... )
 		debug_write( g_FileHandle, Buffer, strlen( Buffer ) );
 		debug_write( SNASM_STDOUT, Buffer, strlen( Buffer ) );
 	}
-#endif /* DEBUG */
 }
+#else
+#include <Log.h>
+#endif /* DEBUG */
 

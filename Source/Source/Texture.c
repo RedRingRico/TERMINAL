@@ -1,5 +1,6 @@
 #include <Texture.h>
 #include <FileSystem.h>
+#include <Log.h>
 
 typedef struct _tagGLOBAL_INDEX
 {

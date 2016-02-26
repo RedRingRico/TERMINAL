@@ -15,6 +15,8 @@
 #include <Camera.h>
 #include <Model.h>
 #include <DA.h>
+#include <Audio.h>
+
 #include <FileSystem.h>
 
 #include <ac.h>
@@ -37,7 +39,6 @@ char g_VersionString[ 256 ];
 Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
 char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
 bool g_ConnectedToDA = false;
-AC_ERROR *g_ACError = NULL;
 
 typedef struct _tagRENDER_VERTEX
 {
@@ -72,8 +73,6 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet );
 void DrawDebugOverlay( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo );
 
 bool LoadSoundBank( Uint32 *p_pAICA, char *p_pName, Sint32 *p_pSize );
-bool A64Setup( AC_DRIVER_TYPE p_DriverType, bool p_Poll,
-	AC_CALLBACK_HANDLER p_Callback );
 
 SOUND g_Select, g_Accept;
 
@@ -98,6 +97,7 @@ void main( void )
 	Uint32 RenderStartTime = 0UL, RenderEndTime = 0UL;
 	char PrintBuffer[ 80 ];
 	PERF_INFO PerfInfo;
+	AUDIO_PARAMETERS AudioParameters;
 
 	CAMERA TestCamera;
 	MATRIX4X4 Projection;
@@ -187,8 +187,10 @@ void main( void )
 
 	scif_close( );
 
+	AudioParameters.IntCallback = NULL;
+
 	/* Initialise sound */
-	if( !A64Setup( AC_DRIVER_DA, false, KTNULL ) )
+	if( AUD_Initialise( &AudioParameters ) != 0 )
 	{
 		LOG_Debug( "Failed to set up the Audio64 interface" );
 
@@ -209,6 +211,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the audio sample: /AUDIO/SELECT.WAV" );
 
+		AUD_Terminate( );
 		REN_Terminate( );
 		LOG_Terminate( );
 		HW_Terminate( );
@@ -223,6 +226,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the audio sample: /AUDIO/ACCEPT.WAV" );
 
+		AUD_Terminate( );
 		REN_Terminate( );
 		LOG_Terminate( );
 		HW_Terminate( );
@@ -233,6 +237,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to initialise the text system" );
 
+		AUD_Terminate( );
 		REN_Terminate( );
 		LOG_Terminate( );
 		HW_Terminate( );
@@ -244,6 +249,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the glyph descriptions" );
 
+		AUD_Terminate( );
 		REN_Terminate( );
 		LOG_Terminate( );
 		HW_Terminate( );
@@ -254,6 +260,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the glyph texture" );
 
+		AUD_Terminate( );
 		REN_Terminate( );
 		LOG_Terminate( );
 		HW_Terminate( );
@@ -316,6 +323,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to initialise the model library" );
 
+		AUD_Terminate( );
 		REN_Terminate( );
 		LOG_Terminate( );
 		HW_Terminate( );
@@ -326,6 +334,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the Hiro model" );
 
+		AUD_Terminate( );
 		REN_Terminate( );
 		LOG_Terminate( );
 		HW_Terminate( );
@@ -336,6 +345,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the level model" );
 
+		AUD_Terminate( );
 		REN_Terminate( );
 		LOG_Terminate( );
 		HW_Terminate( );
@@ -425,9 +435,7 @@ void main( void )
 		RenderEndTime = syTmrGetCount( );
 
 		DrawOverlayText( &GlyphSet );
-#if defined ( DEBUG )
 		DrawDebugOverlay( &GlyphSet, &PerfInfo );
-#endif
 
 		REN_SwapBuffers( );
 
@@ -471,9 +479,11 @@ void main( void )
 
 	MDL_DeleteModel( &Hiro );
 	MDL_DeleteModel( &Level );
+	MDL_Terminate( );
 
 	LOG_Debug( "Rebooting" );
 
+	AUD_Terminate( );
 	REN_Terminate( );
 	LOG_Terminate( );
 	HW_Terminate( );
@@ -757,9 +767,7 @@ bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
 		}
 
 		DrawOverlayText( p_pGlyphSet );
-#if defined ( DEBUG )
 		DrawDebugOverlay( p_pGlyphSet, NULL );
-#endif
 
 		REN_SwapBuffers( );
 
@@ -1034,9 +1042,7 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 		}
 
 		DrawOverlayText( p_pGlyphSet );
-#if defined ( DEBUG )
 		DrawDebugOverlay( p_pGlyphSet, NULL );
-#endif
 
 		REN_SwapBuffers( );
 	}
@@ -1158,86 +1164,6 @@ bool LoadSoundBank( Uint32 *p_pAICA, char *p_pName, Sint32 *p_pSize )
 	syFree( pImage );
 
 	//acSystemWaitUntilG2FifoIsEmpty( );
-
-	return true;
-}
-
-bool A64Setup( AC_DRIVER_TYPE p_DriverType, bool p_Poll,
-	AC_CALLBACK_HANDLER p_Callback )
-{
-	KTU32 *pDriverImage = KTNULL;
-	KTU32 DriverImageSize = 0;
-	Sint32 DriverSize = 0;
-	KTSTRING DriverName = KTNULL;
-	GDFS FileHandle;
-	long FileBlocks;
-	KTU8	Major, Minor;
-	KTCHAR	Local;
-
-	/* Get the error message pointer */
-	g_ACError = acErrorGetLast( );
-
-	acIntInstallCallbackHandler( p_Callback );
-
-	/* Initialise interrupt system */
-	if( !acIntInit( ) )
-	{
-		return false;
-	}
-
-	if( p_DriverType == AC_DRIVER_DA )
-	{
-		DriverName = "/AUDIO/AUDIO64.DRV";
-	}
-	else
-	{
-		acErrorSet( AC_OUT_OF_RANGE_PARAMETER,
-			"A64Setup - p_DriverType is invalid" );
-
-		return false;
-	}
-
-	if( !( FileHandle = FS_OpenFile( DriverName ) ) )
-	{
-		LOG_Debug( "Failed to open %s", DriverName );
-
-		return false;
-	}
-
-	gdFsGetFileSize( FileHandle, &DriverSize );
-	gdFsGetFileSctSize( FileHandle, &FileBlocks );
-
-	DriverImageSize = SECTOR_ALIGN( DriverSize );
-
-	/* Temporarily allocate a buffer for the driver image */
-	pDriverImage = ( KTU32 * )syMalloc( DriverImageSize );
-
-	if( !pDriverImage )
-	{
-		return false;
-	}
-
-	/* Load the driver */
-	gdFsReqRd32( FileHandle, FileBlocks, pDriverImage );
-
-	while( gdFsGetStat( FileHandle ) != GDD_STAT_COMPLETE )
-	{
-	}
-
-	gdFsClose( FileHandle );
-
-	if( !acSystemInit( p_DriverType, pDriverImage, DriverSize, p_Poll ) )
-	{
-		return false;
-	}
-
-#if defined ( DEBUG )
-	acSystemGetDriverRevision( pDriverImage, &Major, &Minor, &Local );
-	LOG_Debug( "Using sound driver %s version: %d.%d.%d",
-		DriverName, Major, Minor, Local );
-#endif /* DEBUG */
-
-	syFree( pDriverImage );
 
 	return true;
 }

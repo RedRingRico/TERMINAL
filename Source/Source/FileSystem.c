@@ -74,6 +74,8 @@ GDFS FS_OpenFile( char *p_pFilePath )
 	char File[ GDD_FS_FNAMESIZE ];
 	char FilePath[ 256 ];
 	GDFS_DIRREC Directory;
+	/* Pretty bad, currently after a few calls the g_RootDirectory gets
+	 * overwritten, so this is static for now */
 	static Uint32 DirectoryBuffer[ GDFS_DIRREC_SIZE( 64 ) ];
 	GDFS ReturnFile;
 

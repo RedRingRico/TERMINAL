@@ -4,6 +4,7 @@
 #include <SHC/umachine.h>
 #include <SHC/private.h>
 #include <mathf.h>
+#include <sh4scif.h>
 
 typedef struct _tagCHUNK
 {
@@ -234,8 +235,6 @@ void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 	LightDirection[ 2 ] = LightT.Z;
 	LightDirection[ 3 ] = 0.0f;
 
-	//LOG_Debug( "Light: %f %f %f", LightT.X, LightT.Y, LightT.Z );
-
 	for( Mesh = 0; Mesh < p_pModel->MeshCount; ++Mesh )
 	{
 		size_t Vertex;
@@ -271,6 +270,7 @@ void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pTransform )
 {
 	size_t Mesh = 0;
+
 	for( Mesh = 0; Mesh < p_pModel->MeshCount; ++Mesh )
 	{
 		MAT44_TransformVerticesRHW(
