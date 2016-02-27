@@ -70,8 +70,13 @@ typedef struct _tagSOUND
 bool SelectPALRefresh( GLYPHSET *p_pGlyphSet );
 float TestAspectRatio( GLYPHSET *p_pGlyphSet );
 void DrawOverlayText( GLYPHSET *p_pGlyphSet );
-void DrawDebugOverlay( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo );
+void DrawDebugOverlay_Int( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo );
 
+#if defined ( DEBUG )
+#define DrawDebugOverlay DrawDebugOverlay_Int
+#else
+#define DrawDebugOverlay sizeof
+#endif /* DEBUG */
 bool LoadSoundBank( Uint32 *p_pAICA, char *p_pName, Sint32 *p_pSize );
 
 SOUND g_Select, g_Accept;
@@ -376,7 +381,13 @@ void main( void )
 		static VECTOR3 PlayerMove = { 0.0f, 0.0f, 0.0f };
 		VECTOR3 StickMove = { 0.0f, 0.0f, 0.0f };
 		VECTOR3 RotateAxis = { 0.0f, 1.0f, 0.0f };
+		VECTOR3 CameraDefaultLookRef = { 0.0f, 170.0f, 1.0f };
+		VECTOR3 CameraShoulderLookRef = { 100.0f, 170.0f, 1.0f };
+		VECTOR3 CameraDefaultPosRef = { 0.0f, 200.0f, -800.0f };
+		VECTOR3 CameraShoulderPosRef = { 150.0f, 200.0f, -200.0f };
 		static float Rotate = 0.0f;
+		static float CameraRotation = 0.0f;
+		static float PlayerRotate = 0.0f;
 
 		StartTime = syTmrGetCount( );
 
@@ -387,31 +398,84 @@ void main( void )
 
 		if( g_Peripherals[ 0 ].x1 > 0 )
 		{
-			StickMove.X = ( float )( g_Peripherals[ 0 ].x1 / 127.0f ) * 10.0f;
+			StickMove.X = ( float )g_Peripherals[ 0 ].x1 / 127.0f;
 		}
 		if( g_Peripherals[ 0 ].x1 < 0 )
 		{
-			StickMove.X = ( float )( g_Peripherals[ 0 ].x1 / 128.0f ) * 10.0f;
+			StickMove.X = ( float )g_Peripherals[ 0 ].x1 / 128.0f;
 		}
 
 		if( g_Peripherals[ 0 ].y1 > 0 )
 		{
-			StickMove.Z = -( float )( g_Peripherals[ 0 ].y1 / 127.0f ) * 10.0f;
+			StickMove.Z = -( float )g_Peripherals[ 0 ].y1 / 127.0f;
 		}
 		if( g_Peripherals[ 0 ].y1 < 0 )
 		{
-			StickMove.Z = -( float )( g_Peripherals[ 0 ].y1 / 128.0f ) * 10.0f;
+			StickMove.Z = -( float )g_Peripherals[ 0 ].y1 / 128.0f;
 		}
 
 		VEC3_Add( &PlayerMove, &PlayerMove, &StickMove );
-		VEC3_Add( &TestCamera.Position, &TestCamera.Position, &StickMove );
-		VEC3_Add( &TestCamera.LookAt, &TestCamera.LookAt, &StickMove );
+		/*VEC3_Add( &TestCamera.Position, &TestCamera.Position, &StickMove );
+		VEC3_Add( &TestCamera.LookAt, &TestCamera.LookAt, &StickMove );*/
 
 		if( ARI_IsZero( StickMove.X ) == false ||
 			ARI_IsZero( StickMove.Z ) == false )
 		{
-			Rotate = atan2f( StickMove.X, StickMove.Z );
+			VEC3_Normalise( &StickMove );
 		}
+
+		/* L trigger activates over-the-shoulder camera */
+		if( g_Peripherals[ 0 ].l > 128 )
+		{
+			MATRIX4X4 CameraMatrix;
+			VECTOR3 Thrust = { 0.0f, 0.0f, 0.0f };
+			VECTOR3 Acceleration = { 0.0f, 0.0f, 0.0f };
+
+			MAT44_SetIdentity( &CameraMatrix );
+
+			Rotate += StickMove.X * 0.04f;
+
+			Thrust.Z = StickMove.Z;
+
+			MAT44_RotateAxisAngle( &CameraMatrix, &RotateAxis, Rotate );
+
+			MAT44_TransformVertices( &Acceleration, &Thrust, 1,
+				sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
+
+			VEC3_MultiplyF( &Acceleration, &Acceleration, 10.0f );
+			
+			PlayerMove.X += Acceleration.X;
+			PlayerMove.Z += Acceleration.Z;
+
+			MAT44_Translate( &CameraMatrix, &PlayerMove );
+
+			MAT44_TransformVertices( &TestCamera.Position,
+				&CameraShoulderPosRef, 1, sizeof( VECTOR3 ), sizeof( VECTOR3 ),
+				&CameraMatrix );
+
+			MAT44_TransformVertices( &TestCamera.LookAt, &CameraShoulderLookRef,
+				1, sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
+
+			PlayerRotate = Rotate;
+		}
+		else
+		{
+			MATRIX4X4 CameraMatrix;
+
+			MAT44_SetIdentity( &CameraMatrix );
+
+			MAT44_RotateAxisAngle( &CameraMatrix, &RotateAxis, CameraRotation );
+			MAT44_Translate( &CameraMatrix, &PlayerMove );
+
+			MAT44_TransformVertices( &TestCamera.Position,
+				&CameraDefaultPosRef, 1, sizeof( VECTOR3 ), sizeof( VECTOR3 ),
+				&CameraMatrix );
+
+			MAT44_TransformVertices( &TestCamera.LookAt, &CameraDefaultLookRef,
+				1, sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
+		}
+
+		//PlayerRotate = Rotate - CameraRotation;
 
 		MAT44_SetIdentity( &World );
 
@@ -434,13 +498,26 @@ void main( void )
 		MDL_RenderModel( &Level, &ViewProjection );
 
 		MAT44_SetIdentity( &World );
-		MAT44_RotateAxisAngle( &World, &RotateAxis, Rotate );
+		MAT44_RotateAxisAngle( &World, &RotateAxis, PlayerRotate );
 		MAT44_Translate( &World, &PlayerMove );
 		MAT44_Multiply( &ViewProjection, &World, &View );
 		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
 		MDL_RenderModel( &Hiro, &ViewProjection );
 
-		TextColour.dwPacked = 0xFFFFFFFF;
+		TextColour.dwPacked = 0xFFFFFF00;
+
+		sprintf( PrintBuffer, "Rotate:        %f", Rotate );
+		TXT_RenderString( &GlyphSet, &TextColour,
+			10.0f, ( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );
+
+		sprintf( PrintBuffer, "Player rotate: %f", PlayerRotate );
+		TXT_RenderString( &GlyphSet, &TextColour,
+			10.0f, ( float )GlyphSet.LineHeight * 4.0f, PrintBuffer );
+
+		sprintf( PrintBuffer, "Camera rotate: %f", CameraRotation );
+		TXT_RenderString( &GlyphSet, &TextColour,
+			10.0f, ( float )GlyphSet.LineHeight * 5.0f, PrintBuffer );
+
 
 		if( Alpha < 0.0f )
 		{
@@ -1112,7 +1189,7 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 		480.0f - ( float )p_pGlyphSet->LineHeight * 2.0f, g_ConsoleIDPrint );
 }
 
-void DrawDebugOverlay( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo )
+void DrawDebugOverlay_Int( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo )
 {
 	float TextLength;
 	KMPACKEDARGB TextColour;
