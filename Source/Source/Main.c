@@ -308,7 +308,7 @@ void main( void )
 
 	TestCamera.FieldOfView = ( 3.141592654f / 4.0f );
 	TestCamera.NearPlane = 1.0f;
-	TestCamera.FarPlane = 10000.0f;
+	TestCamera.FarPlane = 1000.0f;
 
 	if( AVCable == SYE_CBL_PAL )
 	{
@@ -388,6 +388,7 @@ void main( void )
 		static float Rotate = 0.0f;
 		static float CameraRotation = 0.0f;
 		static float PlayerRotate = 0.0f;
+		static float StickRotate = 0.0f;
 
 		StartTime = syTmrGetCount( );
 
@@ -422,6 +423,8 @@ void main( void )
 			ARI_IsZero( StickMove.Z ) == false )
 		{
 			VEC3_Normalise( &StickMove );
+
+			StickRotate = atan2f( StickMove.X, StickMove.Z );
 		}
 
 		/* L trigger activates over-the-shoulder camera */
@@ -453,18 +456,41 @@ void main( void )
 				&CameraShoulderPosRef, 1, sizeof( VECTOR3 ), sizeof( VECTOR3 ),
 				&CameraMatrix );
 
-			MAT44_TransformVertices( &TestCamera.LookAt, &CameraShoulderLookRef,
-				1, sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
+			MAT44_TransformVertices( &TestCamera.LookAt,
+				&CameraShoulderLookRef, 1, sizeof( VECTOR3 ),
+				sizeof( VECTOR3 ), &CameraMatrix );
 
 			PlayerRotate = Rotate;
+			CameraRotation = Rotate;
 		}
 		else
 		{
 			MATRIX4X4 CameraMatrix;
+			MATRIX4X4 PlayerMatrix;
+			VECTOR3 CameraDirection = { 0.0f, 0.0f, 1.0f };
+			VECTOR3 Thrust = { 0.0f, 0.0f, 0.0f };
+			VECTOR3 Acceleration = { 0.0f, 0.0f, 0.0f };
+
+			PlayerRotate = CameraRotation + StickRotate;
 
 			MAT44_SetIdentity( &CameraMatrix );
+			MAT44_SetIdentity( &PlayerMatrix );
 
-			MAT44_RotateAxisAngle( &CameraMatrix, &RotateAxis, CameraRotation );
+			Thrust.X = StickMove.X;
+			Thrust.Z = StickMove.Z;
+
+			MAT44_RotateAxisAngle( &PlayerMatrix, &RotateAxis,
+				CameraRotation );
+			MAT44_TransformVertices( &Acceleration, &Thrust, 1,
+				sizeof( VECTOR3 ), sizeof( VECTOR3 ), &PlayerMatrix );
+
+			VEC3_MultiplyF( &Acceleration, &Acceleration, 10.0f );
+
+			PlayerMove.X += Acceleration.X;
+			PlayerMove.Z += Acceleration.Z;
+
+			MAT44_RotateAxisAngle( &CameraMatrix, &RotateAxis,
+				CameraRotation );
 			MAT44_Translate( &CameraMatrix, &PlayerMove );
 
 			MAT44_TransformVertices( &TestCamera.Position,
@@ -475,13 +501,9 @@ void main( void )
 				1, sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
 		}
 
-		//PlayerRotate = Rotate - CameraRotation;
-
 		MAT44_SetIdentity( &World );
 
 		CAM_CalculateViewMatrix( &View, &TestCamera );
-		MAT44_Multiply( &ViewProjection, &World, &View );
-		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
 		
 		MDL_CalculateLighting( &Hiro, &World, &LightPosition );
 		MDL_CalculateLighting( &Level, &World, &LightPosition );
@@ -495,14 +517,19 @@ void main( void )
 
 		RenderStartTime = syTmrGetCount( );
 
-		MDL_RenderModel( &Level, &ViewProjection );
 
-		MAT44_SetIdentity( &World );
 		MAT44_RotateAxisAngle( &World, &RotateAxis, PlayerRotate );
 		MAT44_Translate( &World, &PlayerMove );
 		MAT44_Multiply( &ViewProjection, &World, &View );
 		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
+
 		MDL_RenderModel( &Hiro, &ViewProjection );
+
+		MAT44_SetIdentity( &World );
+		MAT44_Multiply( &ViewProjection, &World, &View );
+		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
+
+		MDL_RenderModel( &Level, &ViewProjection );
 
 		TextColour.dwPacked = 0xFFFFFF00;
 
@@ -517,6 +544,11 @@ void main( void )
 		sprintf( PrintBuffer, "Camera rotate: %f", CameraRotation );
 		TXT_RenderString( &GlyphSet, &TextColour,
 			10.0f, ( float )GlyphSet.LineHeight * 5.0f, PrintBuffer );
+
+		sprintf( PrintBuffer, "Camera position: %f %f %f",
+			TestCamera.Position.X,TestCamera.Position.Y,TestCamera.Position.Z );
+		TXT_RenderString( &GlyphSet, &TextColour,
+			10.0f, ( float )GlyphSet.LineHeight * 6.0f, PrintBuffer );
 
 
 		if( Alpha < 0.0f )
