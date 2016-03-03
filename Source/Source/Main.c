@@ -523,13 +523,15 @@ void main( void )
 		MAT44_Multiply( &ViewProjection, &World, &View );
 		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
 
-		MDL_RenderModel( &Hiro, &ViewProjection );
+		MDL_RenderModel( &Hiro, &World, &View, &Projection );
+		/*ViewProjection );*/
 
 		MAT44_SetIdentity( &World );
 		MAT44_Multiply( &ViewProjection, &World, &View );
 		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
 
-		MDL_RenderModel( &Level, &ViewProjection );
+		MDL_RenderModel( &Level, &World, &View, &Projection );
+		/*&ViewProjection );*/
 
 		TextColour.dwPacked = 0xFFFFFF00;
 

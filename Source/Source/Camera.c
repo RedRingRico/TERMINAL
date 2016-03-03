@@ -61,7 +61,7 @@ void CAM_CalculateProjectionMatrix( PMATRIX4X4 p_pMatrix,
 		( p_pCamera->FarPlane - p_pCamera->NearPlane );
 	ProjectionMatrix.M32 = -H * p_pCamera->NearPlane * p_pCamera->FarPlane /
 		( p_pCamera->FarPlane - p_pCamera->NearPlane );
-	ProjectionMatrix.M23 = H;
+	ProjectionMatrix.M23 = 1.0f;
 	
 	ProjectionMatrix.M33 = 0.0f;
 	

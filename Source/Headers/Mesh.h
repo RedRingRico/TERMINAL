@@ -5,6 +5,7 @@
 #include <Vector3.h>
 #include <Renderer.h>
 #include <Texture.h>
+#include <AABB.h>
 
 typedef enum _tagPRIMITIVE_TYPE
 {
@@ -37,12 +38,13 @@ typedef struct _tagMESH
 	Uint32			FaceCount;
 	Uint32			IndexCount;
 	PRIMITIVE_TYPE	Type;
-	MODEL_VERTEX	Vertices;
-	MODEL_VERTEX	*pTransformedVertices;
-	Uint32			*pIndices;
-	KMVERTEX_05		*pKamuiVertices;
+	MODEL_VERTEX	Vertices; // 24
+	MODEL_VERTEX	*pTransformedVertices; // 36
+	Uint32			*pIndices; // 40
+	KMVERTEX_05		*pKamuiVertices; //44
 	/* Change to a material type later */
-	TEXTURE			Texture;
+	TEXTURE			Texture; // 48
+	AABB			BoundingBox; //72
 }MESH,*PMESH;
 
 typedef struct _tagMESH_CHUNK

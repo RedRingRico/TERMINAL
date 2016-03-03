@@ -4,7 +4,7 @@
 #include <SHC/umachine.h>
 #include <SHC/private.h>
 #include <mathf.h>
-#include <sh4scif.h>
+#include <Plane.h>
 
 typedef struct _tagCHUNK
 {
@@ -267,17 +267,69 @@ void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 	}
 }
 
-void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pTransform )
+void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pWorld,
+	const MATRIX4X4 *p_pView, const MATRIX4X4 *p_pProjection )
 {
 	size_t Mesh = 0;
+	MATRIX4X4 WVP;
+
+	MAT44_Multiply( &WVP, p_pWorld, p_pView );
+	MAT44_Multiply( &WVP, &WVP, p_pProjection );
 
 	for( Mesh = 0; Mesh < p_pModel->MeshCount; ++Mesh )
 	{
+		VECTOR3 TestNear = { 0.0f, 0.0f, -880.0f },
+			TestFar = { 0.0f, 0.0f, -799.0f },
+			TestBehind = { 0.0f, 0.0f, -800.0f };
+		VECTOR3 NearTrans, FarTrans, BehindTrans;
+		AABB BoundingBoxTransform;
+		PLANE TestPlane;
+		PLANE_CLASS PlaneClass;
+
+		/* Test a plane at a Pi/2 angle, should render the front three pillars
+		 * and the rear-right one */
+		TestPlane.Normal.X = 1.0f;
+		TestPlane.Normal.Y = 0.0f;
+		TestPlane.Normal.Z = 1.0f;
+		VEC3_Normalise( &TestPlane );
+		TestPlane.Distance = 0.0f;
+
+		MAT44_TransformVertices( ( float * )&BoundingBoxTransform.Minimum,
+			( float * )&p_pModel->pMeshes[ Mesh ].BoundingBox.Minimum, 1,
+			sizeof( VECTOR3 ), sizeof( VECTOR3 ), p_pWorld );
+
+		MAT44_TransformVertices( ( float * )&BoundingBoxTransform.Maximum,
+			( float * )&p_pModel->pMeshes[ Mesh ].BoundingBox.Maximum, 1,
+			sizeof( VECTOR3 ), sizeof( VECTOR3 ), p_pWorld );
+
+		PlaneClass = PLANE_ClassifyAABB( &TestPlane, &BoundingBoxTransform );
+
+		if( PlaneClass == PLANE_CLASS_BACK )
+		{
+			continue;
+		}
+		
 		MAT44_TransformVerticesRHW(
 			( float * )( p_pModel->pMeshes[ Mesh ].pKamuiVertices ) + 1,
 			( float * )p_pModel->pMeshes[ Mesh ].Vertices.pPosition,
 			p_pModel->pMeshes[ Mesh ].IndexCount,
-			sizeof( KMVERTEX_05 ), sizeof( VECTOR3 ), p_pTransform );
+			sizeof( KMVERTEX_05 ), sizeof( VECTOR3 ), &WVP );
+
+		MAT44_TransformVerticesRHW(
+			( float * )&NearTrans, ( float * )&TestNear, 1,
+			sizeof( VECTOR3 ), sizeof( VECTOR3 ), &WVP );
+
+		MAT44_TransformVerticesRHW(
+			( float * )&FarTrans, ( float * )&TestFar, 1,
+			sizeof( VECTOR3 ), sizeof( VECTOR3 ), &WVP );
+
+		MAT44_TransformVerticesRHW(
+			( float * )&BehindTrans, ( float * )&TestBehind, 1,
+			sizeof( VECTOR3 ), sizeof( VECTOR3 ), &WVP );
+
+		MAT44_ClipVertices(
+			( p_pModel->pMeshes[ Mesh ].pKamuiVertices ),
+			NULL, p_pModel->pMeshes[ Mesh ].IndexCount, sizeof( KMVERTEX_05 ) );
 
 		REN_DrawPrimitives05( &MDL_ModelStripHead,
 			p_pModel->pMeshes[ Mesh ].pKamuiVertices,
@@ -292,6 +344,7 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 	size_t Index = 0;
 	size_t EndStrip = 0;
 	MODEL_VERTEX_PACKED *pOriginalVertices;
+	AABB BoundingBox;
 
 	memcpy( &MeshChunk, p_pData, sizeof( MESH_CHUNK ) );
 	DataPosition += sizeof( MESH_CHUNK );
@@ -320,6 +373,13 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 	memcpy( p_pMesh->pIndices, &p_pData[ DataPosition ],
 		sizeof( Uint32 ) * MeshChunk.ListCount );
 	DataPosition += sizeof( Uint32 ) * MeshChunk.ListCount;
+
+	memcpy( &BoundingBox.Minimum,
+		&pOriginalVertices[ p_pMesh->pIndices[ Index ] ].Position,
+		sizeof( VECTOR3 ) );
+	memcpy( &BoundingBox.Maximum,
+		&pOriginalVertices[ p_pMesh->pIndices[ Index ] ].Position,
+		sizeof( VECTOR3 ) );
 
 	for( Index = 0; Index < MeshChunk.ListCount; ++Index )
 	{
@@ -357,7 +417,37 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 		p_pMesh->pKamuiVertices[ Index ].fBaseRed = 1.0f;
 		p_pMesh->pKamuiVertices[ Index ].fBaseGreen = 1.0f;
 		p_pMesh->pKamuiVertices[ Index ].fBaseBlue = 1.0f;
+
+		/* Bounding box */
+		if( p_pMesh->Vertices.pPosition[ Index ].X < BoundingBox.Minimum.X )
+		{
+			BoundingBox.Minimum.X = p_pMesh->Vertices.pPosition[ Index ].X;
+		}
+		if( p_pMesh->Vertices.pPosition[ Index ].X > BoundingBox.Maximum.X )
+		{
+			BoundingBox.Maximum.X = p_pMesh->Vertices.pPosition[ Index ].X;
+		}
+
+		if( p_pMesh->Vertices.pPosition[ Index ].Y < BoundingBox.Minimum.Y )
+		{
+			BoundingBox.Minimum.Y = p_pMesh->Vertices.pPosition[ Index ].Y;
+		}
+		if( p_pMesh->Vertices.pPosition[ Index ].Y > BoundingBox.Maximum.Y )
+		{
+			BoundingBox.Maximum.Y = p_pMesh->Vertices.pPosition[ Index ].Y;
+		}
+
+		if( p_pMesh->Vertices.pPosition[ Index ].Z < BoundingBox.Minimum.Z )
+		{
+			BoundingBox.Minimum.Z = p_pMesh->Vertices.pPosition[ Index ].Z;
+		}
+		if( p_pMesh->Vertices.pPosition[ Index ].Z > BoundingBox.Maximum.Z )
+		{
+			BoundingBox.Maximum.Z = p_pMesh->Vertices.pPosition[ Index ].Z;
+		}
 	}
+
+	memcpy( &p_pMesh->BoundingBox, &BoundingBox, sizeof( BoundingBox ) );
 
 	syFree( pOriginalVertices );
 

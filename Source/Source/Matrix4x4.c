@@ -2,6 +2,8 @@
 #include <machine.h>
 #include <SHC/private.h>
 #include <Log.h>
+#include <mathf.h>
+#include <kamui2.h>
 
 static float g_SH4Vector[ 4 ];
 static float g_Result[ 4 ];
@@ -328,13 +330,73 @@ void MAT44_TransformVerticesRHW( float *p_pTransformedVertices,
 
 		ftrv( ( float * )g_SH4Vector, ( float * )g_Result );
 
+		/*if( g_Result[ 2 ] < 1.0f )
+		{
+			g_Result[ 2 ] = 1.0f;
+		}*/
+		//2.6866
+		//0.372218
+
 		RHW = 1.0f / g_Result[ 2 ];
+		/*if( RHW >= H )
+		{
+			RHW = H;
+		}
+
+		*/
+		/*if( RHW <= 0.372218f )
+		{
+			RHW = H;
+		}*//*
+
+		if( RHW <= 0.0f )
+		{
+			RHW = H;
+		}*/
 
 		*( pDestVector++ ) = RHW * g_Result[ 0 ];
 		*( pDestVector++ ) = RHW * g_Result[ 1 ];
+
+		/*if( RHW < 0.0f )
+		{
+			RHW = 0.0f;
+		}*/
 		*( pDestVector++ ) = RHW;
 
 		pDestVector += TStrideGap;
 	}
+}
+
+void MAT44_ClipVertices( KMVERTEX_05 *p_pTransformedVertices,
+	const float *p_pVertices, const size_t p_VertexCount,
+	const size_t p_Stride )
+{
+	Uint32 P1, P2, P3;
+	float H;
+	size_t VisibleTriangles;
+	size_t i = 0;
+
+	//H = tanf( p_pCamera->FieldOfView / 2.0f ) * p_pCamera->NearPlane;
+	H = tanf( ( 3.141592654f / 4.0f ) / 2.0f ) * 1.0f;
+
+	//VisibleTriangles = p_TriangleCount;
+
+	/*while( i < VisibleTriangles )
+	{
+		P1 = p_pVertices[ i * 3 ];
+		P2 = p_pVertices[ 
+	}*/
+
+	/*p_pTransformedVertices[ 0 ].u.fZ = H;
+	p_pTransformedVertices[ 1 ].u.fZ = H;
+	p_pTransformedVertices[ 3 ].u.fZ = H;*/
+
+	/*for( i = 0; i < p_VertexCount; ++i )
+	{
+		if( p_pTransformedVertices[ i ].u.fZ <=  H )
+		{
+			p_pTransformedVertices[ i ].u.fZ = H;
+		}
+	}*/
 }
 

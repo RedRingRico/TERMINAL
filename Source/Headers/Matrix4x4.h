@@ -3,6 +3,7 @@
 
 #include <shinobi.h>
 #include <Vector3.h>
+#include <kamui2.h>
 
 typedef struct _tagMATRIX4X4
 {
@@ -11,6 +12,8 @@ typedef struct _tagMATRIX4X4
 	float M20, M21, M22, M23;
 	float M30, M31, M32, M33;
 }MATRIX4X4,*PMATRIX4X4;
+
+#include <Camera.h>
 
 void MAT44_SetIdentity( PMATRIX4X4 p_pMatrix );
 
@@ -37,6 +40,10 @@ void MAT44_TransformVerticesRHW( float *p_pTransformedVertices,
 	const float *p_pVertices, const size_t p_VertexCount,
 	const size_t p_TransformedStride,const size_t p_UntransformedStride,
 	const PMATRIX4X4 p_pMatrix );
+
+void MAT44_ClipVertices( KMVERTEX_05 *p_pTransformedVertices,
+	const float *p_pVertices, const size_t p_VertexCount,
+	const size_t p_Stride );
 
 #endif /* __TERMINAL_MATRIX4X4_H__ */
 
