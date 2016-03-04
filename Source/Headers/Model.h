@@ -30,7 +30,8 @@ void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 /*void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pTransform );*/
 
 void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pWorld,
-	const MATRIX4X4 *p_pView, const MATRIX4X4 *p_pProjection );
+	const MATRIX4X4 *p_pView, const MATRIX4X4 *p_pProjection,
+	const MATRIX4X4 *p_pScreen);
 
 #endif /* __TERMINAL_MODEL_H__ */
 

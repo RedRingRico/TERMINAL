@@ -105,7 +105,7 @@ void main( void )
 	AUDIO_PARAMETERS AudioParameters;
 
 	CAMERA TestCamera;
-	MATRIX4X4 Projection;
+	MATRIX4X4 Projection, Screen;
 	MODEL Level, Hiro;
 
 	if( HW_Initialise( KM_DSPBPP_RGB888, &AVCable ) != 0 )
@@ -292,11 +292,11 @@ void main( void )
 	REN_SetClearColour( 0.0f, 17.0f / 255.0f, 43.0f / 255.0f );
 
 	TestCamera.Position.X = 0.0f;
-	TestCamera.Position.Y = 200.0f;
-	TestCamera.Position.Z = -800.0f;
+	TestCamera.Position.Y = 2.0f;
+	TestCamera.Position.Z = -8.0f;
 
 	TestCamera.LookAt.X = 0.0f;
-	TestCamera.LookAt.Y = 170.0f;
+	TestCamera.LookAt.Y = 1.7f;
 	TestCamera.LookAt.Z = 1.0f;
 
 	TestCamera.WorldUp.X = 0.0f;
@@ -307,8 +307,8 @@ void main( void )
 	TestCamera.GateHeight = 480.0f;
 
 	TestCamera.FieldOfView = ( 3.141592654f / 4.0f );
-	TestCamera.NearPlane = 1.0f;
-	TestCamera.FarPlane = 1000.0f;
+	TestCamera.NearPlane = 0.001f; /* 1cm */
+	TestCamera.FarPlane = 10000.0f; /* 10km (too much?) */
 
 	if( AVCable == SYE_CBL_PAL )
 	{
@@ -358,6 +358,7 @@ void main( void )
 	}
 
 	CAM_CalculateProjectionMatrix( &Projection, &TestCamera );
+	CAM_CalculateScreenMatrix( &Screen, &TestCamera );
 
 	g_Peripherals[ 0 ].press = 0;
 	memset( &PerfInfo, 0, sizeof( PerfInfo ) );
@@ -381,10 +382,10 @@ void main( void )
 		static VECTOR3 PlayerMove = { 0.0f, 0.0f, 0.0f };
 		VECTOR3 StickMove = { 0.0f, 0.0f, 0.0f };
 		VECTOR3 RotateAxis = { 0.0f, 1.0f, 0.0f };
-		VECTOR3 CameraDefaultLookRef = { 0.0f, 170.0f, 1.0f };
-		VECTOR3 CameraShoulderLookRef = { 100.0f, 170.0f, 1.0f };
-		VECTOR3 CameraDefaultPosRef = { 0.0f, 200.0f, -800.0f };
-		VECTOR3 CameraShoulderPosRef = { 150.0f, 200.0f, -200.0f };
+		VECTOR3 CameraDefaultLookRef = { 0.0f, 1.7f, 1.0f };
+		VECTOR3 CameraShoulderLookRef = { 1.0f, 1.7f, 1.0f };
+		VECTOR3 CameraDefaultPosRef = { 0.0f, 2.0f, -8.0f };
+		VECTOR3 CameraShoulderPosRef = { 1.5f, 2.0f, -2.0f };
 		static float Rotate = 0.0f;
 		static float CameraRotation = 0.0f;
 		static float PlayerRotate = 0.0f;
@@ -416,8 +417,6 @@ void main( void )
 		}
 
 		VEC3_Add( &PlayerMove, &PlayerMove, &StickMove );
-		/*VEC3_Add( &TestCamera.Position, &TestCamera.Position, &StickMove );
-		VEC3_Add( &TestCamera.LookAt, &TestCamera.LookAt, &StickMove );*/
 
 		if( ARI_IsZero( StickMove.X ) == false ||
 			ARI_IsZero( StickMove.Z ) == false )
@@ -445,7 +444,7 @@ void main( void )
 			MAT44_TransformVertices( &Acceleration, &Thrust, 1,
 				sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
 
-			VEC3_MultiplyF( &Acceleration, &Acceleration, 10.0f );
+			VEC3_MultiplyF( &Acceleration, &Acceleration, 0.01f );
 			
 			PlayerMove.X += Acceleration.X;
 			PlayerMove.Z += Acceleration.Z;
@@ -484,7 +483,7 @@ void main( void )
 			MAT44_TransformVertices( &Acceleration, &Thrust, 1,
 				sizeof( VECTOR3 ), sizeof( VECTOR3 ), &PlayerMatrix );
 
-			VEC3_MultiplyF( &Acceleration, &Acceleration, 10.0f );
+			VEC3_MultiplyF( &Acceleration, &Acceleration, 0.01f );
 
 			PlayerMove.X += Acceleration.X;
 			PlayerMove.Z += Acceleration.Z;
@@ -517,24 +516,18 @@ void main( void )
 
 		RenderStartTime = syTmrGetCount( );
 
-
 		MAT44_RotateAxisAngle( &World, &RotateAxis, PlayerRotate );
 		MAT44_Translate( &World, &PlayerMove );
-		MAT44_Multiply( &ViewProjection, &World, &View );
-		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
 
-		MDL_RenderModel( &Hiro, &World, &View, &Projection );
-		/*ViewProjection );*/
+		MDL_RenderModel( &Hiro, &World, &View, &Projection, &Screen );
 
 		MAT44_SetIdentity( &World );
-		MAT44_Multiply( &ViewProjection, &World, &View );
-		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
 
-		MDL_RenderModel( &Level, &World, &View, &Projection );
-		/*&ViewProjection );*/
+		MDL_RenderModel( &Level, &World, &View, &Projection, &Screen );
 
 		TextColour.dwPacked = 0xFFFFFF00;
 
+#if defined ( DEBUG )
 		sprintf( PrintBuffer, "Rotate:        %f", Rotate );
 		TXT_RenderString( &GlyphSet, &TextColour,
 			10.0f, ( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );
@@ -551,6 +544,7 @@ void main( void )
 			TestCamera.Position.X,TestCamera.Position.Y,TestCamera.Position.Z );
 		TXT_RenderString( &GlyphSet, &TextColour,
 			10.0f, ( float )GlyphSet.LineHeight * 6.0f, PrintBuffer );
+#endif /* DEBUG */
 
 
 		if( Alpha < 0.0f )
@@ -567,10 +561,10 @@ void main( void )
 		}
 
 		TextColour.byte.bAlpha = AlphaByte;
-		/*TXT_MeasureString( &GlyphSet, "PRESS START", &TextLength );
+		TXT_MeasureString( &GlyphSet, "PRESS START TO REBOOT", &TextLength );
 		TXT_RenderString( &GlyphSet, &TextColour,
 			320.0f -( TextLength / 2.0f ),
-			360.0f, "PRESS START" );*/
+			32.0f, "PRESS START TO REBOOT" );
 
 		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
 		{
@@ -943,7 +937,7 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 	KMVERTEX_01 Square[ 4 ];
 	VECTOR3 SquareVertsT[ 4 ];
 	VECTOR3 SquareVerts[ 4 ];
-	MATRIX4X4 Projection, View, ViewProjection, World;
+	MATRIX4X4 Projection, View, ViewProjection, World, Screen;
 	VECTOR3 Translate = { 0.0f, 0.0f, 100.0f };
 	int i;
 	float Alpha = 1.0f;
@@ -1033,6 +1027,7 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 	AspectCamera.FarPlane = 100000.0f;
 	
 	CAM_CalculateProjectionMatrix( &Projection, &AspectCamera );
+	CAM_CalculateScreenMatrix( &Screen, &AspectCamera );
 
 	TextColour.byte.bBlue = 255;
 	TextColour.byte.bGreen = 254;
@@ -1145,10 +1140,12 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet )
 			"16:9" );
 
 		CAM_CalculateProjectionMatrix( &Projection, &AspectCamera );
+		CAM_CalculateScreenMatrix( &Screen, &AspectCamera );
 		CAM_CalculateViewMatrix( &View, &AspectCamera );
 
 		MAT44_Multiply( &ViewProjection, &World, &View );
 		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
+		MAT44_Multiply( &ViewProjection, &ViewProjection, &Screen );
 
 		MAT44_TransformVerticesRHW( ( float * )SquareVertsT,
 			( float * )SquareVerts, 4, sizeof( SquareVertsT[ 0 ] ),

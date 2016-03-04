@@ -44,37 +44,36 @@ void CAM_CalculateViewMatrix( PMATRIX4X4 p_pMatrix, const PCAMERA p_pCamera )
 void CAM_CalculateProjectionMatrix( PMATRIX4X4 p_pMatrix,
 	const PCAMERA p_pCamera )
 {
-	MATRIX4X4 ProjectionMatrix, ScreenMatrix;
-	register float HalfWidth, HalfHeight, FOV2;
+	register float FOV2, Q;
 
 	FOV2 = cosf( p_pCamera->FieldOfView / 2.0f );
 	FOV2 = FOV2 / sinf( p_pCamera->FieldOfView / 2.0f );
+	Q = p_pCamera->FarPlane / ( p_pCamera->FarPlane - p_pCamera->NearPlane );
 
-	MAT44_SetIdentity( &ProjectionMatrix );
+	MAT44_SetIdentity( p_pMatrix );
 
-	ProjectionMatrix.M00 = ( 1.0f / p_pCamera->AspectRatio ) * FOV2;
-	ProjectionMatrix.M11 = 1.0f * FOV2;
-	ProjectionMatrix.M22 = p_pCamera->FarPlane /
-		( p_pCamera->FarPlane - p_pCamera->NearPlane );
-	ProjectionMatrix.M32 = -( p_pCamera->FarPlane /
-		( p_pCamera->FarPlane - p_pCamera->NearPlane ) ) *
-		p_pCamera->NearPlane;
-	ProjectionMatrix.M23 = 1.0f;
-	ProjectionMatrix.M33 = 0.0f;
-	
-	MAT44_SetIdentity( &ScreenMatrix );
+	p_pMatrix->M00 = ( 1.0f / p_pCamera->AspectRatio ) * FOV2;
+	p_pMatrix->M11 = FOV2;
+	p_pMatrix->M22 = Q;
+	p_pMatrix->M32 = -Q * p_pCamera->NearPlane;
+	p_pMatrix->M23 = 1.0f;
+	p_pMatrix->M33 = 0.0f;
+}
+
+void CAM_CalculateScreenMatrix( PMATRIX4X4 p_pMatrix,
+	const PCAMERA p_pCamera )
+{
+	register float HalfWidth, HalfHeight;
 
 	HalfWidth = p_pCamera->GateWidth * 0.5f;
 	HalfHeight = p_pCamera->GateHeight * 0.5f;
 
-	ScreenMatrix.M00 = HalfWidth;
-	ScreenMatrix.M11 = -HalfHeight;
-	ScreenMatrix.M20 = HalfWidth;
-	ScreenMatrix.M21 = HalfHeight;
-
 	MAT44_SetIdentity( p_pMatrix );
 
-	MAT44_Multiply( p_pMatrix, &ProjectionMatrix, &ScreenMatrix );
+	p_pMatrix->M00 = HalfWidth;
+	p_pMatrix->M11 = -HalfHeight;
+	p_pMatrix->M20 = HalfWidth;
+	p_pMatrix->M21 = HalfHeight;
 }
 
 void CAM_TransformNonClipPerspective( float *p_pTransformedVertices,

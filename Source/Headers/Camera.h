@@ -22,6 +22,8 @@ typedef struct _tagCAMERA
 void CAM_CalculateViewMatrix( PMATRIX4X4 p_pMatrix, const PCAMERA p_pCamera );
 void CAM_CalculateProjectionMatrix( PMATRIX4X4 p_pMatrix,
 	const PCAMERA p_pCamrea );
+void CAM_CalculateScreenMatrix( PMATRIX4X4 p_pMatrix,
+	const PCAMERA p_pCamera );
 
 void CAM_TransformNonClipPerspective( float *p_pTransformedVertices,
 	const float *p_pVertices, const size_t p_VertexCount,

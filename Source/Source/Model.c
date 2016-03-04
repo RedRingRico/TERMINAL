@@ -5,6 +5,7 @@
 #include <SHC/private.h>
 #include <mathf.h>
 #include <Plane.h>
+#include <Frustum.h>
 
 typedef struct _tagCHUNK
 {
@@ -268,31 +269,25 @@ void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 }
 
 void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pWorld,
-	const MATRIX4X4 *p_pView, const MATRIX4X4 *p_pProjection )
+	const MATRIX4X4 *p_pView, const MATRIX4X4 *p_pProjection,
+	const MATRIX4X4 *p_pScreen )
 {
 	size_t Mesh = 0;
 	MATRIX4X4 WVP;
+	FRUSTUM ViewFrustum;
+
+	MAT44_Multiply( &WVP, p_pView, p_pProjection );
+
+	FRUS_CreateFromViewProjection( &ViewFrustum, &WVP );
 
 	MAT44_Multiply( &WVP, p_pWorld, p_pView );
 	MAT44_Multiply( &WVP, &WVP, p_pProjection );
+	MAT44_Multiply( &WVP, &WVP, p_pScreen );
 
 	for( Mesh = 0; Mesh < p_pModel->MeshCount; ++Mesh )
 	{
-		VECTOR3 TestNear = { 0.0f, 0.0f, -880.0f },
-			TestFar = { 0.0f, 0.0f, -799.0f },
-			TestBehind = { 0.0f, 0.0f, -800.0f };
-		VECTOR3 NearTrans, FarTrans, BehindTrans;
 		AABB BoundingBoxTransform;
-		PLANE TestPlane;
-		PLANE_CLASS PlaneClass;
-
-		/* Test a plane at a Pi/2 angle, should render the front three pillars
-		 * and the rear-right one */
-		TestPlane.Normal.X = 1.0f;
-		TestPlane.Normal.Y = 0.0f;
-		TestPlane.Normal.Z = 1.0f;
-		VEC3_Normalise( &TestPlane );
-		TestPlane.Distance = 0.0f;
+		FRUSTUM_CLASS FrustumClass;
 
 		MAT44_TransformVertices( ( float * )&BoundingBoxTransform.Minimum,
 			( float * )&p_pModel->pMeshes[ Mesh ].BoundingBox.Minimum, 1,
@@ -302,9 +297,10 @@ void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pWorld,
 			( float * )&p_pModel->pMeshes[ Mesh ].BoundingBox.Maximum, 1,
 			sizeof( VECTOR3 ), sizeof( VECTOR3 ), p_pWorld );
 
-		PlaneClass = PLANE_ClassifyAABB( &TestPlane, &BoundingBoxTransform );
+		FrustumClass = FRUS_ClassifyAABB( &ViewFrustum,
+			&BoundingBoxTransform );
 
-		if( PlaneClass == PLANE_CLASS_BACK )
+		if( FrustumClass != FRUSTUM_CLASS_INSIDE )
 		{
 			continue;
 		}
@@ -314,18 +310,6 @@ void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pWorld,
 			( float * )p_pModel->pMeshes[ Mesh ].Vertices.pPosition,
 			p_pModel->pMeshes[ Mesh ].IndexCount,
 			sizeof( KMVERTEX_05 ), sizeof( VECTOR3 ), &WVP );
-
-		MAT44_TransformVerticesRHW(
-			( float * )&NearTrans, ( float * )&TestNear, 1,
-			sizeof( VECTOR3 ), sizeof( VECTOR3 ), &WVP );
-
-		MAT44_TransformVerticesRHW(
-			( float * )&FarTrans, ( float * )&TestFar, 1,
-			sizeof( VECTOR3 ), sizeof( VECTOR3 ), &WVP );
-
-		MAT44_TransformVerticesRHW(
-			( float * )&BehindTrans, ( float * )&TestBehind, 1,
-			sizeof( VECTOR3 ), sizeof( VECTOR3 ), &WVP );
 
 		MAT44_ClipVertices(
 			( p_pModel->pMeshes[ Mesh ].pKamuiVertices ),
