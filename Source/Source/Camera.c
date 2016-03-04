@@ -45,32 +45,34 @@ void CAM_CalculateProjectionMatrix( PMATRIX4X4 p_pMatrix,
 	const PCAMERA p_pCamera )
 {
 	MATRIX4X4 ProjectionMatrix, ScreenMatrix;
-	register float HalfWidth, HalfHeight, H;
+	register float HalfWidth, HalfHeight, FOV2;
 
-	HalfWidth = p_pCamera->GateWidth / 2.0f;
-	HalfHeight = p_pCamera->GateHeight / 2.0f;
-
-	MAT44_SetIdentity( p_pMatrix );
-
-	H = tanf( p_pCamera->FieldOfView / 2.0f );
+	FOV2 = cosf( p_pCamera->FieldOfView / 2.0f );
+	FOV2 = FOV2 / sinf( p_pCamera->FieldOfView / 2.0f );
 
 	MAT44_SetIdentity( &ProjectionMatrix );
 
-	ProjectionMatrix.M00 = 1.0f / p_pCamera->AspectRatio;
-	ProjectionMatrix.M22 = H * p_pCamera->FarPlane /
+	ProjectionMatrix.M00 = ( 1.0f / p_pCamera->AspectRatio ) * FOV2;
+	ProjectionMatrix.M11 = 1.0f * FOV2;
+	ProjectionMatrix.M22 = p_pCamera->FarPlane /
 		( p_pCamera->FarPlane - p_pCamera->NearPlane );
-	ProjectionMatrix.M32 = -H * p_pCamera->NearPlane * p_pCamera->FarPlane /
-		( p_pCamera->FarPlane - p_pCamera->NearPlane );
+	ProjectionMatrix.M32 = -( p_pCamera->FarPlane /
+		( p_pCamera->FarPlane - p_pCamera->NearPlane ) ) *
+		p_pCamera->NearPlane;
 	ProjectionMatrix.M23 = 1.0f;
-	
 	ProjectionMatrix.M33 = 0.0f;
 	
 	MAT44_SetIdentity( &ScreenMatrix );
+
+	HalfWidth = p_pCamera->GateWidth * 0.5f;
+	HalfHeight = p_pCamera->GateHeight * 0.5f;
 
 	ScreenMatrix.M00 = HalfWidth;
 	ScreenMatrix.M11 = -HalfHeight;
 	ScreenMatrix.M20 = HalfWidth;
 	ScreenMatrix.M21 = HalfHeight;
+
+	MAT44_SetIdentity( p_pMatrix );
 
 	MAT44_Multiply( p_pMatrix, &ProjectionMatrix, &ScreenMatrix );
 }
