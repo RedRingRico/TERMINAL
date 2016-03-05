@@ -5,6 +5,7 @@
 #include <Mesh.h>
 #include <Vector3.h>
 #include <Matrix4x4.h>
+#include <Renderer.h>
 
 typedef struct _tagMODEL_HEADER
 {
@@ -29,9 +30,10 @@ void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 	const VECTOR3 *p_pLightPosition );
 /*void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pTransform );*/
 
-void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pWorld,
+void MDL_RenderModel( PMODEL p_pModel, RENDERER *p_pRenderer,
+	const MATRIX4X4 *p_pWorld,
 	const MATRIX4X4 *p_pView, const MATRIX4X4 *p_pProjection,
-	const MATRIX4X4 *p_pScreen);
+	const MATRIX4X4 *p_pScreen );
 
 #endif /* __TERMINAL_MODEL_H__ */
 

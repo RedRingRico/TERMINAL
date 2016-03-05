@@ -57,23 +57,54 @@ bool PLANE_IntersectsAABB( const PPLANE p_pPlane, const PAABB p_pAABB )
 PLANE_CLASS PLANE_ClassifyAABB( const PPLANE p_pPlane, const PAABB p_pAABB )
 {
 	float Class;
+	VECTOR3 Minimum, Maximum;
 
-	Class = VEC3_Dot( &p_pAABB->Maximum, &p_pPlane->Normal ) +
-		p_pPlane->Distance;
-
-	if( Class < ARI_EPSILON )
+	/* X */
+	if( p_pPlane->Normal.X >= 0.0f )
 	{
-		return PLANE_CLASS_BACK;
+		Minimum.X = p_pAABB->Minimum.X;
+		Maximum.X = p_pAABB->Maximum.X;
+	}
+	else
+	{
+		Minimum.X = p_pAABB->Maximum.X;
+		Maximum.X = p_pAABB->Minimum.X;
 	}
 
-	Class = VEC3_Dot( &p_pAABB->Minimum, &p_pPlane->Normal ) +
-		p_pPlane->Distance;
+	/* Y */
+	if( p_pPlane->Normal.Y >= 0.0f )
+	{
+		Minimum.Y = p_pAABB->Minimum.Y;
+		Maximum.Y = p_pAABB->Maximum.Y;
+	}
+	else
+	{
+		Minimum.Y = p_pAABB->Maximum.Y;
+		Maximum.Y = p_pAABB->Minimum.Y;
+	}
+	
+	/* Z */
+	if( p_pPlane->Normal.Z >= 0.0f )
+	{
+		Minimum.Z = p_pAABB->Minimum.Z;
+		Maximum.Z = p_pAABB->Maximum.Z;
+	}
+	else
+	{
+		Minimum.Z = p_pAABB->Maximum.Z;
+		Maximum.Z = p_pAABB->Minimum.Z;
+	}
 
-	if( Class > ARI_EPSILON )
+	if( VEC3_Dot( &p_pPlane->Normal, &Minimum ) + p_pPlane->Distance > 0.0f )
 	{
 		return PLANE_CLASS_FRONT;
 	}
 
-	return PLANE_CLASS_PLANAR;
+	if( VEC3_Dot( &p_pPlane->Normal, &Maximum ) + p_pPlane->Distance >= 0.0f )
+	{
+		return PLANE_CLASS_PLANAR;
+	}
+
+	return PLANE_CLASS_BACK;
 }
 

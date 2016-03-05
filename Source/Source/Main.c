@@ -103,6 +103,7 @@ void main( void )
 	char PrintBuffer[ 80 ];
 	PERF_INFO PerfInfo;
 	AUDIO_PARAMETERS AudioParameters;
+	RENDERER Renderer;
 
 	CAMERA TestCamera;
 	MATRIX4X4 Projection, Screen;
@@ -391,6 +392,8 @@ void main( void )
 		static float PlayerRotate = 0.0f;
 		static float StickRotate = 0.0f;
 
+		memset( &Renderer, 0, sizeof( Renderer ) );
+
 		StartTime = syTmrGetCount( );
 
 		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
@@ -519,15 +522,29 @@ void main( void )
 		MAT44_RotateAxisAngle( &World, &RotateAxis, PlayerRotate );
 		MAT44_Translate( &World, &PlayerMove );
 
-		MDL_RenderModel( &Hiro, &World, &View, &Projection, &Screen );
+		MDL_RenderModel( &Hiro, &Renderer, &World, &View, &Projection,
+			&Screen );
 
 		MAT44_SetIdentity( &World );
 
-		MDL_RenderModel( &Level, &World, &View, &Projection, &Screen );
+		MDL_RenderModel( &Level, &Renderer, &World, &View, &Projection,
+			&Screen );
+
+		TextColour.dwPacked = 0xFFFFFFFF;
+
+#if defined ( DEBUG )
+		sprintf( PrintBuffer, "Visible polygons: %lu",
+			Renderer.VisiblePolygons );
+		TXT_RenderString( &GlyphSet, &TextColour, 10.0f,
+			( float )GlyphSet.LineHeight * 7.0f, PrintBuffer );
+
+		sprintf( PrintBuffer, "Culled polygons: %lu",
+			Renderer.CulledPolygons );
+		TXT_RenderString( &GlyphSet, &TextColour, 10.0f,
+			( float )GlyphSet.LineHeight * 8.0f, PrintBuffer );
 
 		TextColour.dwPacked = 0xFFFFFF00;
 
-#if defined ( DEBUG )
 		sprintf( PrintBuffer, "Rotate:        %f", Rotate );
 		TXT_RenderString( &GlyphSet, &TextColour,
 			10.0f, ( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );

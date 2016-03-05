@@ -2,6 +2,7 @@
 #define __TERMINAL_RENDERER_H__
 
 #include <kamui2.h>
+#include <shinobi.h>
 
 typedef struct _tagDREAMCAST_RENDERERCONFIGURATION
 {
@@ -17,6 +18,12 @@ typedef struct _tagDREAMCAST_RENDERERCONFIGURATION
 	KMUINT32			PassCount;
 	KMPASSINFO			PassInfo[ KM_MAX_DISPLAY_LIST_PASS ];
 }DREAMCAST_RENDERERCONFIGURATION;
+
+typedef struct _tagRENDERER
+{
+	Uint32	VisiblePolygons;
+	Uint32	CulledPolygons;
+}RENDERER,*PRENDERER;
 
 int REN_Initialise( DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration );
 void REN_Terminate( void );

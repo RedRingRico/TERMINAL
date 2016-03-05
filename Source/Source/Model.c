@@ -268,7 +268,8 @@ void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 	}
 }
 
-void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pWorld,
+void MDL_RenderModel( PMODEL p_pModel, RENDERER *p_pRenderer,
+	const MATRIX4X4 *p_pWorld,
 	const MATRIX4X4 *p_pView, const MATRIX4X4 *p_pProjection,
 	const MATRIX4X4 *p_pScreen )
 {
@@ -300,10 +301,28 @@ void MDL_RenderModel( PMODEL p_pModel, const MATRIX4X4 *p_pWorld,
 		FrustumClass = FRUS_ClassifyAABB( &ViewFrustum,
 			&BoundingBoxTransform );
 
-		if( FrustumClass != FRUSTUM_CLASS_INSIDE )
+		if( FrustumClass == FRUSTUM_CLASS_OUTSIDE )
 		{
+			p_pRenderer->CulledPolygons +=
+				p_pModel->pMeshes[ Mesh ].IndexCount;
+
 			continue;
 		}
+
+		if( FrustumClass != FRUSTUM_CLASS_INSIDE )
+		{
+			if( PLANE_ClassifyAABB( &ViewFrustum.Plane[ FRUSTUM_INDEX_NEAR ],
+				&BoundingBoxTransform ) != PLANE_CLASS_BACK )
+			{
+				p_pRenderer->CulledPolygons +=
+					p_pModel->pMeshes[ Mesh ].IndexCount;
+
+				continue;
+			}
+		}
+
+		p_pRenderer->VisiblePolygons +=
+			p_pModel->pMeshes[ Mesh ].IndexCount;
 		
 		MAT44_TransformVerticesRHW(
 			( float * )( p_pModel->pMeshes[ Mesh ].pKamuiVertices ) + 1,
