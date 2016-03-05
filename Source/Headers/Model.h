@@ -6,6 +6,7 @@
 #include <Vector3.h>
 #include <Matrix4x4.h>
 #include <Renderer.h>
+#include <Plane.h>
 
 typedef struct _tagMODEL_HEADER
 {
@@ -34,6 +35,11 @@ void MDL_RenderModel( PMODEL p_pModel, RENDERER *p_pRenderer,
 	const MATRIX4X4 *p_pWorld,
 	const MATRIX4X4 *p_pView, const MATRIX4X4 *p_pProjection,
 	const MATRIX4X4 *p_pScreen );
+
+/* For now, just handle triangle lists (it's really not pretty) 
+ * Returns the vertex count generated (used by REN_DrawPrimitives05Cached) */
+Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
+	const PPLANE p_pPlane );
 
 #endif /* __TERMINAL_MODEL_H__ */
 

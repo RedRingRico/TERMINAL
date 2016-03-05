@@ -39,7 +39,7 @@ typedef struct _tagMESH
 	Uint32			IndexCount;
 	PRIMITIVE_TYPE	Type;
 	MODEL_VERTEX	Vertices; // 24
-	MODEL_VERTEX	*pTransformedVertices; // 36
+	MODEL_VERTEX	TransformedVertices; // 36
 	Uint32			*pIndices; // 40
 	KMVERTEX_05		*pKamuiVertices; //44
 	/* Change to a material type later */

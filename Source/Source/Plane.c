@@ -108,3 +108,21 @@ PLANE_CLASS PLANE_ClassifyAABB( const PPLANE p_pPlane, const PAABB p_pAABB )
 	return PLANE_CLASS_BACK;
 }
 
+PLANE_CLASS PLANE_ClassifyVECTOR3( const PPLANE p_pPlane,
+	const VECTOR3 *p_pVector )
+{
+	float Side = VEC3_Dot( p_pVector, &p_pPlane->Normal ) + p_pPlane->Distance;
+
+	if( Side > ARI_EPSILON )
+	{
+		return PLANE_CLASS_FRONT;
+	}
+
+	if( Side < -ARI_EPSILON )
+	{
+		return PLANE_CLASS_BACK;
+	}
+
+	return PLANE_CLASS_PLANAR;
+}
+

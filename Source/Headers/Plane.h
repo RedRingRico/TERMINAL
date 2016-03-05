@@ -21,6 +21,8 @@ typedef enum
 
 bool PLANE_IntersectsAABB( const PPLANE p_pPlane, const PAABB p_pAABB );
 PLANE_CLASS PLANE_ClassifyAABB( const PPLANE p_pPlane, const PAABB p_pAABB );
+PLANE_CLASS PLANE_ClassifyVECTOR3( const PPLANE p_pPlane,
+	const VECTOR3 *p_pVector );
 
 #endif /* __TERMINAL_PLANE_H__ */
 

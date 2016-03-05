@@ -304,39 +304,77 @@ void MDL_RenderModel( PMODEL p_pModel, RENDERER *p_pRenderer,
 		if( FrustumClass == FRUSTUM_CLASS_OUTSIDE )
 		{
 			p_pRenderer->CulledPolygons +=
-				p_pModel->pMeshes[ Mesh ].IndexCount;
+				p_pModel->pMeshes[ Mesh ].IndexCount / 3;
 
 			continue;
 		}
 
+		/* Must be along one of the planes instead of inside or outside */
 		if( FrustumClass != FRUSTUM_CLASS_INSIDE )
 		{
-			if( PLANE_ClassifyAABB( &ViewFrustum.Plane[ FRUSTUM_INDEX_NEAR ],
-				&BoundingBoxTransform ) != PLANE_CLASS_BACK )
+			PLANE_CLASS NearClass = PLANE_ClassifyAABB(
+				&ViewFrustum.Plane[ FRUSTUM_INDEX_NEAR ],
+				&BoundingBoxTransform );
+
+			if( NearClass == PLANE_CLASS_FRONT )
 			{
 				p_pRenderer->CulledPolygons +=
-					p_pModel->pMeshes[ Mesh ].IndexCount;
+					p_pModel->pMeshes[ Mesh ].IndexCount / 3;
 
 				continue;
 			}
+			else if( NearClass == PLANE_CLASS_PLANAR )
+			{
+				/* Clip it! */
+				Uint32 VertexCount;
+
+				MAT44_TransformVertices(
+					( float * )p_pModel->pMeshes[ Mesh
+						].TransformedVertices.pPosition,
+					( float * )p_pModel->pMeshes[ Mesh ].Vertices.pPosition,
+					p_pModel->pMeshes[ Mesh ].IndexCount,
+					sizeof( VECTOR3 ), sizeof( VECTOR3 ), p_pWorld );
+
+				VertexCount = MDL_ClipMeshToPlane( p_pRenderer,
+					&p_pModel->pMeshes[ Mesh ],
+					&ViewFrustum.Plane[ FRUSTUM_INDEX_NEAR ] );
+
+				MAT44_TransformVerticesRHW( 
+					( float * )( p_pRenderer->pVertices05 ) + 1,
+					( float * )( p_pRenderer->pVertices05 ) + 1,
+					VertexCount, sizeof( KMVERTEX_05 ), sizeof( KMVERTEX_05 ),
+					&WVP );
+
+				REN_DrawPrimitives05Cached( p_pRenderer, &MDL_ModelStripHead,
+					0, VertexCount );
+			}
+			else
+			{
+				/* Render it! */
+				goto RENDER_NORMAL;
+			}
 		}
-
-		p_pRenderer->VisiblePolygons +=
-			p_pModel->pMeshes[ Mesh ].IndexCount;
+		else
+		{
+RENDER_NORMAL:
+			p_pRenderer->VisiblePolygons +=
+				p_pModel->pMeshes[ Mesh ].IndexCount / 3;
 		
-		MAT44_TransformVerticesRHW(
-			( float * )( p_pModel->pMeshes[ Mesh ].pKamuiVertices ) + 1,
-			( float * )p_pModel->pMeshes[ Mesh ].Vertices.pPosition,
-			p_pModel->pMeshes[ Mesh ].IndexCount,
-			sizeof( KMVERTEX_05 ), sizeof( VECTOR3 ), &WVP );
+			MAT44_TransformVerticesRHW(
+				( float * )( p_pModel->pMeshes[ Mesh ].pKamuiVertices ) + 1,
+				( float * )p_pModel->pMeshes[ Mesh ].Vertices.pPosition,
+				p_pModel->pMeshes[ Mesh ].IndexCount,
+				sizeof( KMVERTEX_05 ), sizeof( VECTOR3 ), &WVP );
 
-		MAT44_ClipVertices(
-			( p_pModel->pMeshes[ Mesh ].pKamuiVertices ),
-			NULL, p_pModel->pMeshes[ Mesh ].IndexCount, sizeof( KMVERTEX_05 ) );
+			MAT44_ClipVertices(
+				( p_pModel->pMeshes[ Mesh ].pKamuiVertices ),
+				NULL, p_pModel->pMeshes[ Mesh ].IndexCount,
+				sizeof( KMVERTEX_05 ) );
 
-		REN_DrawPrimitives05( &MDL_ModelStripHead,
-			p_pModel->pMeshes[ Mesh ].pKamuiVertices,
-			p_pModel->pMeshes[ Mesh ].IndexCount );
+			REN_DrawPrimitives05( &MDL_ModelStripHead,
+				p_pModel->pMeshes[ Mesh ].pKamuiVertices,
+				p_pModel->pMeshes[ Mesh ].IndexCount );
+		}
 	}
 }
 
@@ -359,7 +397,7 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 		MeshChunk.ListCount );
 	p_pMesh->Vertices.pUV = syMalloc( sizeof( UV ) *
 		MeshChunk.ListCount );
-	p_pMesh->pTransformedVertices = syMalloc( sizeof( MODEL_VERTEX ) *
+	p_pMesh->TransformedVertices.pPosition = syMalloc( sizeof( VECTOR3 ) *
 		MeshChunk.ListCount );
 	p_pMesh->pIndices = syMalloc( sizeof( Uint32 ) * MeshChunk.ListCount );
 	p_pMesh->pKamuiVertices =
@@ -455,5 +493,100 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 	syFree( pOriginalVertices );
 
 	return DataPosition;
+}
+
+Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
+	const PPLANE p_pPlane )
+{
+	Uint32 Vertex;
+	Uint32 VertexCounter = 0;
+	Uint32 VertexPassCount = 0;
+	Uint32 TriangleIndex = 0;
+	KMVERTEX5 Triangle[ 3 ];
+	bool V0 = false;
+	bool V1 = false;
+	bool V2 = false;
+
+	/* For now, only render polygons on the back side of the plane, ignore
+	 * intersections */
+	for( Vertex = 0; Vertex < p_pMesh->IndexCount; ++Vertex )
+	{
+		if( VertexCounter == 3 )
+		{
+			VertexCounter = 0;
+
+			if( ( V0 == true ) && ( V1 == true ) && ( V2 == true ) )
+			{
+				Triangle[ 0 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+				Triangle[ 1 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+				Triangle[ 2 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
+				memcpy( &p_pRenderer->pVertices05[ TriangleIndex ],
+					&Triangle, sizeof( Triangle ) );
+				TriangleIndex += 3;
+			}
+			V0 = V1 = V2 = false;
+		}
+
+		if( PLANE_ClassifyVECTOR3( p_pPlane,
+			&p_pMesh->TransformedVertices.pPosition[ Vertex ] ) ==
+				PLANE_CLASS_BACK )
+		{
+			if( VertexCounter == 0 )
+			{
+				Triangle[ 0 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 0 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 0 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 0 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 0 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 0 ].fBaseAlpha = 1.0f;
+				Triangle[ 0 ].fBaseRed = 1.0f;
+				Triangle[ 0 ].fBaseGreen = 1.0f;
+				Triangle[ 0 ].fBaseBlue = 1.0f;
+
+				V0 = true;
+			}
+			if( VertexCounter == 1 )
+			{
+				Triangle[ 1 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 1 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 1 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 1 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 1 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 1 ].fBaseAlpha = 1.0f;
+				Triangle[ 1 ].fBaseRed = 1.0f;
+				Triangle[ 1 ].fBaseGreen = 1.0f;
+				Triangle[ 1 ].fBaseBlue = 1.0f;
+
+				V1 = true;
+			}
+			if( VertexCounter == 2 )
+			{
+				Triangle[ 2 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 2 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 2 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 2 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 2 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 2 ].fBaseAlpha = 1.0f;
+				Triangle[ 2 ].fBaseRed = 1.0f;
+				Triangle[ 2 ].fBaseGreen = 1.0f;
+				Triangle[ 2 ].fBaseBlue = 1.0f;
+
+				V2 = true;
+			}
+		}
+
+		++VertexCounter;
+	}
+
+	return TriangleIndex;
 }
 

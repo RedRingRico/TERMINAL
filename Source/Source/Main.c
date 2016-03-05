@@ -189,7 +189,7 @@ void main( void )
 	RendererConfiguration.PassInfo[ 0 ].fBufferSize[ 3 ] = 0.0f;
 	RendererConfiguration.PassInfo[ 0 ].fBufferSize[ 4 ] = 50.0f;
 
-	REN_Initialise( &RendererConfiguration );
+	REN_Initialise( &Renderer, &RendererConfiguration );
 
 	scif_close( );
 
@@ -392,7 +392,7 @@ void main( void )
 		static float PlayerRotate = 0.0f;
 		static float StickRotate = 0.0f;
 
-		memset( &Renderer, 0, sizeof( Renderer ) );
+		Renderer.VisiblePolygons = Renderer.CulledPolygons = 0;
 
 		StartTime = syTmrGetCount( );
 
@@ -530,9 +530,9 @@ void main( void )
 		MDL_RenderModel( &Level, &Renderer, &World, &View, &Projection,
 			&Screen );
 
-		TextColour.dwPacked = 0xFFFFFFFF;
-
 #if defined ( DEBUG )
+
+		TextColour.dwPacked = 0xFFFFFFFF;
 		sprintf( PrintBuffer, "Visible polygons: %lu",
 			Renderer.VisiblePolygons );
 		TXT_RenderString( &GlyphSet, &TextColour, 10.0f,
@@ -563,6 +563,7 @@ void main( void )
 			10.0f, ( float )GlyphSet.LineHeight * 6.0f, PrintBuffer );
 #endif /* DEBUG */
 
+		TextColour.dwPacked = 0xFFFFFFFF;
 
 		if( Alpha < 0.0f )
 		{
@@ -1324,8 +1325,6 @@ bool LoadSoundBank( Uint32 *p_pAICA, char *p_pName, Sint32 *p_pSize )
 	acG2Write( p_pAICA, pImage, *p_pSize );
 
 	syFree( pImage );
-
-	//acSystemWaitUntilG2FifoIsEmpty( );
 
 	return true;
 }

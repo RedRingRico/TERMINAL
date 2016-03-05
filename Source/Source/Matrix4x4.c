@@ -330,37 +330,10 @@ void MAT44_TransformVerticesRHW( float *p_pTransformedVertices,
 
 		ftrv( ( float * )g_SH4Vector, ( float * )g_Result );
 
-		/*if( g_Result[ 2 ] < 1.0f )
-		{
-			g_Result[ 2 ] = 1.0f;
-		}*/
-		//2.6866
-		//0.372218
-
 		RHW = 1.0f / g_Result[ 2 ];
-		/*if( RHW >= H )
-		{
-			RHW = H;
-		}
-
-		*/
-		/*if( RHW <= 0.372218f )
-		{
-			RHW = H;
-		}*//*
-
-		if( RHW <= 0.0f )
-		{
-			RHW = H;
-		}*/
 
 		*( pDestVector++ ) = RHW * g_Result[ 0 ];
 		*( pDestVector++ ) = RHW * g_Result[ 1 ];
-
-		/*if( RHW < 0.0f )
-		{
-			RHW = 0.0f;
-		}*/
 		*( pDestVector++ ) = RHW;
 
 		pDestVector += TStrideGap;

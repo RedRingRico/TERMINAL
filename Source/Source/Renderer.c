@@ -1,5 +1,6 @@
 #include <Renderer.h>
 #include <Memory.h>
+#include <Log.h>
 
 /* Using the macro interface seems to make things worse
  * The recommended L5 is slower than L4 and L3 */
@@ -55,7 +56,8 @@ static KMSTRIPHEAD g_StripHead01;
 static KMSTRIPHEAD g_StripHead05;
 static KMSTRIPHEAD g_StripHead16;
 
-int REN_Initialise( DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration )
+int REN_Initialise( PRENDERER p_pRenderer,
+	const DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration )
 {
 	KMUINT32 PassIndex;
 
@@ -124,6 +126,16 @@ int REN_Initialise( DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration )
 
 	memset( &g_StripHead16, 0, sizeof( g_StripHead16 ) );
 	kmGenerateStripHead16( &g_StripHead16, &g_DefaultStripContext );
+
+	/* Allocate memory for 2,000 vertices of type 05 */
+	p_pRenderer->pVertices05 = syMalloc( 2000 * sizeof( KMVERTEX5 ) );
+
+	LOG_Debug( "Vertices allocated at 0x%08X", p_pRenderer->pVertices05 );
+
+	if( p_pRenderer->pVertices05 == NULL )
+	{
+		LOG_Debug( "Failed to allocate memory for the vertices" );
+	}
 
 	return 0;
 }
@@ -339,7 +351,52 @@ void REN_DrawPrimitives16( PKMSTRIPHEAD p_pStripHead, PKMVERTEX_16 p_pVertices,
 			p_pVertices[ VertexIndex ].dwUVC );
 	}
 
-	kmxxReleaseCurrentPtr( g_Kamui2config.pBufferDesc );
+	kmxxReleaseCurrentPtr( g_Kamui2Config.pBufferDesc );
+
+	kmEndStrip( g_Kamui2Config.pBufferDesc );
+}
+
+void REN_DrawPrimitives05Cached( PRENDERER p_pRenderer,
+	PKMSTRIPHEAD p_pStripHead, KMUINT32 p_Offset, KMUINT32 p_Count )
+{
+	KMUINT32 VertexIndex;
+	PKMVERTEX_05 pVertex;
+
+	kmxxGetCurrentPtr( g_Kamui2Config.pBufferDesc );
+
+	if( p_pStripHead )
+	{
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc, p_pStripHead );
+	}
+	else
+	{
+		kmxxStartStrip( g_Kamui2Config.pBufferDesc, &g_StripHead16 );
+	}
+
+	pVertex = &p_pRenderer->pVertices05[ p_Offset ];
+
+	for( VertexIndex = 0; VertexIndex < p_Count; ++VertexIndex )
+	{
+		kmxxSetVertex_5(
+			pVertex->ParamControlWord,
+			pVertex->fX,
+			pVertex->fY,
+			pVertex->u.fInvW,
+			pVertex->fU,
+			pVertex->fV,
+			pVertex->fBaseAlpha,
+			pVertex->fBaseRed,
+			pVertex->fBaseGreen,
+			pVertex->fBaseBlue,
+			pVertex->fOffsetAlpha,
+			pVertex->fOffsetRed,
+			pVertex->fOffsetGreen,
+			pVertex->fOffsetBlue );
+		
+		++pVertex;
+	}
+
+	kmxxReleaseCurrentPtr( g_Kamui2Config.pBufferDesc );
 
 	kmEndStrip( g_Kamui2Config.pBufferDesc );
 }
