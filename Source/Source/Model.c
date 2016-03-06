@@ -455,6 +455,9 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 			pOriginalVertices[ p_pMesh->pIndices[ Index ] ].UV.V;
 
 		p_pMesh->pKamuiVertices[ Index ].fBaseAlpha = 1.0f;
+		p_pMesh->pKamuiVertices[ Index ].fBaseRed = 1.0f;
+		p_pMesh->pKamuiVertices[ Index ].fBaseBlue = 1.0f;
+		p_pMesh->pKamuiVertices[ Index ].fBaseGreen = 1.0f;
 
 		/* Bounding box */
 		if( p_pMesh->Vertices.pPosition[ Index ].X < BoundingBox.Minimum.X )
@@ -502,6 +505,7 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 	Uint32 Inside = 0;
 	Uint32 Outside = 0;
 	KMVERTEX5 Triangle[ 3 ];
+	KMVERTEX5 Quad[ 4 ];
 	bool V0 = false;
 	bool V1 = false;
 	bool V2 = false;
@@ -511,6 +515,125 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 	for( Vertex = 0; Vertex < p_pMesh->IndexCount; ++Vertex )
 	{
 		PLANE_CLASS VectorClass;
+
+		VectorClass = PLANE_ClassifyVECTOR3( p_pPlane,
+			&p_pMesh->TransformedVertices.pPosition[ Vertex ] );
+
+		if( ( VectorClass == PLANE_CLASS_BACK ) ||
+			( VectorClass == PLANE_CLASS_PLANAR ) )
+		{
+			if( VertexCounter == 0 )
+			{
+				Triangle[ 0 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 0 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 0 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 0 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 0 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 0 ].fBaseAlpha = 1.0f;
+				Triangle[ 0 ].fBaseRed = 1.0f;
+				Triangle[ 0 ].fBaseGreen = 1.0f;
+				Triangle[ 0 ].fBaseBlue = 1.0f;
+
+				V0 = true;
+			}
+			else if( VertexCounter == 1 )
+			{
+				Triangle[ 1 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 1 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 1 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 1 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 1 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 1 ].fBaseAlpha = 1.0f;
+				Triangle[ 1 ].fBaseRed = 1.0f;
+				Triangle[ 1 ].fBaseGreen = 1.0f;
+				Triangle[ 1 ].fBaseBlue = 1.0f;
+
+				V1 = true;
+			}
+			else if( VertexCounter == 2 )
+			{
+				Triangle[ 2 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 2 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 2 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 2 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 2 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 2 ].fBaseAlpha = 1.0f;
+				Triangle[ 2 ].fBaseRed = 1.0f;
+				Triangle[ 2 ].fBaseGreen = 1.0f;
+				Triangle[ 2 ].fBaseBlue = 1.0f;
+
+				V2 = true;
+			}
+
+			++Inside;
+		}
+		else /* Clipped side of the polygon */
+		{
+			if( VertexCounter == 0 )
+			{
+				Triangle[ 0 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 0 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 0 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 0 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 0 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 0 ].fBaseAlpha = 1.0f;
+				Triangle[ 0 ].fBaseRed = 1.0f;
+				Triangle[ 0 ].fBaseGreen = 1.0f;
+				Triangle[ 0 ].fBaseBlue = 1.0f;
+
+				V0 = false;
+			}
+			else if( VertexCounter == 1 )
+			{
+				Triangle[ 1 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 1 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 1 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 1 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 1 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 1 ].fBaseAlpha = 1.0f;
+				Triangle[ 1 ].fBaseRed = 1.0f;
+				Triangle[ 1 ].fBaseGreen = 1.0f;
+				Triangle[ 1 ].fBaseBlue = 1.0f;
+
+				V1 = false;
+			}
+			else if( VertexCounter == 2 )
+			{
+				Triangle[ 2 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 2 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 2 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 2 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 2 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 2 ].fBaseAlpha = 1.0f;
+				Triangle[ 2 ].fBaseRed = 1.0f;
+				Triangle[ 2 ].fBaseGreen = 1.0f;
+				Triangle[ 2 ].fBaseBlue = 1.0f;
+
+				V2 = false;
+			}
+
+			++Outside;
+		}
+
+		++VertexCounter;
 
 		if( VertexCounter == 3 )
 		{
@@ -527,6 +650,7 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 			}
 			else
 			{
+				/* Clean up on line 533! */
 				if( Inside == 1 )
 				{
 					float Scale;
@@ -656,129 +780,204 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 						&Triangle, sizeof( Triangle ) );
 					TriangleIndex += 3;
 				}
+				else if( Inside == 2 )
+				{
+					float Scale;
+					VECTOR3 InsideV, OutsideV, Direction;
+					float DotCur, DotNext;
+
+					if( V0 == false )
+					{
+						VECTOR3 Direction;
+
+						InsideV.X = Triangle[ 1 ].fX;
+						InsideV.Y = Triangle[ 1 ].fY;
+						InsideV.Z = Triangle[ 1 ].u.fInvW;
+
+						OutsideV.X = Triangle[ 0 ].fX;
+						OutsideV.Y = Triangle[ 0 ].fY;
+						OutsideV.Z = Triangle[ 0 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						DotCur = -( VEC3_Dot( &p_pPlane->Normal, &InsideV ) +
+							p_pPlane->Distance );
+
+						Scale = DotCur / DotNext;
+
+						Quad[ 0 ].fX = InsideV.X + ( Direction.X * Scale );
+						Quad[ 0 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Quad[ 0 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+						Quad[ 0 ].fBaseAlpha = 1.0f;
+						Quad[ 0 ].fBaseRed = 1.0f;
+						Quad[ 0 ].fBaseGreen = 1.0f;
+						Quad[ 0 ].fBaseBlue = 1.0f;
+						Quad[ 0 ].fU = Triangle[ 0 ].fU;
+						Quad[ 0 ].fV = Triangle[ 0 ].fV;
+
+
+						InsideV.X = Triangle[ 2 ].fX;
+						InsideV.Y = Triangle[ 2 ].fY;
+						InsideV.Z = Triangle[ 2 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						DotCur = -( VEC3_Dot( &p_pPlane->Normal, &InsideV ) +
+							p_pPlane->Distance );
+
+						Scale = DotCur / DotNext;
+
+						Quad[ 2 ].fX = InsideV.X + ( Direction.X * Scale );
+						Quad[ 2 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Quad[ 2 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+						Quad[ 2 ].fBaseAlpha = 1.0f;
+						Quad[ 2 ].fBaseRed = 1.0f;
+						Quad[ 2 ].fBaseGreen = 1.0f;
+						Quad[ 2 ].fBaseBlue = 1.0f;
+						Quad[ 2 ].fU = Triangle[ 0 ].fU;
+						Quad[ 2 ].fV = Triangle[ 0 ].fV;
+
+						memcpy( &Quad[ 1 ], &Triangle[ 1 ],
+							sizeof( KMVERTEX_05 ) );
+						memcpy( &Quad[ 3 ], &Triangle[ 2 ],
+							sizeof( KMVERTEX_05 ) );
+					}
+					else if( V1 == false )
+					{
+						VECTOR3 Direction;
+
+						InsideV.X = Triangle[ 2 ].fX;
+						InsideV.Y = Triangle[ 2 ].fY;
+						InsideV.Z = Triangle[ 2 ].u.fInvW;
+
+						OutsideV.X = Triangle[ 1 ].fX;
+						OutsideV.Y = Triangle[ 1 ].fY;
+						OutsideV.Z = Triangle[ 1 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						DotCur = -( VEC3_Dot( &p_pPlane->Normal, &InsideV ) +
+							p_pPlane->Distance );
+
+						Scale = DotCur / DotNext;
+
+						Quad[ 0 ].fX = InsideV.X + ( Direction.X * Scale );
+						Quad[ 0 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Quad[ 0 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+						Quad[ 0 ].fBaseAlpha = 1.0f;
+						Quad[ 0 ].fBaseRed = 1.0f;
+						Quad[ 0 ].fBaseGreen = 1.0f;
+						Quad[ 0 ].fBaseBlue = 1.0f;
+						Quad[ 0 ].fU = Triangle[ 1 ].fU;
+						Quad[ 0 ].fV = Triangle[ 1 ].fV;
+
+						InsideV.X = Triangle[ 0 ].fX;
+						InsideV.Y = Triangle[ 0 ].fY;
+						InsideV.Z = Triangle[ 0 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						DotCur = -( VEC3_Dot( &p_pPlane->Normal, &InsideV ) +
+							p_pPlane->Distance );
+
+						Scale = DotCur / DotNext;
+
+						Quad[ 2 ].fX = InsideV.X + ( Direction.X * Scale );
+						Quad[ 2 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Quad[ 2 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+						Quad[ 2 ].fBaseAlpha = 1.0f;
+						Quad[ 2 ].fBaseRed = 1.0f;
+						Quad[ 2 ].fBaseGreen = 1.0f;
+						Quad[ 2 ].fBaseBlue = 1.0f;
+						Quad[ 2 ].fU = Triangle[ 0 ].fU;
+						Quad[ 2 ].fV = Triangle[ 0 ].fV;
+
+						memcpy( &Quad[ 1 ], &Triangle[ 2 ],
+							sizeof( KMVERTEX_05 ) );
+						memcpy( &Quad[ 3 ], &Triangle[ 0 ],
+							sizeof( KMVERTEX_05 ) );
+					}
+					else
+					{
+						VECTOR3 Direction;
+
+						InsideV.X = Triangle[ 0 ].fX;
+						InsideV.Y = Triangle[ 0 ].fY;
+						InsideV.Z = Triangle[ 0 ].u.fInvW;
+
+						OutsideV.X = Triangle[ 2 ].fX;
+						OutsideV.Y = Triangle[ 2 ].fY;
+						OutsideV.Z = Triangle[ 2 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						DotCur = -( VEC3_Dot( &p_pPlane->Normal, &InsideV ) +
+							p_pPlane->Distance );
+
+						Scale = DotCur / DotNext;
+
+						Quad[ 0 ].fX = InsideV.X + ( Direction.X * Scale );
+						Quad[ 0 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Quad[ 0 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+						Quad[ 0 ].fBaseAlpha = 1.0f;
+						Quad[ 0 ].fBaseRed = 1.0f;
+						Quad[ 0 ].fBaseGreen = 1.0f;
+						Quad[ 0 ].fBaseBlue = 1.0f;
+						Quad[ 0 ].fU = Triangle[ 2 ].fU;
+						Quad[ 0 ].fV = Triangle[ 2 ].fV;
+
+						InsideV.X = Triangle[ 1 ].fX;
+						InsideV.Y = Triangle[ 1 ].fY;
+						InsideV.Z = Triangle[ 1 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						DotCur = -( VEC3_Dot( &p_pPlane->Normal, &InsideV ) +
+							p_pPlane->Distance );
+
+						Scale = DotCur / DotNext;
+
+						Quad[ 2 ].fX = InsideV.X + ( Direction.X * Scale );
+						Quad[ 2 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Quad[ 2 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+						Quad[ 2 ].fBaseAlpha = 1.0f;
+						Quad[ 2 ].fBaseRed = 1.0f;
+						Quad[ 2 ].fBaseGreen = 1.0f;
+						Quad[ 2 ].fBaseBlue = 1.0f;
+						Quad[ 2 ].fU = Triangle[ 2 ].fU;
+						Quad[ 2 ].fV = Triangle[ 2 ].fV;
+
+						memcpy( &Quad[ 1 ], &Triangle[ 0 ],
+							sizeof( KMVERTEX_05 ) );
+						memcpy( &Quad[ 3 ], &Triangle[ 1 ],
+							sizeof( KMVERTEX_05 ) );
+					}
+
+					Quad[ 0 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+					Quad[ 1 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+					Quad[ 2 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+					Quad[ 3 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
+
+					memcpy( &p_pRenderer->pVertices05[ TriangleIndex ],
+						&Quad, sizeof( Quad ) );
+					TriangleIndex += 4;
+				}
 			}
 			V0 = V1 = V2 = false;
 			Inside = Outside = 0;
 		}
-
-		VectorClass = PLANE_ClassifyVECTOR3( p_pPlane,
-			&p_pMesh->TransformedVertices.pPosition[ Vertex ] );
-
-		if( ( VectorClass == PLANE_CLASS_BACK ) ||
-			( VectorClass == PLANE_CLASS_PLANAR ) )
-		{
-			if( VertexCounter == 0 )
-			{
-				Triangle[ 0 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
-				Triangle[ 0 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
-				Triangle[ 0 ].u.fInvW =
-					p_pMesh->Vertices.pPosition[ Vertex ].Z;
-
-				Triangle[ 0 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
-				Triangle[ 0 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
-
-				Triangle[ 0 ].fBaseAlpha = 1.0f;
-				Triangle[ 0 ].fBaseRed = 1.0f;
-				Triangle[ 0 ].fBaseGreen = 1.0f;
-				Triangle[ 0 ].fBaseBlue = 1.0f;
-
-				V0 = true;
-			}
-			else if( VertexCounter == 1 )
-			{
-				Triangle[ 1 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
-				Triangle[ 1 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
-				Triangle[ 1 ].u.fInvW =
-					p_pMesh->Vertices.pPosition[ Vertex ].Z;
-
-				Triangle[ 1 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
-				Triangle[ 1 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
-
-				Triangle[ 1 ].fBaseAlpha = 1.0f;
-				Triangle[ 1 ].fBaseRed = 1.0f;
-				Triangle[ 1 ].fBaseGreen = 1.0f;
-				Triangle[ 1 ].fBaseBlue = 1.0f;
-
-				V1 = true;
-			}
-			else if( VertexCounter == 2 )
-			{
-				Triangle[ 2 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
-				Triangle[ 2 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
-				Triangle[ 2 ].u.fInvW =
-					p_pMesh->Vertices.pPosition[ Vertex ].Z;
-
-				Triangle[ 2 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
-				Triangle[ 2 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
-
-				Triangle[ 2 ].fBaseAlpha = 1.0f;
-				Triangle[ 2 ].fBaseRed = 1.0f;
-				Triangle[ 2 ].fBaseGreen = 1.0f;
-				Triangle[ 2 ].fBaseBlue = 1.0f;
-
-				V2 = true;
-			}
-
-			++Inside;
-		}
-		else /* Clipped side of the polygon */
-		{
-			if( VertexCounter == 0 )
-			{
-				Triangle[ 0 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
-				Triangle[ 0 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
-				Triangle[ 0 ].u.fInvW =
-					p_pMesh->Vertices.pPosition[ Vertex ].Z;
-
-				Triangle[ 0 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
-				Triangle[ 0 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
-
-				Triangle[ 0 ].fBaseAlpha = 1.0f;
-				Triangle[ 0 ].fBaseRed = 1.0f;
-				Triangle[ 0 ].fBaseGreen = 1.0f;
-				Triangle[ 0 ].fBaseBlue = 1.0f;
-
-				V0 = false;
-			}
-			else if( VertexCounter == 1 )
-			{
-				Triangle[ 1 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
-				Triangle[ 1 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
-				Triangle[ 1 ].u.fInvW =
-					p_pMesh->Vertices.pPosition[ Vertex ].Z;
-
-				Triangle[ 1 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
-				Triangle[ 1 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
-
-				Triangle[ 1 ].fBaseAlpha = 1.0f;
-				Triangle[ 1 ].fBaseRed = 1.0f;
-				Triangle[ 1 ].fBaseGreen = 1.0f;
-				Triangle[ 1 ].fBaseBlue = 1.0f;
-
-				V1 = false;
-			}
-			else if( VertexCounter == 2 )
-			{
-				Triangle[ 2 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
-				Triangle[ 2 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
-				Triangle[ 2 ].u.fInvW =
-					p_pMesh->Vertices.pPosition[ Vertex ].Z;
-
-				Triangle[ 2 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
-				Triangle[ 2 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
-
-				Triangle[ 2 ].fBaseAlpha = 1.0f;
-				Triangle[ 2 ].fBaseRed = 1.0f;
-				Triangle[ 2 ].fBaseGreen = 1.0f;
-				Triangle[ 2 ].fBaseBlue = 1.0f;
-
-				V2 = false;
-			}
-
-			++Outside;
-		}
-
-		++VertexCounter;
 	}
 
 	return TriangleIndex;
