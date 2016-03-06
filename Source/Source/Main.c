@@ -419,8 +419,6 @@ void main( void )
 			StickMove.Z = -( float )g_Peripherals[ 0 ].y1 / 128.0f;
 		}
 
-		VEC3_Add( &PlayerMove, &PlayerMove, &StickMove );
-
 		if( ARI_IsZero( StickMove.X ) == false ||
 			ARI_IsZero( StickMove.Z ) == false )
 		{
@@ -428,6 +426,14 @@ void main( void )
 
 			StickRotate = atan2f( StickMove.X, StickMove.Z );
 		}
+
+		UpdateTime = syTmrGetCount( );
+		UpdateTime =
+			syTmrCountToMicro( syTmrDiffCount( StartTime, UpdateTime ) );
+		PerfInfo.UpdateTime = UpdateTime;
+
+		REN_Clear( );
+		RenderStartTime = syTmrGetCount( );
 
 		/* L trigger activates over-the-shoulder camera */
 		if( g_Peripherals[ 0 ].l > 128 )
@@ -486,7 +492,7 @@ void main( void )
 			MAT44_TransformVertices( &Acceleration, &Thrust, 1,
 				sizeof( VECTOR3 ), sizeof( VECTOR3 ), &PlayerMatrix );
 
-			VEC3_MultiplyF( &Acceleration, &Acceleration, 0.01f );
+			VEC3_MultiplyF( &Acceleration, &Acceleration, 0.3f );
 
 			PlayerMove.X += Acceleration.X;
 			PlayerMove.Z += Acceleration.Z;
@@ -509,15 +515,6 @@ void main( void )
 		
 		MDL_CalculateLighting( &Hiro, &World, &LightPosition );
 		MDL_CalculateLighting( &Level, &World, &LightPosition );
-
-		UpdateTime = syTmrGetCount( );
-		UpdateTime =
-			syTmrCountToMicro( syTmrDiffCount( StartTime, UpdateTime ) );
-		PerfInfo.UpdateTime = UpdateTime;
-
-		REN_Clear( );
-
-		RenderStartTime = syTmrGetCount( );
 
 		MAT44_RotateAxisAngle( &World, &RotateAxis, PlayerRotate );
 		MAT44_Translate( &World, &PlayerMove );
