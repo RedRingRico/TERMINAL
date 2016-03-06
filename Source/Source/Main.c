@@ -445,7 +445,7 @@ void main( void )
 			MAT44_TransformVertices( &Acceleration, &Thrust, 1,
 				sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
 
-			VEC3_MultiplyF( &Acceleration, &Acceleration, 0.01f );
+			VEC3_MultiplyF( &Acceleration, &Acceleration, 0.3f );
 			
 			PlayerMove.X += Acceleration.X;
 			PlayerMove.Z += Acceleration.Z;

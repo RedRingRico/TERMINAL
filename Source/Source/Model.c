@@ -424,10 +424,6 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 
 	for( Index = 0; Index < MeshChunk.ListCount; ++Index )
 	{
-		/*memcpy( &p_pMesh->pVertices[ Index ], 
-			&pOriginalVertices[ p_pMesh->pIndices[ Index ] ],
-			sizeof( MODEL_VERTEX ) );*/
-
 		memcpy( &p_pMesh->Vertices.pPosition[ Index ],
 			&pOriginalVertices[ p_pMesh->pIndices[ Index ] ].Position,
 			sizeof( VECTOR3 ) );
@@ -650,7 +646,6 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 			}
 			else
 			{
-				/* Clean up on line 533! */
 				if( Inside == 1 )
 				{
 					float Scale;
