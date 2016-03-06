@@ -455,9 +455,6 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 			pOriginalVertices[ p_pMesh->pIndices[ Index ] ].UV.V;
 
 		p_pMesh->pKamuiVertices[ Index ].fBaseAlpha = 1.0f;
-		p_pMesh->pKamuiVertices[ Index ].fBaseRed = 1.0f;
-		p_pMesh->pKamuiVertices[ Index ].fBaseGreen = 1.0f;
-		p_pMesh->pKamuiVertices[ Index ].fBaseBlue = 1.0f;
 
 		/* Bounding box */
 		if( p_pMesh->Vertices.pPosition[ Index ].X < BoundingBox.Minimum.X )
@@ -502,6 +499,8 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 	Uint32 VertexCounter = 0;
 	Uint32 VertexPassCount = 0;
 	Uint32 TriangleIndex = 0;
+	Uint32 Inside = 0;
+	Uint32 Outside = 0;
 	KMVERTEX5 Triangle[ 3 ];
 	bool V0 = false;
 	bool V1 = false;
@@ -511,6 +510,8 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 	 * intersections */
 	for( Vertex = 0; Vertex < p_pMesh->IndexCount; ++Vertex )
 	{
+		PLANE_CLASS VectorClass;
+
 		if( VertexCounter == 3 )
 		{
 			VertexCounter = 0;
@@ -524,12 +525,147 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 					&Triangle, sizeof( Triangle ) );
 				TriangleIndex += 3;
 			}
+			else
+			{
+				if( Inside == 1 )
+				{
+					float Scale;
+					VECTOR3 InsideV, OutsideV;
+					float DotCur, DotNext;
+
+					Triangle[ 0 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+					Triangle[ 1 ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
+					Triangle[ 2 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
+
+					if( V0 )
+					{
+						VECTOR3 Direction;
+
+						InsideV.X = Triangle[ 0 ].fX;
+						InsideV.Y = Triangle[ 0 ].fY;
+						InsideV.Z = Triangle[ 0 ].u.fInvW;
+
+						OutsideV.X = Triangle[ 1 ].fX;
+						OutsideV.Y = Triangle[ 1 ].fY;
+						OutsideV.Z = Triangle[ 1 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						DotCur = -( VEC3_Dot( &p_pPlane->Normal, &InsideV ) +
+							p_pPlane->Distance );
+						Scale = DotCur / DotNext;
+
+						Triangle[ 1 ].fX = InsideV.X + ( Direction.X * Scale );
+						Triangle[ 1 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Triangle[ 1 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+
+						OutsideV.X = Triangle[ 2 ].fX;
+						OutsideV.Y = Triangle[ 2 ].fY;
+						OutsideV.Z = Triangle[ 2 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						Scale = DotCur / DotNext;
+
+						Triangle[ 2 ].fX = InsideV.X + ( Direction.X * Scale );
+						Triangle[ 2 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Triangle[ 2 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+					}
+					else if( V1 )
+					{
+						VECTOR3 Direction;
+
+						InsideV.X = Triangle[ 1 ].fX;
+						InsideV.Y = Triangle[ 1 ].fY;
+						InsideV.Z = Triangle[ 1 ].u.fInvW;
+
+						OutsideV.X = Triangle[ 0 ].fX;
+						OutsideV.Y = Triangle[ 0 ].fY;
+						OutsideV.Z = Triangle[ 0 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						DotCur = -( VEC3_Dot( &p_pPlane->Normal, &InsideV ) +
+							p_pPlane->Distance );
+						Scale = DotCur / DotNext;
+
+						Triangle[ 0 ].fX = InsideV.X + ( Direction.X * Scale );
+						Triangle[ 0 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Triangle[ 0 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+
+						OutsideV.X = Triangle[ 2 ].fX;
+						OutsideV.Y = Triangle[ 2 ].fY;
+						OutsideV.Z = Triangle[ 2 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						Scale = DotCur / DotNext;
+
+						Triangle[ 2 ].fX = InsideV.X + ( Direction.X * Scale );
+						Triangle[ 2 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Triangle[ 2 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+					}
+					else
+					{
+						VECTOR3 Direction;
+
+						InsideV.X = Triangle[ 2 ].fX;
+						InsideV.Y = Triangle[ 2 ].fY;
+						InsideV.Z = Triangle[ 2 ].u.fInvW;
+
+						OutsideV.X = Triangle[ 0 ].fX;
+						OutsideV.Y = Triangle[ 0 ].fY;
+						OutsideV.Z = Triangle[ 0 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						DotCur = -( VEC3_Dot( &p_pPlane->Normal, &InsideV ) +
+							p_pPlane->Distance );
+						Scale = DotCur / DotNext;
+
+						Triangle[ 0 ].fX = InsideV.X + ( Direction.X * Scale );
+						Triangle[ 0 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Triangle[ 0 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+
+						OutsideV.X = Triangle[ 1 ].fX;
+						OutsideV.Y = Triangle[ 1 ].fY;
+						OutsideV.Z = Triangle[ 1 ].u.fInvW;
+
+						VEC3_Subtract( &Direction, &OutsideV, &InsideV );
+
+						DotNext = VEC3_Dot( &p_pPlane->Normal, &Direction );
+						Scale = DotCur / DotNext;
+
+						Triangle[ 1 ].fX = InsideV.X + ( Direction.X * Scale );
+						Triangle[ 1 ].fY = InsideV.Y + ( Direction.Y * Scale );
+						Triangle[ 1 ].u.fInvW = InsideV.Z +
+							( Direction.Z * Scale );
+					}
+
+					memcpy( &p_pRenderer->pVertices05[ TriangleIndex ],
+						&Triangle, sizeof( Triangle ) );
+					TriangleIndex += 3;
+				}
+			}
 			V0 = V1 = V2 = false;
+			Inside = Outside = 0;
 		}
 
-		if( PLANE_ClassifyVECTOR3( p_pPlane,
-			&p_pMesh->TransformedVertices.pPosition[ Vertex ] ) ==
-				PLANE_CLASS_BACK )
+		VectorClass = PLANE_ClassifyVECTOR3( p_pPlane,
+			&p_pMesh->TransformedVertices.pPosition[ Vertex ] );
+
+		if( ( VectorClass == PLANE_CLASS_BACK ) ||
+			( VectorClass == PLANE_CLASS_PLANAR ) )
 		{
 			if( VertexCounter == 0 )
 			{
@@ -548,7 +684,7 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 
 				V0 = true;
 			}
-			if( VertexCounter == 1 )
+			else if( VertexCounter == 1 )
 			{
 				Triangle[ 1 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
 				Triangle[ 1 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
@@ -565,7 +701,7 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 
 				V1 = true;
 			}
-			if( VertexCounter == 2 )
+			else if( VertexCounter == 2 )
 			{
 				Triangle[ 2 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
 				Triangle[ 2 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
@@ -582,6 +718,64 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 
 				V2 = true;
 			}
+
+			++Inside;
+		}
+		else /* Clipped side of the polygon */
+		{
+			if( VertexCounter == 0 )
+			{
+				Triangle[ 0 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 0 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 0 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 0 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 0 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 0 ].fBaseAlpha = 1.0f;
+				Triangle[ 0 ].fBaseRed = 1.0f;
+				Triangle[ 0 ].fBaseGreen = 1.0f;
+				Triangle[ 0 ].fBaseBlue = 1.0f;
+
+				V0 = false;
+			}
+			else if( VertexCounter == 1 )
+			{
+				Triangle[ 1 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 1 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 1 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 1 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 1 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 1 ].fBaseAlpha = 1.0f;
+				Triangle[ 1 ].fBaseRed = 1.0f;
+				Triangle[ 1 ].fBaseGreen = 1.0f;
+				Triangle[ 1 ].fBaseBlue = 1.0f;
+
+				V1 = false;
+			}
+			else if( VertexCounter == 2 )
+			{
+				Triangle[ 2 ].fX = p_pMesh->Vertices.pPosition[ Vertex ].X;
+				Triangle[ 2 ].fY = p_pMesh->Vertices.pPosition[ Vertex ].Y;
+				Triangle[ 2 ].u.fInvW =
+					p_pMesh->Vertices.pPosition[ Vertex ].Z;
+
+				Triangle[ 2 ].fU = p_pMesh->Vertices.pUV[ Vertex ].U;
+				Triangle[ 2 ].fV = p_pMesh->Vertices.pUV[ Vertex ].V;
+
+				Triangle[ 2 ].fBaseAlpha = 1.0f;
+				Triangle[ 2 ].fBaseRed = 1.0f;
+				Triangle[ 2 ].fBaseGreen = 1.0f;
+				Triangle[ 2 ].fBaseBlue = 1.0f;
+
+				V2 = false;
+			}
+
+			++Outside;
 		}
 
 		++VertexCounter;

@@ -4,6 +4,7 @@
 #include <Log.h>
 #include <mathf.h>
 #include <kamui2.h>
+#include <Arithmetic.h>
 
 static float g_SH4Vector[ 4 ];
 static float g_Result[ 4 ];
@@ -329,6 +330,12 @@ void MAT44_TransformVerticesRHW( float *p_pTransformedVertices,
 		p_pVertices += UStrideGap;
 
 		ftrv( ( float * )g_SH4Vector, ( float * )g_Result );
+
+		/* Z Slam (probably the wrong approach) */
+		if( g_Result[ 2 ] < ARI_EPSILON )
+		{
+			g_Result[ 2 ] = ARI_EPSILON;
+		}
 
 		RHW = 1.0f / g_Result[ 2 ];
 

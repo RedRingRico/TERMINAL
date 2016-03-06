@@ -427,14 +427,6 @@ void main( void )
 			StickRotate = atan2f( StickMove.X, StickMove.Z );
 		}
 
-		UpdateTime = syTmrGetCount( );
-		UpdateTime =
-			syTmrCountToMicro( syTmrDiffCount( StartTime, UpdateTime ) );
-		PerfInfo.UpdateTime = UpdateTime;
-
-		REN_Clear( );
-		RenderStartTime = syTmrGetCount( );
-
 		/* L trigger activates over-the-shoulder camera */
 		if( g_Peripherals[ 0 ].l > 128 )
 		{
@@ -508,6 +500,14 @@ void main( void )
 			MAT44_TransformVertices( &TestCamera.LookAt, &CameraDefaultLookRef,
 				1, sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
 		}
+
+		UpdateTime = syTmrGetCount( );
+		UpdateTime =
+			syTmrCountToMicro( syTmrDiffCount( StartTime, UpdateTime ) );
+		PerfInfo.UpdateTime = UpdateTime;
+
+		REN_Clear( );
+		RenderStartTime = syTmrGetCount( );
 
 		MAT44_SetIdentity( &World );
 
