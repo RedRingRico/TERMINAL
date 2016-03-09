@@ -23,6 +23,7 @@ typedef struct _tagRENDERER
 {
 	Uint32			VisiblePolygons;
 	Uint32			CulledPolygons;
+	Uint32			GeneratedPolygons;
 	PKMVERTEX_05	pVertices05;
 }RENDERER,*PRENDERER;
 

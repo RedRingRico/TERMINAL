@@ -392,7 +392,8 @@ void main( void )
 		static float PlayerRotate = 0.0f;
 		static float StickRotate = 0.0f;
 
-		Renderer.VisiblePolygons = Renderer.CulledPolygons = 0;
+		Renderer.VisiblePolygons = Renderer.CulledPolygons =
+			Renderer.GeneratedPolygons = 0;
 
 		StartTime = syTmrGetCount( );
 
@@ -535,10 +536,16 @@ void main( void )
 		TXT_RenderString( &GlyphSet, &TextColour, 10.0f,
 			( float )GlyphSet.LineHeight * 7.0f, PrintBuffer );
 
+		sprintf( PrintBuffer, "Generated polygons: %lu",
+			Renderer.GeneratedPolygons );
+		TXT_RenderString( &GlyphSet, &TextColour, 10.0f,
+			( float )GlyphSet.LineHeight * 8.0f, PrintBuffer );
+
 		sprintf( PrintBuffer, "Culled polygons: %lu",
 			Renderer.CulledPolygons );
 		TXT_RenderString( &GlyphSet, &TextColour, 10.0f,
-			( float )GlyphSet.LineHeight * 8.0f, PrintBuffer );
+			( float )GlyphSet.LineHeight * 9.0f, PrintBuffer );
+
 
 		TextColour.dwPacked = 0xFFFFFF00;
 

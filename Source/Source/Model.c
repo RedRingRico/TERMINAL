@@ -774,6 +774,7 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 					memcpy( &p_pRenderer->pVertices05[ TriangleIndex ],
 						&Triangle, sizeof( Triangle ) );
 					TriangleIndex += 3;
+					++p_pRenderer->VisiblePolygons;
 				}
 				else if( Inside == 2 )
 				{
@@ -968,6 +969,13 @@ Uint32 MDL_ClipMeshToPlane( PRENDERER p_pRenderer, const PMESH p_pMesh,
 					memcpy( &p_pRenderer->pVertices05[ TriangleIndex ],
 						&Quad, sizeof( Quad ) );
 					TriangleIndex += 4;
+
+					++p_pRenderer->GeneratedPolygons;
+					++p_pRenderer->VisiblePolygons;
+				}
+				else
+				{
+					++p_pRenderer->CulledPolygons;
 				}
 			}
 			V0 = V1 = V2 = false;
