@@ -55,9 +55,9 @@ LINK	= lnk.exe
 OPTIMISE_TYPE = size
 
 LIBDIR	= $(KATANA_ROOT)\lib
-DEFAULT_INCLUDE	= $(KATANA_ROOT)\include
+DEFAULT_INCLUDE	= $(KATANA_ROOT)\include $(KATANA_ROOT)\include\nexgen
 
-DEFAULT_LIBS	= kamui2 shinobi sh4nlfzn dmcast Audio64
+DEFAULT_LIBS	= kamui2 shinobi sh4nlfzn dmcast Audio64 modem
 
 
 DEFAULT_OBJS = strt1.obj strt2.obj systemid.obj toc.obj sg_sec.obj \
@@ -69,8 +69,8 @@ OPTIMISE ?= 0
 LISTING = -list="$(OBJSDIR)\$*.lst"
 
 COPT_LINK = -g
-
 CDEFS = _KAMUI2_ __SET4__ __SET5__ __KATANA__ _CLX_ _CLX2_ _STRICT_UNION_ _SH4 \
+	NG_COMP_SHC NG_CPU_SH4 NG_LITTLE_ENDIAN NG_HW_SEGADC \
 	TERM_PLATFORM_$(BUILD_PLATFORM) TERM_ARCH_$(ARCH) TERM_BITSIZE_$(BITSIZE)
 
 COPT = -cpu=sh4 -division=cpu -endian=little -fpu=single -round=nearest \
@@ -114,7 +114,7 @@ development: COPT_LINK = -g
 development: LINK = lnk.exe -noecho
 development: CDEBUG = -debug
 development: TARGET := $(TARGET)_DEV
-development: DEFAULT_LIBS += libcross sh4nlfzn
+development: DEFAULT_LIBS += libcross sh4nlfzn nexgend
 development: OPTIMISE := 0
 development: OPTIMISE_LINK := 0
 development: CDEFS += DEBUG
@@ -128,7 +128,7 @@ debug: COPT_LINK =
 debug: LINK = lnk.exe -noecho
 debug: CDEBUG = -debug
 debug: TARGET := $(TARGET)_DEBUG
-debug: DEFAULT_LIBS += libcross sh4nlfzn
+debug: DEFAULT_LIBS += libcross sh4nlfzn nexgend
 debug: OPTIMISE := 0
 debug: OPTIMISE_LINK := 0
 debug: CDEFS += DEBUG
@@ -143,6 +143,7 @@ release: COPT_LINK = -g
 release: CDEBUG = -nodebug
 release: EXTENSION = BIN
 release: TARGET := 1ST_READ
+debug: DEFAULT_LIBS += nexgen
 release: OPTIMISE := 1
 release: OPTIMISE_LINK := 1
 release: LINK_DEBUG =
@@ -211,9 +212,8 @@ endif
 	echo -define= >> "$(OBJSDIR)\shc.sub"
 	for %%x in ($(CDEFS) $(EXTRADEFS)) do echo %%$(TRIM_QUOTES)x, >> "$(OBJSDIR)\shc.sub"
 	echo __SHC__ -include= >> "$(OBJSDIR)\shc.sub"
-	echo ., >> "$(OBJSDIR)\shc.sub"
-	echo $(TOPSRC)\Headers, >> "$(OBJSDIR)\shc.sub"
-	echo $(DEFAULT_INCLUDE) >> "$(OBJSDIR)\shc.sub"
+	for %%x in ($(DEFAULT_INCLUDE)) do echo %%x, >> "$(OBJSDIR)\shc.sub"
+	echo $(TOPSRC)\Headers >> "$(OBJSDIR)\shc.sub"
 ifeq ($(OPTIMISE),0)
 	$(CC) $< -ob="$(OBJSDIR)\$*.o" -sub="$(OBJSDIR)\shc.sub"
 	$(DWFCONV) -sysrof="$(OBJSDIR)\$*.obj" "$(OBJSDIR)\$*.o
@@ -230,9 +230,8 @@ endif
 	echo -define= >> "$(OBJSDIR)\shc.sub"
 	for %%x in ($(CDEFS) $(EXTRADEFS)) do echo %%$(TRIM_QUOTES)x, >> "$(OBJSDIR)\shc.sub"
 	echo __SHC__ -include= >> "$(OBJSDIR)\shc.sub"
-	echo ., >> "$(OBJSDIR)\shc.sub"
-	echo $(TOPSRC)\Headers, >> "$(OBJSDIR)\shc.sub"
-	echo $(DEFAULT_INCLUDE) >> "$(OBJSDIR)\shc.sub"
+	for %%x in ($(DEFAULT_INCLUDE)) do echo %%x, >> "$(OBJSDIR)\shc.sub"
+	echo $(TOPSRC)\Headers >> "$(OBJSDIR)\shc.sub"
 	$(CC) $< -ob="$(OBJSDIR)\$*.src" -sub="$(OBJSDIR)\shc.sub"
 	$(ASM) $(OBJSDIR)\$*.src $(ASM_FLAGS) -O="$@"
 

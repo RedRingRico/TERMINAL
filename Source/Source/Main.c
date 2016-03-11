@@ -16,6 +16,7 @@
 #include <Model.h>
 #include <DA.h>
 #include <Audio.h>
+#include <Networking.h>
 
 #include <FileSystem.h>
 
@@ -133,18 +134,18 @@ void main( void )
 	sprintf( g_VersionString, "[TERMINAL] | %s | %s", GIT_VERSION,
 		GIT_TAGNAME );
 
-	scif_init( RecvBuf, 1024 * 8, SendBuf, 1024 * 8 );
+	/*scif_init( RecvBuf, 1024 * 8, SendBuf, 1024 * 8 );*/
 	/* The perfect speed for a cool peripheral */
-	scif_open( BPS_19200 );
+	/*scif_open( BPS_19200 );*/
 
 	/* Clear the terminal */
-	scif_putq( 0x1B );
+	/*scif_putq( 0x1B );
 	scif_putq( '[' );
 	scif_putq( '2' );
-	scif_putq( 'J' );
+	scif_putq( 'J' );*/
 
 	/* Test the output */
-	scif_putq( '[' );
+	/*scif_putq( '[' );
 	scif_putq( 'T' );
 	scif_putq( 'E' );
 	scif_putq( 'R' );
@@ -159,7 +160,7 @@ void main( void )
 	scif_putq( '2' );
 	scif_putq( ';' );
 	scif_putq( '1' );
-	scif_putq( 'f' );
+	scif_putq( 'f' );*/
 
 	pVertexBuffer = ( PKMDWORD )syMalloc( 0x100000 );
 
@@ -200,6 +201,17 @@ void main( void )
 	{
 		LOG_Debug( "Failed to set up the Audio64 interface" );
 
+		REN_Terminate( );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( NET_Initialise( ) != 0 )
+	{
+		LOG_Debug( "Failed to set up the NexGen network stack" );
+
+		AUD_Terminate( );
 		REN_Terminate( );
 		LOG_Terminate( );
 		HW_Terminate( );
@@ -647,6 +659,7 @@ void main( void )
 
 	LOG_Debug( "Rebooting" );
 
+	NET_Terminate( );
 	AUD_Terminate( );
 	REN_Terminate( );
 	LOG_Terminate( );
