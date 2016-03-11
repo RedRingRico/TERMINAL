@@ -90,7 +90,7 @@ void LOG_Debug_Int( const char *p_pMessage, ... )
 {
 	if( strlen( p_pMessage ) && p_pMessage )
 	{
-		char Buffer[ 128 ];
+		static char Buffer[ 256 ];
 		va_list Args;
 
 		sprintf( Buffer, "[DEBUG] " );
