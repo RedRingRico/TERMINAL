@@ -134,18 +134,18 @@ void main( void )
 	sprintf( g_VersionString, "[TERMINAL] | %s | %s", GIT_VERSION,
 		GIT_TAGNAME );
 
-	/*scif_init( RecvBuf, 1024 * 8, SendBuf, 1024 * 8 );*/
+	scif_init( RecvBuf, 1024 * 8, SendBuf, 1024 * 8 );
 	/* The perfect speed for a cool peripheral */
-	/*scif_open( BPS_19200 );*/
+	scif_open( BPS_19200 );
 
 	/* Clear the terminal */
-	/*scif_putq( 0x1B );
+	scif_putq( 0x1B );
 	scif_putq( '[' );
 	scif_putq( '2' );
-	scif_putq( 'J' );*/
+	scif_putq( 'J' );
 
 	/* Test the output */
-	/*scif_putq( '[' );
+	scif_putq( '[' );
 	scif_putq( 'T' );
 	scif_putq( 'E' );
 	scif_putq( 'R' );
@@ -160,7 +160,7 @@ void main( void )
 	scif_putq( '2' );
 	scif_putq( ';' );
 	scif_putq( '1' );
-	scif_putq( 'f' );*/
+	scif_putq( 'f' );
 
 	pVertexBuffer = ( PKMDWORD )syMalloc( 0x100000 );
 
@@ -207,7 +207,7 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( NET_Initialise( ) != 0 )
+	if( NET_Initialise( ) > 0 )
 	{
 		LOG_Debug( "Failed to set up the NexGen network stack" );
 
@@ -1253,6 +1253,102 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 	TXT_MeasureString( p_pGlyphSet, g_ConsoleIDPrint, &TextLength );
 	TXT_RenderString( p_pGlyphSet, &TextColour, 640.0f - TextLength,
 		480.0f - ( float )p_pGlyphSet->LineHeight * 2.0f, g_ConsoleIDPrint );
+
+	switch( NET_GetStatus( ) )
+	{
+		case NET_STATUS_NODEVICE:
+		{
+			TextColour.dwPacked = 0x9FFF0000;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight,
+				"[NO NETWORK DEVICE]" );
+			break;
+		}
+		case NET_STATUS_DISCONNECTED:
+		{
+			TextColour.dwPacked = 0x9FFFFF00;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight,
+				"[NETWORK: DISCONNECTED]" );
+			break;
+		}
+		case NET_STATUS_CONNECTED:
+		{
+			TextColour.dwPacked = 0x9F00FF00;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight,
+				"[NETWORK: CONNECTED]" );
+			break;
+		}
+		default:
+		{
+			TextColour.dwPacked = 0x9FFF0000;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight,
+				"[NETWORK DEVICE STATUS UNKNOWN]" );
+			break;
+		}
+	}
+
+	switch( NET_GetDeviceType( ) )
+	{
+		case NET_DEVICE_TYPE_LAN:
+		{
+			TextColour.dwPacked = 0x9FFFFFFF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				"Network Device: LAN" );
+			break;
+		}
+		case NET_DEVICE_TYPE_BBA:
+		{
+			TextColour.dwPacked = 0x9FFFFFFF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				"Network Device: BBA" );
+			break;
+		}
+		case NET_DEVICE_TYPE_EXTMODEM:
+		{
+			TextColour.dwPacked = 0x9FFFFFFF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				"Network Device: External Modem" );
+			break;
+		}
+		case NET_DEVICE_TYPE_SERIALPPP:
+		{
+			TextColour.dwPacked = 0x9FFFFFFF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				"Network Device: Serial PPP" );
+			break;
+		}
+		case NET_DEVICE_TYPE_INTMODEM:
+		{
+			TextColour.dwPacked = 0x9FFFFFFF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				"Network Device: Internal Modem" );
+			break;
+		}
+		case NET_DEVICE_TYPE_NONE:
+		{
+			TextColour.dwPacked = 0x9FFFFFFF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				"Network Device: Not present" );
+			break;
+		}
+		default:
+		{
+			TextColour.dwPacked = 0x9FFF0000;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				"Network Device: UNKNOWN" );
+			break;
+		}
+	}
 }
 
 void DrawDebugOverlay_Int( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo )

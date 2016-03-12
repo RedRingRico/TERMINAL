@@ -7,6 +7,8 @@
 #include <ngudp.h>
 #include <ngppp.h>
 #include <ngappp.h>
+#include <ngadns.h>
+#include <ngeth.h>
 
 #define NET_MAX_BUFFERS		100			/* Message buffers */
 #define NET_MAX_STACK_MEM	400*1024	/* 400KiB static memory */
@@ -22,20 +24,31 @@ static NGdevcb NET_DeviceIOControlBlock[ NET_MAX_DEVCBS ];
 static NET_TCPCB[ NET_MAX_SOCKETS ];
 /* This should probably be in some kind of network device struct */
 static NGdev NET_Device;
+/* Network interface */
+static NGifnet *NET_pInterface;
 /* PPP interface */
-static NGapppifnet NET_PPPIface;
+static NGapppifnet NET_PPPIfnet;
+/* LAN interface */
+static NGethifnet NET_LANIfnet;
 /* Device input buffer */
 static NGubyte NET_DeviceInputBuffer[ NET_MAX_DEVIO_SIZE ];
 /* Device output buffer */
 static NGubyte NET_DeviceOutputBuffer[ NET_MAX_DEVIO_SIZE ];
 /* Van Jacobson compression table (must be 32 elements) */
 static NGpppvjent NET_VanJacobsonTable[ 32 ];
+/* Adress Resolution Protocol Table */
+static NGarpent NET_ARPTable[ 10 ];
 
+static NET_STATUS NET_Status = NET_STATUS_ERROR;
+static NET_DEVICE_TYPE NET_DeviceType = NET_DEVICE_TYPE_NONE;
+
+static NGuint NET_DNS1 = 0, NET_DNS2 = 0;
+static Uint8 NET_DNSWorkArea[ ADNS_WORKSIZE( 8 ) ];
 
 /* Consider making this use the memory manager? */
 static void *NET_StaticBufferAlloc( Uint32 p_Size, NGuint *p_pAddr );
 
-static NGcfgent NET_InternalModelStack[ ] =
+static NGcfgent NET_InternalModemStack[ ] =
 {
 	NG_BUFO_MAX,				NG_CFG_INT( NET_MAX_BUFFERS ),
 	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_StaticBufferAlloc ),
@@ -64,7 +77,7 @@ static NGcfgent NET_InternalModelStack[ ] =
 	NG_DEVO_IBUF_LEN,			NG_CFG_INT( sizeof( NET_DeviceInputBuffer ) ),
 	NG_DEVO_OBUF_LEN,			NG_CFG_INT( sizeof( NET_DeviceOutputBuffer ) ),
 	/* Interface */
-	NG_CFG_IFADDWAIT,			NG_CFG_PTR( &NET_PPPIface ),
+	NG_CFG_IFADDWAIT,			NG_CFG_PTR( &NET_PPPIfnet ),
 	NG_CFG_DRIVER,				NG_CFG_PTR( &ngNetDrv_AHDLC ),
 	NG_IFO_NAME,				NG_CFG_PTR( "Internal Modem" ),
 	/* PPP */
@@ -83,39 +96,150 @@ static NGcfgent NET_InternalModelStack[ ] =
 	NG_CFG_END
 };
 
+static NGcfgent NET_LANStack[ ] =
+{
+	NG_BUFO_MAX,				NG_CFG_INT( NET_MAX_BUFFERS ),
+	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_StaticBufferAlloc ),
+	/* Add padding for DMA */
+	NG_BUFO_HEADER_SIZE,		NG_CFG_INT( sizeof( NGetherhdr ) + 30 ),
+	NG_BUFO_DATA_SIZE,			NG_CFG_INT( ETHERMTU + 31 ),
+	NG_BUFO_INPQ_MAX,			NG_CFG_INT( 8 ),
+	NG_SOCKO_MAX,				NG_CFG_INT( NET_MAX_SOCKETS ),
+	NG_SOCKO_TABLE,				NG_CFG_PTR( &NET_SocketTable ),
+	NG_RTO_CLOCK_FREQ,			NG_CFG_INT( NG_CLOCK_FREQ ),
+	/* Protocol */
+	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_TCP ),
+	NG_TCPO_TCB_MAX,			NG_CFG_INT( NET_MAX_SOCKETS ),
+	NG_TCPO_TCB_TABLE,			NG_CFG_PTR( &NET_TCPCB ),
+	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_UDP ),
+	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_RAWIP ),
+	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_IP ),
+	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_PPP ),
+	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_ARP ),
+	NG_ARPO_MAX,				NG_CFG_INT( sizeof( NET_ARPTable ) /
+									sizeof( NET_ARPTable[ 0 ] ) ),
+	NG_ARPO_TABLE,				NG_CFG_PTR( &NET_ARPTable ),
+	NG_ARPO_EXPIRE,				NG_CFG_INT( 600 ),
+	NG_CFG_IFADD,				NG_CFG_PTR( &NET_LANIfnet ),
+	NG_CFG_DRIVER,				NG_CFG_PTR( &ngNetDrv_DCLAN ),
+	NG_IFO_NAME,				NG_CFG_PTR( "LAN" ),
+	NG_ETHIFO_DEV1,				NG_CFG_INT( DCLAN_AUTO ),
+	/* Need to add support for DHCP and PPPoE */
+	NG_CFG_END
+};
+
 int NET_Initialise( void )
 {
 	/* For now, just look for the standard modem, later this will also include
 	 * the LAN/BBA */
+	 int ReturnStatus;
 #if defined ( DEBUG )
-	 /* 5 - Errors
-	  * 2 - Normal debug information
-	  * 1 - More verbose debug information
-	  * 0 - USE ONLY IF COMPLETELY NECESSARY
-	  */
-	 ngDebugSetLevel( 1 );
-	 /* Allow DHCP debugging */
-	 ngDebugSetModule( NG_DBG_DHCP, 1 );
+	/* 5 - Errors
+	 * 2 - Normal debug information
+	 * 1 - More verbose debug information
+	 * 0 - USE ONLY IF COMPLETELY NECESSARY
+	 */
+	ngDebugSetLevel( 1 );
+	/* Allow DHCP debugging */
+	ngDebugSetModule( NG_DBG_DHCP, 1 );
 #endif /* DEBUG */
-	 if( ngInit( NET_InternalModelStack ) != NG_EOK )
-	 {
-		 LOG_Debug( "Failed to initialise the NexGen network stack" );
+	
+	/* In the future, probe for more devices if NG_EINIT_DEVOPEN is returned
+	 * until there are no more devices left to try, then return a no device
+	 * found error code (should not cause the game to fail) */
 
-		 ngExit( 1 );
+	/* First, acquire the network device, either an internal modem or BB/LAN
+	 * adapter */
+	ReturnStatus = ngInit( NET_InternalModemStack );
 
-		 return 1;
-	 }
+	if( ReturnStatus == NG_EINIT_NOERROR )
+	{
+		NET_DeviceType = NET_DEVICE_TYPE_INTMODEM;
 
-	 ngYield( );
+		NET_pInterface = ngIfGetPtr( "Internal Modem" );
+	}
+	else /* Okay, maybe there's a LAN/BBA? */
+	{
+		ngExit( 0 );
+		ReturnStatus = ngInit( NET_LANStack );
+	}
 
-	 LOG_Debug( "Initialsed NexGen: %s", ngGetVersionString( ) );
+	if( ReturnStatus != NG_EINIT_NOERROR )
+	{
+		/* Minus codes are non-fatal */
+		int ErrorCode = 1;
+
+		NET_Status = NET_STATUS_ERROR;
+		LOG_Debug( "Failed to initialise the NexGen network stack" );
+
+		switch( ReturnStatus )
+		{
+			case NG_EINIT_DEVOPEN:
+			{
+				ErrorCode = -1;
+				LOG_Debug( "\tCould not open the device" );
+				NET_Status = NET_STATUS_NODEVICE;
+				break;
+			}
+			default:
+			{
+			}
+		}
+
+		ngExit( 0 );
+
+		return 0;//ErrorCode;
+	}
+
+	/* Must be the BBA/LAN */
+	if( NET_DeviceType == NET_DEVICE_TYPE_NONE )
+	{
+		int NetSpeed;
+
+		NET_pInterface = ngIfGetPtr( "LAN" );
+
+		ngIfGetOption( NET_pInterface, NG_IFO_DCLAN_CURRENT_SPEED, &NetSpeed );
+		
+		switch( NetSpeed )
+		{
+			case DCLAN_10BaseT:
+			case DCLAN_10BaseTX:
+			{
+				NET_DeviceType = NET_DEVICE_TYPE_LAN;
+				break;
+			}
+			case DCLAN_100BaseT:
+			case DCLAN_100BaseTX:
+			{
+				NET_DeviceType = NET_DEVICE_TYPE_BBA;
+				break;
+			}
+		}
+	}
+
+	NET_Status = NET_STATUS_DISCONNECTED;
+
+	ngIfGetOption( NET_pInterface, NG_PPPIFO_IPCP_DNS1_ADDR, &NET_DNS1 );
+	ngIfGetOption( NET_pInterface, NG_PPPIFO_IPCP_DNS2_ADDR, &NET_DNS2 );
+
+	/* Initialise the DNS IPs */
+	ngDnsInit( NULL, NET_DNS1, NET_DNS2 );
+	/* Initialise the asynchronous DNS work area */
+	ngADnsInit( 8, ( void * )&NET_DNSWorkArea );
+
+	ngYield( );
+
+	LOG_Debug( "Initialsed NexGen: %s", ngGetVersionString( ) );
 
 	return 0;
 }
 
 void NET_Terminate( void )
 {
-	ngExit( 0 );
+	if( NET_Status != NET_STATUS_ERROR || NET_Status != NET_STATUS_NODEVICE )
+	{
+		ngExit( 0 );
+	}
 }
 
 static void *NET_StaticBufferAlloc( Uint32 p_Size, NGuint *p_pAddr )
@@ -134,11 +258,21 @@ static void *NET_StaticBufferAlloc( Uint32 p_Size, NGuint *p_pAddr )
 	return StaticBuffer;
 }
 
+NET_STATUS NET_GetStatus( void )
+{
+	return NET_Status;
+}
+
+NET_DEVICE_TYPE NET_GetDeviceType( void )
+{
+	return NET_DeviceType;
+}
+
 /* Required for the debug version of NexGen */
 void ngStdOutChar( int p_Char, void *p_pData )
 {
 #if defined ( DEBUG )
-	/*static char PrintBuffer[ 128 ];
+	static char PrintBuffer[ 128 ];
 	static int PrintBufferLength;
 
 	if( p_Char >= 0 )
@@ -161,7 +295,7 @@ void ngStdOutChar( int p_Char, void *p_pData )
 			LOG_Debug( PrintBuffer );
 			PrintBufferLength = 0;
 		}
-	}*/
+	}
 #endif /* DEBUG */
 }
 
