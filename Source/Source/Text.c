@@ -231,7 +231,17 @@ void TXT_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 	}F;
 	size_t IndexChar;
 
+	if( p_pString == NULL )
+	{
+		return;
+	}
+
 	StringLength = strlen( p_pString );
+
+	if( StringLength == 0 )
+	{
+		return;
+	}
 
 	kmChangeStripTextureSurface( &TXT_StripHead, KM_IMAGE_PARAM1,
 		&p_pGlyphSet->Texture.SurfaceDescription );
