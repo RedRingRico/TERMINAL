@@ -17,11 +17,15 @@
 #include <DA.h>
 #include <Audio.h>
 #include <Networking.h>
+#include <ngadns.h>
+#include <ngnetdb.h>
 
 #include <FileSystem.h>
 
 #include <ac.h>
 #include <am.h>
+
+//#include <adns.h>
 
 #define MAX_TEXTURES ( 4096 )
 #define MAX_SMALLVQ ( 0 )
@@ -81,6 +85,10 @@ void DrawDebugOverlay_Int( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo );
 bool LoadSoundBank( Uint32 *p_pAICA, char *p_pName, Sint32 *p_pSize );
 
 SOUND g_Select, g_Accept;
+int DNSStatus;
+int PollStatus;
+static ngADnsAnswer DNSAnswer;
+ngADnsTicket DNSTicket;
 
 void main( void )
 {
@@ -377,6 +385,8 @@ void main( void )
 	memset( &PerfInfo, 0, sizeof( PerfInfo ) );
 
 	StartTime = syTmrGetCount( );
+	DNSStatus = -1;
+	PollStatus = NG_EWOULDBLOCK;
 
 	while( Run )
 	{
@@ -403,6 +413,7 @@ void main( void )
 		static float CameraRotation = 0.0f;
 		static float PlayerRotate = 0.0f;
 		static float StickRotate = 0.0f;
+		static char DNSString[ 80 ];
 
 		Renderer.VisiblePolygons = Renderer.CulledPolygons =
 			Renderer.GeneratedPolygons = 0;
@@ -514,6 +525,47 @@ void main( void )
 				1, sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
 		}
 
+		/*if( DNSStatus == -1 )
+		{
+			ngADnsGetTicket( &DNSTicket, "redringrico.com" );
+			sprintf( DNSString, "Resolving \"redringrico.com\"" );
+			DNSStatus = 0;
+		}
+		else if( DNSStatus == 0 )
+		{
+			PollStatus = ngADnsPoll( &DNSAnswer );
+			sprintf( DNSString, "Resolving \"redringrico.com\"" );
+
+			if( PollStatus != NG_EWOULDBLOCK )
+			{
+				sprintf( DNSString, "Found IP address" );
+				DNSStatus = 1;
+			}
+		}
+		else if( DNSStatus == 1 )
+		{
+			if( PollStatus == NG_EOK )
+			{
+				if( DNSAnswer.ticket == DNSTicket )
+				{
+					ngSPrintf( DNSString, "Resolved redringrico.com" );
+						
+					ngADnsReleaseTicket( &DNSTicket );
+					DNSStatus = 2;
+				}
+			}
+			else
+			{
+				sprintf( DNSString, "Failed to resolve \"redringrico.com\"" );
+				DNSStatus = 0;
+			}
+		}
+		else
+		{
+		}*/
+
+		NET_Update( );
+
 		UpdateTime = syTmrGetCount( );
 		UpdateTime =
 			syTmrCountToMicro( syTmrDiffCount( StartTime, UpdateTime ) );
@@ -558,6 +610,9 @@ void main( void )
 		TXT_RenderString( &GlyphSet, &TextColour, 10.0f,
 			( float )GlyphSet.LineHeight * 9.0f, PrintBuffer );
 
+		TXT_RenderString( &GlyphSet, &TextColour, 0.0f,
+			( float )GlyphSet.LineHeight * 4.0f, DNSString );
+
 
 		TextColour.dwPacked = 0xFFFFFF00;
 
@@ -566,8 +621,8 @@ void main( void )
 			10.0f, ( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );
 
 		sprintf( PrintBuffer, "Player rotate: %f", PlayerRotate );
-		TXT_RenderString( &GlyphSet, &TextColour,
-			10.0f, ( float )GlyphSet.LineHeight * 4.0f, PrintBuffer );
+		/*TXT_RenderString( &GlyphSet, &TextColour,
+			10.0f, ( float )GlyphSet.LineHeight * 4.0f, PrintBuffer );*/
 
 		sprintf( PrintBuffer, "Camera rotate: %f", CameraRotation );
 		TXT_RenderString( &GlyphSet, &TextColour,
@@ -577,6 +632,7 @@ void main( void )
 			TestCamera.Position.X,TestCamera.Position.Y,TestCamera.Position.Z );
 		TXT_RenderString( &GlyphSet, &TextColour,
 			10.0f, ( float )GlyphSet.LineHeight * 6.0f, PrintBuffer );
+
 #endif /* DEBUG */
 
 		TextColour.dwPacked = 0xFFFFFFFF;
@@ -1292,20 +1348,28 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 
 	switch( NET_GetDeviceType( ) )
 	{
-		case NET_DEVICE_TYPE_LAN:
+		case NET_DEVICE_TYPE_LAN_10:
 		{
 			TextColour.dwPacked = 0x9FFFFFFF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
 				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
-				"Network Device: LAN" );
+				"Network Device: LAN [10Mbps]" );
 			break;
 		}
-		case NET_DEVICE_TYPE_BBA:
+		case NET_DEVICE_TYPE_LAN_100:
 		{
 			TextColour.dwPacked = 0x9FFFFFFF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
 				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
-				"Network Device: BBA" );
+				"Network Device: LAN [100Mbps]" );
+			break;
+		}
+		case NET_DEVICE_TYPE_LAN_UNKNOWN:
+		{
+			TextColour.dwPacked = 0x9FFFFFFF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				"Network Device: LAN [UNKNOWN]" );
 			break;
 		}
 		case NET_DEVICE_TYPE_EXTMODEM:

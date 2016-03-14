@@ -9,6 +9,7 @@
 #include <ngappp.h>
 #include <ngadns.h>
 #include <ngeth.h>
+#include <Nt_utl.h>
 
 #define NET_MAX_BUFFERS		100			/* Message buffers */
 #define NET_MAX_STACK_MEM	400*1024	/* 400KiB static memory */
@@ -41,9 +42,12 @@ static NGarpent NET_ARPTable[ 10 ];
 
 static NET_STATUS NET_Status = NET_STATUS_ERROR;
 static NET_DEVICE_TYPE NET_DeviceType = NET_DEVICE_TYPE_NONE;
+static NET_DEVICE_HARDWARE NET_DeviceHardware = NET_DEVICE_HARDWARE_NONE;
 
 static NGuint NET_DNS1 = 0, NET_DNS2 = 0;
 static Uint8 NET_DNSWorkArea[ ADNS_WORKSIZE( 8 ) ];
+
+static NetworkInfo3 NET_NetworkInfo;
 
 /* Consider making this use the memory manager? */
 static void *NET_StaticBufferAlloc( Uint32 p_Size, NGuint *p_pAddr );
@@ -132,7 +136,11 @@ int NET_Initialise( void )
 {
 	/* For now, just look for the standard modem, later this will also include
 	 * the LAN/BBA */
-	 int ReturnStatus;
+	/* One potential issue is that the device may either be disconnected or the
+	 * cable connecting it may not be present (BBA showed this behaviour),
+	 * therfore requiring polling the device rather than initialising it and
+	 * forgetting about it */
+	int ReturnStatus;
 #if defined ( DEBUG )
 	/* 5 - Errors
 	 * 2 - Normal debug information
@@ -148,6 +156,13 @@ int NET_Initialise( void )
 	 * until there are no more devices left to try, then return a no device
 	 * found error code (should not cause the game to fail) */
 
+	/* Get the Flash settings for the network */
+	if( ntInfInit( &NET_NetworkInfo, NULL ) != NTD_OK )
+	{
+		LOG_Debug( "Failed to retreive the network information from flash" );
+		return -2;
+	}
+
 	/* First, acquire the network device, either an internal modem or BB/LAN
 	 * adapter */
 	ReturnStatus = ngInit( NET_InternalModemStack );
@@ -155,6 +170,7 @@ int NET_Initialise( void )
 	if( ReturnStatus == NG_EINIT_NOERROR )
 	{
 		NET_DeviceType = NET_DEVICE_TYPE_INTMODEM;
+		NET_DeviceHardware = NET_DEVICE_HARDWARE_MODEM;
 
 		NET_pInterface = ngIfGetPtr( "Internal Modem" );
 	}
@@ -162,6 +178,7 @@ int NET_Initialise( void )
 	{
 		ngExit( 0 );
 		ReturnStatus = ngInit( NET_LANStack );
+		NET_DeviceHardware = NET_DEVICE_HARDWARE_LAN;
 	}
 
 	if( ReturnStatus != NG_EINIT_NOERROR )
@@ -192,7 +209,7 @@ int NET_Initialise( void )
 	}
 
 	/* Must be the BBA/LAN */
-	if( NET_DeviceType == NET_DEVICE_TYPE_NONE )
+	if( NET_DeviceHardware == NET_DEVICE_HARDWARE_LAN )
 	{
 		int NetSpeed;
 
@@ -205,25 +222,32 @@ int NET_Initialise( void )
 			case DCLAN_10BaseT:
 			case DCLAN_10BaseTX:
 			{
-				NET_DeviceType = NET_DEVICE_TYPE_LAN;
+				NET_DeviceType = NET_DEVICE_TYPE_LAN_10;
 				break;
 			}
 			case DCLAN_100BaseT:
 			case DCLAN_100BaseTX:
 			{
-				NET_DeviceType = NET_DEVICE_TYPE_BBA;
+				NET_DeviceType = NET_DEVICE_TYPE_LAN_100;
 				break;
 			}
+			default:
+			{
+				NET_DeviceType = NET_DEVICE_TYPE_LAN_UNKNOWN;
+			}
 		}
+	}
+	else if( NET_DeviceHardware == NET_DEVICE_HARDWARE_MODEM )
+	{
+		ngIfGetOption( NET_pInterface, NG_PPPIFO_IPCP_DNS1_ADDR, &NET_DNS1 );
+		ngIfGetOption( NET_pInterface, NG_PPPIFO_IPCP_DNS2_ADDR, &NET_DNS2 );
+
+		/* Initialise the DNS IPs */
+		ngDnsInit( NULL, NET_DNS1, NET_DNS2 );
 	}
 
 	NET_Status = NET_STATUS_DISCONNECTED;
 
-	ngIfGetOption( NET_pInterface, NG_PPPIFO_IPCP_DNS1_ADDR, &NET_DNS1 );
-	ngIfGetOption( NET_pInterface, NG_PPPIFO_IPCP_DNS2_ADDR, &NET_DNS2 );
-
-	/* Initialise the DNS IPs */
-	ngDnsInit( NULL, NET_DNS1, NET_DNS2 );
 	/* Initialise the asynchronous DNS work area */
 	ngADnsInit( 8, ( void * )&NET_DNSWorkArea );
 
@@ -240,6 +264,38 @@ void NET_Terminate( void )
 	{
 		ngExit( 0 );
 	}
+}
+
+void NET_Update( void )
+{
+	if( NET_DeviceHardware == NET_DEVICE_HARDWARE_LAN )
+	{
+		int NetSpeed;
+
+		ngIfGetOption( NET_pInterface, NG_IFO_DCLAN_CURRENT_SPEED, &NetSpeed );
+		
+		switch( NetSpeed )
+		{
+			case DCLAN_10BaseT:
+			case DCLAN_10BaseTX:
+			{
+				NET_DeviceType = NET_DEVICE_TYPE_LAN_10;
+				break;
+			}
+			case DCLAN_100BaseT:
+			case DCLAN_100BaseTX:
+			{
+				NET_DeviceType = NET_DEVICE_TYPE_LAN_100;
+				break;
+			}
+			default:
+			{
+				NET_DeviceType = NET_DEVICE_TYPE_LAN_UNKNOWN;
+			}
+		}
+	}
+
+	ngYield( );
 }
 
 static void *NET_StaticBufferAlloc( Uint32 p_Size, NGuint *p_pAddr )

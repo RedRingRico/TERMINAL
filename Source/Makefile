@@ -57,7 +57,7 @@ OPTIMISE_TYPE = size
 LIBDIR	= $(KATANA_ROOT)\lib
 DEFAULT_INCLUDE	= $(KATANA_ROOT)\include $(KATANA_ROOT)\include\nexgen
 
-DEFAULT_LIBS	= kamui2 shinobi sh4nlfzn dmcast Audio64 modem
+DEFAULT_LIBS	= kamui2 shinobi sh4nlfzn dmcast Audio64 modem nt_utl
 
 
 DEFAULT_OBJS = strt1.obj strt2.obj systemid.obj toc.obj sg_sec.obj \
