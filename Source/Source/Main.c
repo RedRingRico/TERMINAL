@@ -413,7 +413,7 @@ void main( void )
 		static float CameraRotation = 0.0f;
 		static float PlayerRotate = 0.0f;
 		static float StickRotate = 0.0f;
-		static char DNSString[ 80 ];
+		static char DNSString[ 80 ] = { '\0' };
 
 		Renderer.VisiblePolygons = Renderer.CulledPolygons =
 			Renderer.GeneratedPolygons = 0;
@@ -423,6 +423,16 @@ void main( void )
 		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
 		{
 			Run = 0;
+		}
+
+		if( g_Peripherals[ 0 ].press & PDD_DGT_TY )
+		{
+			NET_ConnectToISP( );
+		}
+
+		if( g_Peripherals[ 0 ].press & PDD_DGT_TX )
+		{
+			NET_DisconnectFromISP( );
 		}
 
 		if( g_Peripherals[ 0 ].x1 > 0 )
@@ -1328,12 +1338,36 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 				"[NETWORK: DISCONNECTED]" );
 			break;
 		}
+		case NET_STATUS_NEGOTIATING:
+		{
+			TextColour.dwPacked = 0x9F0000FF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight,
+				"[NETWORK: NEGOTIATING]" );
+			break;
+		}
 		case NET_STATUS_CONNECTED:
 		{
 			TextColour.dwPacked = 0x9F00FF00;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
 				0.0f, ( float )p_pGlyphSet->LineHeight,
 				"[NETWORK: CONNECTED]" );
+			break;
+		}
+		case NET_STATUS_PPP_POLL:
+		{
+			TextColour.dwPacked = 0x9FFF00FF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight,
+				"[NETWORK: Polling PPP]" );
+			break;
+		}
+		case NET_STATUS_RESET:
+		{
+			TextColour.dwPacked = 0x9FFF00FF;
+			TXT_RenderString( p_pGlyphSet, &TextColour,
+				0.0f, ( float )p_pGlyphSet->LineHeight,
+				"[NETWORK: RESETTING]" );
 			break;
 		}
 		default:
@@ -1350,65 +1384,89 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 	{
 		case NET_DEVICE_TYPE_LAN_10:
 		{
+			float TextLength;
+			TXT_MeasureString( p_pGlyphSet,
+				"Network Device: LAN [10Mbps]", &TextLength );
 			TextColour.dwPacked = 0x9FFFFFFF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
-				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				640.0f - TextLength, 0.0f,
 				"Network Device: LAN [10Mbps]" );
 			break;
 		}
 		case NET_DEVICE_TYPE_LAN_100:
 		{
+			float TextLength;
+			TXT_MeasureString( p_pGlyphSet,
+				"Network Device: LAN [100Mbps]", &TextLength );
 			TextColour.dwPacked = 0x9FFFFFFF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
-				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				640.0f - TextLength, 0.0f,
 				"Network Device: LAN [100Mbps]" );
 			break;
 		}
 		case NET_DEVICE_TYPE_LAN_UNKNOWN:
 		{
+			float TextLength;
+			TXT_MeasureString( p_pGlyphSet,
+				"Network Device: LAN [UNKNOWN]", &TextLength );
 			TextColour.dwPacked = 0x9FFFFFFF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
-				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				640.0f - TextLength, 0.0f,
 				"Network Device: LAN [UNKNOWN]" );
 			break;
 		}
 		case NET_DEVICE_TYPE_EXTMODEM:
 		{
+			float TextLength;
+			TXT_MeasureString( p_pGlyphSet,
+				"Network Device: External Modem", &TextLength );
 			TextColour.dwPacked = 0x9FFFFFFF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
-				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				640.0f - TextLength, 0.0f,
 				"Network Device: External Modem" );
 			break;
 		}
 		case NET_DEVICE_TYPE_SERIALPPP:
 		{
+			float TextLength;
+			TXT_MeasureString( p_pGlyphSet,
+				"Network Device: Serial PPP", &TextLength );
 			TextColour.dwPacked = 0x9FFFFFFF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
-				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				640.0f - TextLength, 0.0f,
 				"Network Device: Serial PPP" );
 			break;
 		}
 		case NET_DEVICE_TYPE_INTMODEM:
 		{
+			float TextLength;
+			TXT_MeasureString( p_pGlyphSet,
+				"Network Device: Internal Modem", &TextLength );
 			TextColour.dwPacked = 0x9FFFFFFF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
-				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				640.0f - TextLength, 0.0f,
 				"Network Device: Internal Modem" );
 			break;
 		}
 		case NET_DEVICE_TYPE_NONE:
 		{
+			float TextLength;
+			TXT_MeasureString( p_pGlyphSet,
+				"Network Device: Not present", &TextLength );
 			TextColour.dwPacked = 0x9FFFFFFF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
-				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				640.0f - TextLength, 0.0f,
 				"Network Device: Not present" );
 			break;
 		}
 		default:
 		{
+			float TextLength;
+			TXT_MeasureString( p_pGlyphSet,
+				"Network Device: UNKNOWN", &TextLength );
 			TextColour.dwPacked = 0x9FFF0000;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
-				0.0f, ( float )p_pGlyphSet->LineHeight * 2.0f,
+				640.0f - TextLength, 0.0f,
 				"Network Device: UNKNOWN" );
 			break;
 		}
