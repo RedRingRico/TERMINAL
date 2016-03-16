@@ -200,6 +200,8 @@ void main( void )
 
 	REN_Initialise( &Renderer, &RendererConfiguration );
 
+	//kmSetWaitVsyncCallback((void *)NET_Update, NULL);
+
 	scif_close( );
 
 	AudioParameters.IntCallback = NULL;
@@ -1300,6 +1302,7 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 {
 	float TextLength;
 	KMPACKEDARGB TextColour;
+	static char PrintBuffer[ 128 ];
 
 	TextColour.dwPacked = 0x7F00FF00;
 
@@ -1471,6 +1474,16 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 			break;
 		}
 	}
+
+	
+	TextColour.dwPacked = 0x9FFFFFFF;
+	sprintf( PrintBuffer, "Dev:   %d", NET_GetDevOpen( ) );
+	TXT_RenderString( p_pGlyphSet, &TextColour, 0.0f,
+		( float )p_pGlyphSet->LineHeight * 16.0f, PrintBuffer );
+
+	sprintf( PrintBuffer, "Iface: %d", NET_GetIfaceOpen( ) );
+	TXT_RenderString( p_pGlyphSet, &TextColour, 0.0f,
+		( float )p_pGlyphSet->LineHeight * 17.0f, PrintBuffer );
 }
 
 void DrawDebugOverlay_Int( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo )

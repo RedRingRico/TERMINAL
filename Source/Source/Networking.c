@@ -13,7 +13,7 @@
 #include <Nt_utl.h>
 
 #define NET_MAX_BUFFERS		100			/* Message buffers */
-#define NET_MAX_STACK_MEM	400*1024	/* 400KiB static memory */
+#define NET_MAX_STACK_MEM	400000	/* 400KiB static memory */
 #define NET_MAX_SOCKETS		10			/* Maximum number of sockets open */
 #define NET_MAX_DEVCBS		2			/* Maximum simultaneous device control
 										 * blocks */
@@ -25,18 +25,20 @@
 #define NET_MAX_DIAL_STR			137
 
 static NGsock NET_SocketTable[ NET_MAX_SOCKETS ];
+/* Pointer to the device control block */
+NGdevcb *NET_DeviceControlBlock;
 /* Deviced control block strucutre */
-static NGdevcb NET_DeviceIOControlBlock[ NET_MAX_DEVCBS ];
+NGdevcb NET_DeviceIOControlBlock[ NET_MAX_DEVCBS ];
 /* TCP control blocks */
 static NET_TCPCB[ NET_MAX_SOCKETS ];
 /* This should probably be in some kind of network device struct */
-static NGdev NET_Device;
+NGdev NET_Device;
 /* Network interface */
-static NGifnet *NET_pInterface;
+NGifnet *NET_pInterface;
 /* PPP interface */
-static NGapppifnet NET_PPPIfnet;
+NGapppifnet NET_PPPIfnet;
 /* LAN interface */
-static NGethifnet NET_LANIfnet;
+NGethifnet NET_LANIfnet;
 /* Device input buffer */
 static NGubyte NET_DeviceInputBuffer[ NET_MAX_DEVIO_SIZE ];
 /* Device output buffer */
@@ -56,9 +58,12 @@ static char NET_Dial[ NET_MAX_DIAL_STR ];
 /* DNS server addresses */
 static struct in_addr NET_DNSAddress[ 2 ];
 
-static bool NET_Init = false;
+static bool NET_Initialised = false;
 
-static NGmdmstate NET_ModemState;
+static int NET_DevOpen = 0;
+static int NET_IfaceOpen = 0;
+
+NGmdmstate NET_ModemState;
 static char NET_ModemSpeed[ 64 ] = "";
 
 static NGmdmscript NET_ModemDialScript[ ] =
@@ -80,8 +85,8 @@ static NGmdmscript NET_ModemDialScript[ ] =
 static NET_STATUS NET_Status = NET_STATUS_ERROR;
 static NET_DEVICE_TYPE NET_DeviceType = NET_DEVICE_TYPE_NONE;
 static NET_DEVICE_HARDWARE NET_DeviceHardware = NET_DEVICE_HARDWARE_NONE;
-static NET_INTERNAL_MODEM_RESET NET_InternalModemReset =
-	NET_INTERNAL_MODEM_RESET_INIT;
+/*static NET_INTERNAL_MODEM_RESET NET_InternalModemReset =
+	NET_INTERNAL_MODEM_RESET_INIT;*/
 
 static NGuint NET_DNS1 = 0, NET_DNS2 = 0;
 static Uint8 NET_DNSWorkArea[ ADNS_WORKSIZE( 8 ) ];
@@ -103,6 +108,13 @@ static NGcfgent NET_InternalModemStack[ ] =
 	NG_RTO_CLOCK_FREQ,			NG_CFG_INT( NG_CLOCK_FREQ ),
 	NG_DEVCBO_TABLE,			NG_CFG_PTR( NET_DeviceIOControlBlock ),
 	NG_DEVCBO_MAX,				NG_CFG_INT( NET_MAX_DEVCBS ),
+#if defined ( DEBUG )
+	NG_DEBUGO_LEVEL,			NG_CFG_INT( 1 ),
+	NG_DEBUGO_MODULE,			NG_CFG_INT( NG_DBG_PPP |
+											NG_DBG_DRV |
+											NG_DBG_CORE |
+											NG_DBG_APP ),
+#endif /* DEBUG */
 	/* Protocol */
 	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_TCP ),
 	NG_TCPO_TCB_MAX,			NG_CFG_INT( NET_MAX_SOCKETS ),
@@ -124,6 +136,9 @@ static NGcfgent NET_InternalModemStack[ ] =
 	NG_CFG_IFADDWAIT,			NG_CFG_PTR( &NET_PPPIfnet ),
 	NG_CFG_DRIVER,				NG_CFG_PTR( &ngNetDrv_AHDLC ),
 	NG_IFO_NAME,				NG_CFG_PTR( "Internal Modem" ),
+#if defined ( DEBUG )
+	NG_IFO_FLAGS,				NG_CFG_INT( NG_IFF_DEBUG ),
+#endif /* DEBUG */
 	/* PPP */
 	NG_APPPIFO_DEVICE,			NG_CFG_PTR( &NET_Device ),
 	NG_PPPIFO_DEFAULT_ROUTE,	NG_CFG_TRUE,
@@ -190,6 +205,10 @@ int NET_Initialise( void )
 	ngDebugSetLevel( 1 );
 	/* Allow DHCP debugging */
 	ngDebugSetModule( NG_DBG_DHCP, 1 );
+	ngDebugSetModule( NG_DBG_PPP, 1 );
+	ngDebugSetModule( NG_DBG_APP, 1 );
+	ngDebugSetModule( NG_DBG_DRV, 1 );
+	ngDebugSetModule( NG_DBG_CORE, 1 );
 #endif /* DEBUG */
 	
 	/* In the future, probe for more devices if NG_EINIT_DEVOPEN is returned
@@ -211,6 +230,21 @@ int NET_Initialise( void )
 	{
 		NET_DeviceType = NET_DEVICE_TYPE_INTMODEM;
 		NET_DeviceHardware = NET_DEVICE_HARDWARE_MODEM;
+
+#if defined ( DEBUG )
+	/* 5 - Errors
+	 * 2 - Normal debug information
+	 * 1 - More verbose debug information
+	 * 0 - USE ONLY IF COMPLETELY NECESSARY
+	 */
+	ngDebugSetLevel( 1 );
+	/* Allow DHCP debugging */
+	ngDebugSetModule( NG_DBG_DHCP, 1 );
+	ngDebugSetModule( NG_DBG_PPP, 1 );
+	ngDebugSetModule( NG_DBG_APP, 1 );
+	ngDebugSetModule( NG_DBG_DRV, 1 );
+	ngDebugSetModule( NG_DBG_CORE, 1 );
+#endif /* DEBUG */
 
 		NET_pInterface = ngIfGetPtr( "Internal Modem" );
 	}
@@ -290,7 +324,7 @@ int NET_Initialise( void )
 
 	LOG_Debug( "Initialsed NexGen: %s", ngGetVersionString( ) );
 
-	NET_Init = true;
+	NET_Initialised = true;
 
 	return 0;
 }
@@ -306,47 +340,59 @@ void NET_Terminate( void )
 int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
 {
 	static Uint32 TimeStart;
+	static NET_INTERNAL_MODEM_RESET ModemResetState =
+		NET_INTERNAL_MODEM_RESET_INIT;
 	int DeviceFlags, Size, Error;
 
-	switch( NET_InternalModemReset )
+	//LOG_Debug( "RIM: Resetting: %d", ModemResetState );
+
+	switch( ModemResetState )
 	{
 		case NET_INTERNAL_MODEM_RESET_INIT:
 		{
-			Error = ngDevioOpen( &NET_Device, 0, &NET_DeviceIOControlBlock );
+			LOG_Debug( "Modem Reset: Opening network device" );
+			Error = ngDevioOpen( &NET_Device, 0, &NET_DeviceControlBlock );
 
 			if( Error != 0 )
 			{
+				LOG_Debug( "Failed to open network device" );
 				return Error;
 			}
+			++NET_DevOpen;
+			LOG_Debug( "Modem Reset: Network device opened" );
 
 			/* Clear DTR (hardware line reset) */
 			NET_ChangeDeviceParams( 0, NG_DEVCF_SER_DTR );
 			TimeStart = syTmrGetCount( );
-			NET_InternalModemReset = NET_INTERNAL_MODEM_RESET_DROP_LINES;
+			ModemResetState = NET_INTERNAL_MODEM_RESET_DROP_LINES;
 			return NG_EWOULDBLOCK;
 		}
 		case NET_INTERNAL_MODEM_RESET_DROP_LINES:
 		{
+			LOG_Debug( "Modem Reset: Dropping lines" );
 			if( syTmrCountToMicro(
 					syTmrDiffCount( TimeStart, syTmrGetCount( ) ) ) >=
 				( p_DropTime * 1000000 ) )
 			{
 				/* Set DTR */
+				LOG_Debug( "Setting DTR" );
 				NET_ChangeDeviceParams( NG_DEVCF_SER_DTR, 0 );
 				TimeStart = syTmrGetCount( );
-				NET_InternalModemReset = NET_INTERNAL_MODEM_RESET_WAIT_FOR_DSR;
+				ModemResetState = NET_INTERNAL_MODEM_RESET_WAIT_FOR_DSR;
 			}
 
 			return NG_EWOULDBLOCK;
 		}
 		case NET_INTERNAL_MODEM_RESET_WAIT_FOR_DSR:
 		{
+			LOG_Debug( "Modem Reset: Waiting for DSR" );
 			Size = sizeof( DeviceFlags );
-			ngDevioIoctl( NET_DeviceIOControlBlock, NG_IOCTL_DEVCTL,
+			ngDevioIoctl( NET_DeviceControlBlock, NG_IOCTL_DEVCTL,
 				NG_DEVCTL_GCFLAGS, &DeviceFlags, &Size );
 
 			if( DeviceFlags & NG_DEVCF_SER_DSR )
 			{
+				LOG_Debug( "Modem Reset: Got DSR" );
 				/* Reset successful */
 				Error = NG_EOK;
 			}
@@ -354,27 +400,34 @@ int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
 					syTmrDiffCount( TimeStart, syTmrGetCount( ) ) ) >=
 				( p_TimeOut * 1000000 ) )
 			{
+				LOG_Debug( "Modem Reset: DSR timed out: %lu",syTmrDiffCount( TimeStart, syTmrGetCount( ) ) );
 				Error = NG_ETIMEDOUT;
 			}
 			else
 			{
+				LOG_Debug( "Blocking" );
 				return NG_EWOULDBLOCK;
 			}
 
-			ngDevioClose( NET_DeviceIOControlBlock );
-			NET_InternalModemReset = NET_INTERNAL_MODEM_RESET_INIT;
+			LOG_Debug( "Modem Reset: Closing device" );
+			ngDevioClose( NET_DeviceControlBlock );
+			--NET_DevOpen;
+			ModemResetState = NET_INTERNAL_MODEM_RESET_INIT;
 
 			return Error;
 		}
+		default:
+		{
+			LOG_Debug( "Unknown reset state: %d", ModemResetState );
+		}
 	}
+	LOG_Debug( "End of reset" );
+
+	return NG_EWOULDBLOCK;
 }
 
 void NET_Update( void )
 {
-	static bool WaitForDSR = false;
-
-	if( NET_Init )
-	{
 	ngYield( );
 
 	if( NET_DeviceHardware == NET_DEVICE_HARDWARE_LAN )
@@ -424,7 +477,7 @@ void NET_Update( void )
 						int Char;
 
 						LOG_Debug( "Polling PPP" );
-						strcpy( NET_ModemSpeed, NET_ModemState.mdst_buf );
+						/*strcpy( NET_ModemSpeed, NET_ModemState.mdst_buf );
 						i = strlen( NET_ModemSpeed );
 						pCharPtr = NET_ModemSpeed + i;
 
@@ -434,7 +487,7 @@ void NET_Update( void )
 
 						while( ++i < sizeof( NET_ModemSpeed ) )
 						{
-							Char = ngDevioReadByte( NET_DeviceIOControlBlock,
+							Char = ngDevioReadByte( NET_DeviceControlBlock,
 								0 );
 
 							if( Char >= 0 )
@@ -467,25 +520,44 @@ void NET_Update( void )
 								"speed" );
 							NET_Status = NET_STATUS_DISCONNECTED;
 							break;
-						}
+						}*/
 
-						ngDevioClose( NET_DeviceIOControlBlock );
+						ngDevioClose( NET_DeviceControlBlock );
+						--NET_DevOpen;
 
 						ngIfOpen( NET_pInterface );
+						++NET_IfaceOpen;
 						ngPppStart( NET_pInterface );
 						NET_Status = NET_STATUS_PPP_POLL;
+
 						break;
 					}
 					case NG_ETIMEDOUT:
 					{
 						LOG_Debug( "Connection timed out" );
 						NET_Status = NET_STATUS_DISCONNECTED;
+
+						ngDevioClose( NET_DeviceControlBlock );
+						--NET_DevOpen;
+						break;
+					}
+					case 0x000E:
+					{
+						LOG_Debug( "Modem busy" );
+						NET_Status = NET_STATUS_DISCONNECTED;
+
+						ngDevioClose( NET_DeviceControlBlock );
+						--NET_DevOpen;
 						break;
 					}
 					default:
 					{
-						LOG_Debug( "Unknown modem state" );
+						LOG_Debug( "Unknown modem state: 0x%08X", ModemState );
 						NET_Status = NET_STATUS_DISCONNECTED;
+
+						ngDevioClose( NET_DeviceControlBlock );
+						--NET_DevOpen;
+						break;
 					}
 				}
 				break;
@@ -498,9 +570,18 @@ void NET_Update( void )
 				{
 					case NG_PIFS_DEAD:
 					{
-						LOG_Debug( "PPP dead" );
-						ngIfClose( NET_pInterface );
-						NET_Status = NET_STATUS_DISCONNECTED;
+						int Error;
+						LOG_Debug( "NET_STATUS_PPP_POLL: PPP dead" );
+						Error = ngIfClose( NET_pInterface );
+
+						if( Error != NG_EOK )
+						{
+							LOG_Debug( "Could not close interface: %d",
+								Error );
+						}
+						--NET_IfaceOpen;
+
+						NET_Status = NET_STATUS_RESET;
 						break;
 					}
 					case NG_PIFS_IFUP:
@@ -524,8 +605,16 @@ void NET_Update( void )
 				NET_Status = NET_STATUS_CONNECTED;
 				if( ngPppGetState( NET_pInterface ) == NG_PIFS_DEAD )
 				{
-					ngIfClose( NET_pInterface );
-					LOG_Debug( "PPP dead" );
+					int Error;
+					LOG_Debug( "NET_STATUS_CONNECTED: PPP dead" );
+					Error = ngIfClose( NET_pInterface );
+
+					if( Error != NG_EOK )
+					{
+						LOG_Debug( "Could not close interface: %d",
+							Error );
+					}
+					--NET_IfaceOpen;
 					NET_Status = NET_STATUS_RESET;
 				}
 				break;
@@ -533,6 +622,7 @@ void NET_Update( void )
 			case NET_STATUS_RESET:
 			{
 				int ModemState = NET_ResetInternalModem( 2, 5 );
+				//LOG_Debug( "Resetting" );
 
 				switch( ModemState )
 				{
@@ -554,21 +644,20 @@ void NET_Update( void )
 						NET_Status = NET_STATUS_DISCONNECTED;
 						LOG_Debug( "Modem reset" );
 						ngExit( 0 );
-						NET_Init = false;
+						NET_Initialised = false;
 						break;
 					}
 					default:
 					{
 						LOG_Debug( "Failed to reset the internal modem: %d",
 							ModemState );
+						NET_Status = NET_STATUS_DISCONNECTED;
 						break;
 					}
 				}
-				
 				break;
 			}
 		}
-	}
 	}
 }
 
@@ -576,6 +665,13 @@ int NET_ConnectToISP( void )
 {
 	Uint32 Flag;
 	int Value;
+
+	/* Set up the device again (for now) */
+	if( NET_Initialised == false )
+	{
+		LOG_Debug( "Reinitialising network device" );
+		NET_Initialise( );
+	}
 
 	if( NET_DeviceHardware == NET_DEVICE_HARDWARE_MODEM )
 	{
@@ -629,23 +725,18 @@ int NET_ConnectToISP( void )
 		ntInfGetPrimaryDnsAddress( 0, &NET_DNSAddress[ 0 ] );
 		ntInfGetSecondaryDnsAddress( 0, &NET_DNSAddress[ 1 ] );
 
-		OpenReturn = ngDevioOpen( &NET_Device, 0, &NET_DeviceIOControlBlock );
+		OpenReturn = ngDevioOpen( &NET_Device, 0, &NET_DeviceControlBlock );
 		if( OpenReturn == 0 )
 		{
-			int DevFlags, DeviceFlags;
-			int Size;
+			int DeviceFlags;
+
+			++NET_DevOpen;
 
 			LOG_Debug( "Device opened" );
 
 			DeviceFlags = ( NG_DEVCF_SER_DTR | NG_DEVCF_SER_RTS |
 				NG_DEVCF_SER_NOHUPCL );
-			Size = sizeof( DevFlags );
-			ngDevioIoctl( NET_DeviceIOControlBlock, NG_IOCTL_DEVCTL,
-				NG_DEVCTL_GCFLAGS, &DeviceFlags, &Size );
-			DevFlags &= ~( 0 );
-			DevFlags |= DeviceFlags;
-			ngDevioIoctl( NET_DeviceIOControlBlock, NG_IOCTL_DEVCTL,
-				NG_DEVCTL_SCFLAGS, &DevFlags, &Size );
+			NET_ChangeDeviceParams( DeviceFlags, 0 );
 			
 			LOG_Debug( "Country initialisation" );
 			LOG_Debug( NET_CountryInit );
@@ -657,7 +748,7 @@ int NET_ConnectToISP( void )
 			LOG_Debug( NET_Dial );
 
 			LOG_Debug( "Attempting to start the modem initialisation" );
-			ngModemInit( &NET_ModemState, NET_DeviceIOControlBlock,
+			ngModemInit( &NET_ModemState, NET_DeviceControlBlock,
 				NET_ModemDialScript );
 			NET_Status = NET_STATUS_NEGOTIATING;
 			LOG_Debug( "Finished modem initialisation" );
@@ -679,8 +770,7 @@ int NET_DisconnectFromISP( void )
 	{
 		LOG_Debug( "Disconnecting from ISP" );
 		ngPppStop( NET_pInterface );
-		//ngIfClose( NET_pInterface );
-		NET_Status = NET_STATUS_RESET;
+		NET_Status = NET_STATUS_PPP_POLL;
 	}
 
 	return 0;
@@ -708,13 +798,13 @@ void NET_ChangeDeviceParams( int p_Set, int p_Clear )
 
 	Size = sizeof( DeviceFlags );
 
-	ngDevioIoctl( NET_DeviceIOControlBlock, NG_IOCTL_DEVCTL,
+	ngDevioIoctl( NET_DeviceControlBlock, NG_IOCTL_DEVCTL,
 		NG_DEVCTL_GCFLAGS, &DeviceFlags, &Size );
 
 	DeviceFlags &= ~p_Clear;
 	DeviceFlags |= p_Set;
 
-	ngDevioIoctl( NET_DeviceIOControlBlock, NG_IOCTL_DEVCTL,
+	ngDevioIoctl( NET_DeviceControlBlock, NG_IOCTL_DEVCTL,
 		NG_DEVCTL_SCFLAGS, &DeviceFlags, &Size );
 }
 
@@ -726,6 +816,16 @@ NET_STATUS NET_GetStatus( void )
 NET_DEVICE_TYPE NET_GetDeviceType( void )
 {
 	return NET_DeviceType;
+}
+
+int NET_GetDevOpen( void )
+{
+	return NET_DevOpen;
+}
+
+int NET_GetIfaceOpen( void )
+{
+	return NET_IfaceOpen;
 }
 
 /* Required for the debug version of NexGen */

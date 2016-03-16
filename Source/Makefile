@@ -117,7 +117,7 @@ development: TARGET := $(TARGET)_DEV
 development: DEFAULT_LIBS += libcross sh4nlfzn nexgend
 development: OPTIMISE := 0
 development: OPTIMISE_LINK := 0
-development: CDEFS += DEBUG
+development: CDEFS += DEBUG NG_DEBUG
 development: LINK_DEBUG = debug
 development: $(TARGET)
 
@@ -131,7 +131,7 @@ debug: TARGET := $(TARGET)_DEBUG
 debug: DEFAULT_LIBS += libcross sh4nlfzn nexgend
 debug: OPTIMISE := 0
 debug: OPTIMISE_LINK := 0
-debug: CDEFS += DEBUG
+debug: CDEFS += DEBUG NG_DEBUG
 debug: LINK_DEBUG = debug
 debug: $(TARGET)
 

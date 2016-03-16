@@ -70,5 +70,8 @@ int NET_DisconnectFromISP( void );
 NET_STATUS NET_GetStatus( void );
 NET_DEVICE_TYPE NET_GetDeviceType( void );
 
+int NET_GetDevOpen( void );
+int NET_GetIfaceOpen( void );
+
 #endif /* __TERMINAL_NETWORKING_H__ */
 
