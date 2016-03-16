@@ -19,6 +19,7 @@
 #include <Networking.h>
 #include <ngadns.h>
 #include <ngnetdb.h>
+#include <ngsocket.h>
 
 #include <FileSystem.h>
 
@@ -89,6 +90,7 @@ int DNSStatus;
 int PollStatus;
 static ngADnsAnswer DNSAnswer;
 ngADnsTicket DNSTicket;
+Uint32 DNSResolveTime;
 
 void main( void )
 {
@@ -537,44 +539,65 @@ void main( void )
 				1, sizeof( VECTOR3 ), sizeof( VECTOR3 ), &CameraMatrix );
 		}
 
-		/*if( DNSStatus == -1 )
+		if( NET_GetStatus( ) == NET_STATUS_CONNECTED )
 		{
-			ngADnsGetTicket( &DNSTicket, "redringrico.com" );
-			sprintf( DNSString, "Resolving \"redringrico.com\"" );
-			DNSStatus = 0;
-		}
-		else if( DNSStatus == 0 )
-		{
-			PollStatus = ngADnsPoll( &DNSAnswer );
-			sprintf( DNSString, "Resolving \"redringrico.com\"" );
 
-			if( PollStatus != NG_EWOULDBLOCK )
+			if( DNSStatus == -1 )
 			{
-				sprintf( DNSString, "Found IP address" );
-				DNSStatus = 1;
+				DNSResolveTime = syTmrGetCount( );
+				ngADnsGetTicket( &DNSTicket, "redringrico.com" );
+				sprintf( DNSString, "Resolving \"redringrico.com\"" );
+				DNSStatus = 0;
 			}
-		}
-		else if( DNSStatus == 1 )
-		{
-			if( PollStatus == NG_EOK )
+			else if( DNSStatus == 0 )
 			{
-				if( DNSAnswer.ticket == DNSTicket )
+				PollStatus = ngADnsPoll( &DNSAnswer );
+				sprintf( DNSString, "Resolving \"redringrico.com\"" );
+
+				if( PollStatus != NG_EWOULDBLOCK )
 				{
-					ngSPrintf( DNSString, "Resolved redringrico.com" );
-						
-					ngADnsReleaseTicket( &DNSTicket );
-					DNSStatus = 2;
+					sprintf( DNSString, "Found IP address" );
+					DNSResolveTime = syTmrCountToMicro(
+						syTmrDiffCount( DNSResolveTime, syTmrGetCount( ) ) );
+					DNSStatus = 1;
+				}
+			}
+			else if( DNSStatus == 1 )
+			{
+				if( PollStatus == NG_EOK )
+				{
+					if( DNSAnswer.ticket == DNSTicket )
+					{
+						struct in_addr **ppAddrList;
+
+						ppAddrList =
+							( struct in_addr ** )DNSAnswer.addr->h_addr_list;
+
+						/* Really need the micro symbol, 'u' will do */
+						sprintf( DNSString, "Resolved \"redringrico.com\" [%s]"
+							" in %luus", inet_ntoa( *ppAddrList[ 0 ] ),
+							DNSResolveTime );
+							
+						ngADnsReleaseTicket( &DNSTicket );
+						DNSStatus = 2;
+					}
+				}
+				else
+				{
+					sprintf( DNSString, "Failed to resolve "
+						"\"redringrico.com\"" );
+					DNSStatus = 0;
 				}
 			}
 			else
 			{
-				sprintf( DNSString, "Failed to resolve \"redringrico.com\"" );
-				DNSStatus = 0;
 			}
 		}
 		else
 		{
-		}*/
+			DNSStatus = -1;
+			sprintf( DNSString, "" );
+		}
 
 		NET_Update( );
 
@@ -623,8 +646,7 @@ void main( void )
 			( float )GlyphSet.LineHeight * 9.0f, PrintBuffer );
 
 		TXT_RenderString( &GlyphSet, &TextColour, 0.0f,
-			( float )GlyphSet.LineHeight * 4.0f, DNSString );
-
+			( float )GlyphSet.LineHeight * 18.0f, DNSString );
 
 		TextColour.dwPacked = 0xFFFFFF00;
 
@@ -633,8 +655,8 @@ void main( void )
 			10.0f, ( float )GlyphSet.LineHeight * 3.0f, PrintBuffer );
 
 		sprintf( PrintBuffer, "Player rotate: %f", PlayerRotate );
-		/*TXT_RenderString( &GlyphSet, &TextColour,
-			10.0f, ( float )GlyphSet.LineHeight * 4.0f, PrintBuffer );*/
+		TXT_RenderString( &GlyphSet, &TextColour,
+			10.0f, ( float )GlyphSet.LineHeight * 4.0f, PrintBuffer );
 
 		sprintf( PrintBuffer, "Camera rotate: %f", CameraRotation );
 		TXT_RenderString( &GlyphSet, &TextColour,
@@ -1362,7 +1384,7 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 			TextColour.dwPacked = 0x9FFF00FF;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
 				0.0f, ( float )p_pGlyphSet->LineHeight,
-				"[NETWORK: Polling PPP]" );
+				"[NETWORK: POLLING PPP]" );
 			break;
 		}
 		case NET_STATUS_RESET:
@@ -1378,7 +1400,7 @@ void DrawOverlayText( GLYPHSET *p_pGlyphSet )
 			TextColour.dwPacked = 0x9FFF0000;
 			TXT_RenderString( p_pGlyphSet, &TextColour,
 				0.0f, ( float )p_pGlyphSet->LineHeight,
-				"[NETWORK DEVICE STATUS UNKNOWN]" );
+				"[NETWORK: UNKNOWN]" );
 			break;
 		}
 	}

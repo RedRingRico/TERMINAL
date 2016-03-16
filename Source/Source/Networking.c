@@ -82,7 +82,7 @@ static NGmdmscript NET_ModemDialScript[ ] =
 	{ NULL,				NULL,			NULL,	-1,		NG_EOK,		0 }
 };
 
-static NET_STATUS NET_Status = NET_STATUS_ERROR;
+static NET_STATUS NET_Status = NET_STATUS_NODEVICE;
 static NET_DEVICE_TYPE NET_DeviceType = NET_DEVICE_TYPE_NONE;
 static NET_DEVICE_HARDWARE NET_DeviceHardware = NET_DEVICE_HARDWARE_NONE;
 /*static NET_INTERNAL_MODEM_RESET NET_InternalModemReset =
@@ -331,6 +331,8 @@ int NET_Initialise( void )
 
 void NET_Terminate( void )
 {
+	NET_DisconnectFromISP( );
+
 	if( NET_Status != NET_STATUS_ERROR || NET_Status != NET_STATUS_NODEVICE )
 	{
 		ngExit( 0 );
@@ -343,8 +345,6 @@ int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
 	static NET_INTERNAL_MODEM_RESET ModemResetState =
 		NET_INTERNAL_MODEM_RESET_INIT;
 	int DeviceFlags, Size, Error;
-
-	//LOG_Debug( "RIM: Resetting: %d", ModemResetState );
 
 	switch( ModemResetState )
 	{
@@ -470,8 +470,7 @@ void NET_Update( void )
 						int i = 1;
 						int Char;
 
-						LOG_Debug( "Polling PPP" );
-						/*strcpy( NET_ModemSpeed, NET_ModemState.mdst_buf );
+						strcpy( NET_ModemSpeed, NET_ModemState.mdst_buf );
 						i = strlen( NET_ModemSpeed );
 						pCharPtr = NET_ModemSpeed + i;
 
@@ -497,27 +496,22 @@ void NET_Update( void )
 							}
 							else if( Char != NG_EWOULDBLOCK )
 							{
-								pCharPtr = 0;
 								break;
 							}
 						}
 
-						if( pCharPtr )
-						{
-							*pCharPtr = '\0';
-							LOG_Debug( "Connection speed: %s",
-								NET_ModemSpeed );
-						}
-						else
-						{
-							LOG_Debug( "Failed to retreive the connection "
-								"speed" );
-							NET_Status = NET_STATUS_DISCONNECTED;
-							break;
-						}*/
+						*pCharPtr = '\0';
+						LOG_Debug( "Connection speed: %s",
+							NET_ModemSpeed );
 
 						ngDevioClose( NET_DeviceControlBlock );
 						--NET_DevOpen;
+
+						if( Char != NG_EWOULDBLOCK )
+						{
+							NET_Status = NET_STATUS_DISCONNECTED;
+							LOG_Debug( "Failed to gather the modem speed" );
+						}
 
 						ngIfOpen( NET_pInterface );
 						++NET_IfaceOpen;
@@ -635,9 +629,9 @@ void NET_Update( void )
 						/* Normally, this should check for another number to
 						 * dial, but the infrastrucutre isn't present to
 						 * support this */
-						NET_Status = NET_STATUS_DISCONNECTED;
 						LOG_Debug( "Modem reset" );
 						ngExit( 0 );
+						NET_Status = NET_STATUS_NODEVICE;
 						NET_Initialised = false;
 						break;
 					}
