@@ -217,7 +217,7 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( NET_Initialise( ) > 0 )
+	/*if( NET_Initialise( ) > 0 )
 	{
 		LOG_Debug( "Failed to set up the NexGen network stack" );
 
@@ -226,7 +226,7 @@ void main( void )
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
-	}
+	}*/
 
 	acSetTransferMode( AC_TRANSFER_DMA );
 	acSystemSetVolumeMode( USELINEAR );

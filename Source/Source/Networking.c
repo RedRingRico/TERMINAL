@@ -350,16 +350,15 @@ int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
 	{
 		case NET_INTERNAL_MODEM_RESET_INIT:
 		{
-			LOG_Debug( "Modem Reset: Opening network device" );
 			Error = ngDevioOpen( &NET_Device, 0, &NET_DeviceControlBlock );
 
 			if( Error != 0 )
 			{
-				LOG_Debug( "Failed to open network device" );
+				LOG_Debug( "Modem Reset: ailed to open network device" );
 				return Error;
 			}
+
 			++NET_DevOpen;
-			LOG_Debug( "Modem Reset: Network device opened" );
 
 			/* Clear DTR (hardware line reset) */
 			NET_ChangeDeviceParams( 0, NG_DEVCF_SER_DTR );
@@ -369,13 +368,11 @@ int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
 		}
 		case NET_INTERNAL_MODEM_RESET_DROP_LINES:
 		{
-			LOG_Debug( "Modem Reset: Dropping lines" );
 			if( syTmrCountToMicro(
 					syTmrDiffCount( TimeStart, syTmrGetCount( ) ) ) >=
 				( p_DropTime * 1000000 ) )
 			{
 				/* Set DTR */
-				LOG_Debug( "Setting DTR" );
 				NET_ChangeDeviceParams( NG_DEVCF_SER_DTR, 0 );
 				TimeStart = syTmrGetCount( );
 				ModemResetState = NET_INTERNAL_MODEM_RESET_WAIT_FOR_DSR;
@@ -385,14 +382,12 @@ int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
 		}
 		case NET_INTERNAL_MODEM_RESET_WAIT_FOR_DSR:
 		{
-			LOG_Debug( "Modem Reset: Waiting for DSR" );
 			Size = sizeof( DeviceFlags );
 			ngDevioIoctl( NET_DeviceControlBlock, NG_IOCTL_DEVCTL,
 				NG_DEVCTL_GCFLAGS, &DeviceFlags, &Size );
 
 			if( DeviceFlags & NG_DEVCF_SER_DSR )
 			{
-				LOG_Debug( "Modem Reset: Got DSR" );
 				/* Reset successful */
 				Error = NG_EOK;
 			}
@@ -400,7 +395,6 @@ int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
 					syTmrDiffCount( TimeStart, syTmrGetCount( ) ) ) >=
 				( p_TimeOut * 1000000 ) )
 			{
-				LOG_Debug( "Modem Reset: DSR timed out: %lu",syTmrDiffCount( TimeStart, syTmrGetCount( ) ) );
 				Error = NG_ETIMEDOUT;
 			}
 			else
@@ -409,7 +403,6 @@ int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
 				return NG_EWOULDBLOCK;
 			}
 
-			LOG_Debug( "Modem Reset: Closing device" );
 			ngDevioClose( NET_DeviceControlBlock );
 			--NET_DevOpen;
 			ModemResetState = NET_INTERNAL_MODEM_RESET_INIT;
@@ -418,11 +411,12 @@ int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
 		}
 		default:
 		{
-			LOG_Debug( "Unknown reset state: %d", ModemResetState );
+			LOG_Debug( "Modem Reset: Unknown reset state: %d",
+				ModemResetState );
 		}
 	}
-	LOG_Debug( "End of reset" );
 
+	/* Shouldn't get here... */
 	return NG_EWOULDBLOCK;
 }
 
