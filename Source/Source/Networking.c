@@ -37,8 +37,8 @@ NGdev NET_Device;
 NGifnet *NET_pInterface;
 /* PPP interface */
 NGapppifnet NET_PPPIfnet;
-/* LAN interface */
-NGethifnet NET_LANIfnet;
+/* Ethernet interface */
+NGethifnet NET_EthernetIfnet;
 /* Device input buffer */
 static NGubyte NET_DeviceInputBuffer[ NET_MAX_DEVIO_SIZE ];
 /* Device output buffer */
@@ -155,7 +155,7 @@ static NGcfgent NET_InternalModemStack[ ] =
 	NG_CFG_END
 };
 
-static NGcfgent NET_LANStack[ ] =
+static NGcfgent NET_EthernetStack[ ] =
 {
 	NG_BUFO_MAX,				NG_CFG_INT( NET_MAX_BUFFERS ),
 	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_StaticBufferAlloc ),
@@ -179,9 +179,9 @@ static NGcfgent NET_LANStack[ ] =
 									sizeof( NET_ARPTable[ 0 ] ) ),
 	NG_ARPO_TABLE,				NG_CFG_PTR( &NET_ARPTable ),
 	NG_ARPO_EXPIRE,				NG_CFG_INT( 600 ),
-	NG_CFG_IFADD,				NG_CFG_PTR( &NET_LANIfnet ),
+	NG_CFG_IFADD,				NG_CFG_PTR( &NET_EthernetIfnet ),
 	NG_CFG_DRIVER,				NG_CFG_PTR( &ngNetDrv_DCLAN ),
-	NG_IFO_NAME,				NG_CFG_PTR( "LAN" ),
+	NG_IFO_NAME,				NG_CFG_PTR( "Ethernet" ),
 	NG_ETHIFO_DEV1,				NG_CFG_INT( DCLAN_AUTO ),
 	/* Need to add support for DHCP and PPPoE */
 	NG_CFG_END
@@ -251,7 +251,7 @@ int NET_Initialise( void )
 	else /* Okay, maybe there's a LAN/BBA? */
 	{
 		ngExit( 0 );
-		ReturnStatus = ngInit( NET_LANStack );
+		ReturnStatus = ngInit( NET_EthernetStack );
 		NET_DeviceHardware = NET_DEVICE_HARDWARE_LAN;
 	}
 
@@ -287,7 +287,7 @@ int NET_Initialise( void )
 	{
 		int NetSpeed;
 
-		NET_pInterface = ngIfGetPtr( "LAN" );
+		NET_pInterface = ngIfGetPtr( "Ethernet" );
 
 		ngIfGetOption( NET_pInterface, NG_IFO_DCLAN_CURRENT_SPEED, &NetSpeed );
 		
@@ -310,6 +310,8 @@ int NET_Initialise( void )
 				NET_DeviceType = NET_DEVICE_TYPE_LAN_UNKNOWN;
 			}
 		}
+
+		ngIfSetOption( NET_pInterface, NG_ETHIFO_DEV1, ( void * )&NetSpeed );
 	}
 	else if( NET_DeviceHardware == NET_DEVICE_HARDWARE_MODEM )
 	{
@@ -748,6 +750,87 @@ int NET_ConnectToISP( void )
 			LOG_Debug( "Failed to open device: %d", OpenReturn );
 		}
 	}
+	else if( NET_DeviceHardware == NET_DEVICE_HARDWARE_LAN )
+	{
+		struct in_addr IP, Subnet, Gateway, DNS1, DNS2;
+		int Error;
+
+		/* Should check for static/DHCP/PPPoE */
+		/* Just use static configuration for now */
+		Error = ntInfGetIPAddr( 3, &IP );
+
+		if( Error || !IP.s_addr )
+		{
+			LOG_Debug( "Failed to acquire static IP address from flash RAM" );
+
+			return 1;
+		}
+
+		Error = ngIfSetOption( NET_pInterface, NG_IFO_ADDR,
+			( void * )&IP.s_addr );
+
+		if( Error )
+		{
+			LOG_Debug( "Failed to set the IP address" );
+
+			return 1;
+		}
+
+		Error = ntInfGetSubnetMask( &Subnet );
+
+		if( Error || !Subnet.s_addr )
+		{
+			LOG_Debug( "Failed to acquire the subnet mask from flash RAM" );
+
+			return 1;
+		}
+
+		Error = ngIfSetOption( NET_pInterface, NG_IFO_NETMASK,
+			( void * )&Subnet.s_addr );
+
+		if( Error )
+		{
+			LOG_Debug( "Failed to set the subnet mask" );
+
+			return 1;
+		}
+
+		Error = ntInfGetPrimaryGateway( &Gateway );
+
+		if( Error || !Gateway.s_addr )
+		{
+			LOG_Debug( "Failed to retrieve the static gateway from flash "
+				"RAM" );
+
+			return 1;
+		}
+
+		Error = ngRouteDefault( Gateway.s_addr );
+
+		if( Error )
+		{
+			LOG_Debug( "Failed to add the default gateway to the routing "
+				"table" );
+
+			return 1;
+		}
+
+		Error = ntInfGetPrimaryDnsAddress( 3, &DNS1 );
+
+		if( Error || !DNS1.s_addr )
+		{
+			LOG_Debug( "Could not get the primary DNS address from flash "
+				"RAM" );
+		}
+
+		ntInfGetSecondaryDnsAddress( 3, &DNS2 );
+
+		ngDnsInit( NULL, DNS1.s_addr, DNS2.s_addr );
+
+		NET_Status = NET_STATUS_CONNECTED;
+
+		return 0;
+	}
 
 	return 1;
 }
@@ -757,8 +840,18 @@ int NET_DisconnectFromISP( void )
 	if( NET_Status != NET_STATUS_DISCONNECTED )
 	{
 		LOG_Debug( "Disconnecting from ISP" );
-		ngPppStop( NET_pInterface );
-		NET_Status = NET_STATUS_PPP_POLL;
+
+		if( NET_DeviceHardware == NET_DEVICE_HARDWARE_MODEM )
+		{
+			ngPppStop( NET_pInterface );
+			NET_Status = NET_STATUS_PPP_POLL;
+		}
+		else if( NET_DeviceHardware == NET_DEVICE_HARDWARE_LAN )
+		{
+			NET_Status = NET_STATUS_NODEVICE;
+			NET_Initialised = false;
+			ngExit( 0 );
+		}
 	}
 
 	return 0;

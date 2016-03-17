@@ -645,9 +645,6 @@ void main( void )
 		TXT_RenderString( &GlyphSet, &TextColour, 10.0f,
 			( float )GlyphSet.LineHeight * 9.0f, PrintBuffer );
 
-		TXT_RenderString( &GlyphSet, &TextColour, 0.0f,
-			( float )GlyphSet.LineHeight * 18.0f, DNSString );
-
 		TextColour.dwPacked = 0xFFFFFF00;
 
 		sprintf( PrintBuffer, "Rotate:        %f", Rotate );
@@ -663,13 +660,16 @@ void main( void )
 			10.0f, ( float )GlyphSet.LineHeight * 5.0f, PrintBuffer );
 
 		sprintf( PrintBuffer, "Camera position: %f %f %f",
-			TestCamera.Position.X,TestCamera.Position.Y,TestCamera.Position.Z );
+			TestCamera.Position.X, TestCamera.Position.Y,
+			TestCamera.Position.Z );
 		TXT_RenderString( &GlyphSet, &TextColour,
 			10.0f, ( float )GlyphSet.LineHeight * 6.0f, PrintBuffer );
 
 #endif /* DEBUG */
 
 		TextColour.dwPacked = 0xFFFFFFFF;
+		TXT_RenderString( &GlyphSet, &TextColour, 0.0f,
+			( float )GlyphSet.LineHeight * 18.0f, DNSString );
 
 		if( Alpha < 0.0f )
 		{
