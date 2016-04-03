@@ -9,8 +9,8 @@
 typedef struct _tagNETWORK_CLIENT
 {
 	Uint32			ID;
-	PSOCKET_UDP		Socket;
-	PSOCKET_ADDRESS	SocketAddress;
+	SOCKET_UDP		Socket;
+	SOCKET_ADDRESS	SocketAddress;
 }NETWORK_CLIENT,*PNETWORK_CLIENT;
 
 /* The address passed in must be an IPv4 address in its dotted format */
