@@ -90,6 +90,12 @@ void MSG_WriteFloat( PNETWORK_MESSAGE p_pMessage, const float p_Float )
 	MSG_CopyToInternalBuffer( p_pMessage, &p_Float, SIZEOF_FLOAT );
 }
 
+void MSG_WriteString( PNETWORK_MESSAGE p_pMessage, const char *p_pString,
+	const Uint8 p_Length )
+{
+	MSG_Write( p_pMessage, p_pString, p_Length );
+}
+
 void MSG_Read( PNETWORK_MESSAGE p_pMessage, void *p_pBuffer,
 	const size_t p_Length )
 {
@@ -148,6 +154,12 @@ float MSG_ReadFloat( PNETWORK_MESSAGE p_pMessage )
 	MSG_CopyToExternalBuffer( p_pMessage, &Float, SIZEOF_FLOAT );
 
 	return Float;
+}
+
+void MSG_ReadString( PNETWORK_MESSAGE p_pMessage, char *p_pString,
+	const Uint8 p_Length )
+{
+	MSG_Read( p_pMessage, p_pString, p_Length );
 }
 
 Uint8 *MSG_GetBufferPosition( PNETWORK_MESSAGE p_pMessage,
