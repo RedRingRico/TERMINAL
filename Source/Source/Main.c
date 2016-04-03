@@ -20,6 +20,10 @@
 #include <ngadns.h>
 #include <ngnetdb.h>
 #include <ngsocket.h>
+#include <string.h>
+
+#include <NetworkClient.h>
+#include <NetworkMessage.h>
 
 #include <FileSystem.h>
 
@@ -115,6 +119,7 @@ void main( void )
 	PERF_INFO PerfInfo;
 	AUDIO_PARAMETERS AudioParameters;
 	RENDERER Renderer;
+	PNETWORK_CLIENT Client;
 
 	CAMERA TestCamera;
 	MATRIX4X4 Projection, Screen;
@@ -432,6 +437,38 @@ void main( void )
 		if( g_Peripherals[ 0 ].press & PDD_DGT_TY )
 		{
 			NET_ConnectToISP( );
+		}
+
+		/* This part is so damn fragile... */
+		if( g_Peripherals[ 0 ].press &PDD_DGT_TA )
+		{
+			Uint8 Buffer[ 128 ];
+			size_t BufferLen = sizeof( Buffer );
+			NETWORK_MESSAGE Message;
+
+			memset( Buffer, 0, sizeof( Buffer ) );
+			MSG_CreateNetworkMessage( &Message, Buffer, BufferLen );
+			MSG_WriteUInt32( &Message, 256 );
+			MSG_WriteByte( &Message, strlen( "Rico" ) + 1 );
+			MSG_WriteString( &Message, "Rico", strlen( "Rico" ) + 1 );
+			NCL_Initialise( &Client, "192.168.2.116", 50000 );
+			NCL_SendMessage( &Client, &Message );
+			MSG_DestroyNetworkMessage( &Message );
+		}
+
+		if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
+		{
+			Uint8 Buffer[ 128 ];
+			size_t BufferLen = sizeof( Buffer );
+			NETWORK_MESSAGE Message;
+
+			memset( Buffer, 0, sizeof( Buffer ) );
+			MSG_CreateNetworkMessage( &Message, Buffer, BufferLen );
+			MSG_WriteUInt32( &Message, 256 );
+			MSG_WriteByte( &Message, strlen( "Rico" ) + 1 );
+			MSG_WriteString( &Message, "Rico", strlen( "Rico" ) + 1 );
+			NCL_SendMessage( &Client, &Message );
+			MSG_DestroyNetworkMessage( &Message );
 		}
 
 		if( g_Peripherals[ 0 ].press & PDD_DGT_TX )
