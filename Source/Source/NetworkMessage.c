@@ -172,14 +172,14 @@ Uint8 *MSG_GetBufferPosition( PNETWORK_MESSAGE p_pMessage,
 		if( p_Length > p_pMessage->MaxSize )
 		{
 			LOG_Debug( "Message size is greater than the supported maximum" );
-			// Assert
+			// Assert here!
 		}
 
 		MSG_Clear( p_pMessage );
 		p_pMessage->Flags |= NETWORK_MESSAGE_FLAG_OVERFLOW;
 	}
 
-	pBuffer = p_pMessage->pData + p_Length;
+	pBuffer = p_pMessage->pData + p_pMessage->Size;
 	p_pMessage->Size += p_Length;
 
 	return pBuffer;
