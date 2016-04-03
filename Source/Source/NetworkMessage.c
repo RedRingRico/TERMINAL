@@ -5,6 +5,8 @@ Uint8 *MSG_GetBufferPosition( PNETWORK_MESSAGE p_pMessage,
 	const size_t p_Length );
 void MSG_CopyToInternalBuffer( PNETWORK_MESSAGE p_pMessage,
 	void *p_pSource, const size_t p_Size );
+void MSG_CopyToExternalBuffer( PNETWORK_MESSAGE p_pMessage,
+	void *p_pDestination, const size_t p_Size );
 
 int MSG_CreateNetworkMessage( PNETWORK_MESSAGE p_pMessage,
 	Uint8 *p_pBuffer, size_t p_Length )
@@ -88,6 +90,65 @@ void MSG_WriteFloat( PNETWORK_MESSAGE p_pMessage, const float p_Float )
 	MSG_CopyToInternalBuffer( p_pMessage, &p_Float, SIZEOF_FLOAT );
 }
 
+void MSG_Read( PNETWORK_MESSAGE p_pMessage, void *p_pBuffer,
+	const size_t p_Length )
+{
+	MSG_CopyToExternalBuffer( p_pMessage, p_pBuffer, p_Length );
+}
+
+Uint8 MSG_ReadByte( PNETWORK_MESSAGE p_pMessage )
+{
+	Uint8 Byte;
+
+	MSG_CopyToExternalBuffer( p_pMessage, &Byte, SIZEOF_BYTE );
+
+	return Byte;
+}
+
+Sint16 MSG_ReadInt16( PNETWORK_MESSAGE p_pMessage )
+{
+	Sint16 Int16;
+
+	MSG_CopyToExternalBuffer( p_pMessage, &Int16, SIZEOF_SINT16 );
+
+	return Int16;
+}
+
+Uint16 MSG_ReadUInt16( PNETWORK_MESSAGE p_pMessage )
+{
+	Uint16 UInt16;
+
+	MSG_CopyToExternalBuffer( p_pMessage, &UInt16, SIZEOF_UINT16 );
+
+	return UInt16;
+}
+
+Sint32 MSG_ReadInt32( PNETWORK_MESSAGE p_pMessage )
+{
+	Sint32 Int32;
+
+	MSG_CopyToExternalBuffer( p_pMessage, &Int32, SIZEOF_SINT32 );
+
+	return Int32;
+}
+
+Uint32 MSG_ReadUInt32( PNETWORK_MESSAGE p_pMessage )
+{
+	Uint32 UInt32;
+
+	MSG_CopyToExternalBuffer( p_pMessage, &UInt32, SIZEOF_UINT32 );
+
+	return UInt32;
+}
+
+float MSG_ReadFloat( PNETWORK_MESSAGE p_pMessage )
+{
+	float Float;
+
+	MSG_CopyToExternalBuffer( p_pMessage, &Float, SIZEOF_FLOAT );
+
+	return Float;
+}
 
 Uint8 *MSG_GetBufferPosition( PNETWORK_MESSAGE p_pMessage,
 	const size_t p_Length )
@@ -116,5 +177,17 @@ void MSG_CopyToInternalBuffer( PNETWORK_MESSAGE p_pMessage,
 	void *p_pSource, const size_t p_Size )
 {
 	memcpy( MSG_GetBufferPosition( p_pMessage, p_Size ), p_pSource, p_Size );
+}
+
+void MSG_CopyToExternalBuffer( PNETWORK_MESSAGE p_pMessage,
+	void *p_pDestination, const size_t p_Size )
+{
+	if( ( p_Size + p_pMessage->Size ) > p_pMessage->MaxSize )
+	{
+		return;
+	}
+
+	memcpy( p_pDestination, &p_pMessage[ p_pMessage->Head ], p_Size );
+	p_pMessage->Head += p_Size;
 }
 

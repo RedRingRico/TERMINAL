@@ -37,5 +37,14 @@ void MSG_WriteInt32( PNETWORK_MESSAGE p_pMessage, const Sint32 p_Int32 );
 void MSG_WriteUInt32( PNETWORK_MESSAGE p_pMessage, const Uint32 p_UInt32 );
 void MSG_WriteFloat( PNETWORK_MESSAGE p_pMessage, const float p_Float );
 
+void MSG_Read( PNETWORK_MESSAGE p_pMessage, void *p_pBuffer,
+	const size_t p_Length );
+Uint8 MSG_ReadByte( PNETWORK_MESSAGE p_pMessage );
+Sint16 MSG_ReadInt16( PNETWORK_MESSAGE p_pMessage );
+Uint16 MSG_ReadUInt16( PNETWORK_MESSAGE p_pMessage );
+Sint32 MSG_ReadInt32( PNETWORK_MESSAGE p_pMessage );
+Uint32 MSG_ReadUInt32( PNETWORK_MESSAGE p_pMessage );
+float MSG_ReadFloat( PNETWORK_MESSAGE p_pMessage );
+
 #endif /* __TERMINAL_NETWORKMESSAGE_H__ */
 
