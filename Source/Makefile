@@ -114,10 +114,10 @@ development: COPT_LINK = -g
 development: LINK = lnk.exe -noecho
 development: CDEBUG = -debug
 development: TARGET := $(TARGET)_DEV
-development: DEFAULT_LIBS += libcross sh4nlfzn nexgend
+development: DEFAULT_LIBS += libcross sh4nlfzn nexgen
 development: OPTIMISE := 0
 development: OPTIMISE_LINK := 0
-development: CDEFS += DEBUG NG_DEBUG
+development: CDEFS += DEVELOPMENT
 development: LINK_DEBUG = debug
 development: $(TARGET)
 
@@ -146,6 +146,7 @@ release: TARGET := 1ST_READ
 release: DEFAULT_LIBS += nexgen
 release: OPTIMISE := 1
 release: OPTIMISE_LINK := 1
+release: CDEFS += RELEASE
 release: LINK_DEBUG =
 release: $(TARGET)
 

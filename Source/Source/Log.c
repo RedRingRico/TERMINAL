@@ -1,4 +1,4 @@
-#if defined ( DEBUG )
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 #include <Log.h>
 #include <shinobi.h>
 #include <sn_fcntl.h>
@@ -6,7 +6,7 @@
 #include <SHC/errno.h>
 #include <stdarg.h>
 
-static int g_FileHandle;
+static int g_FileHandle = -1;
 
 static void DebugOut( const char *p_pString )
 {
@@ -18,6 +18,10 @@ static void DebugOut( const char *p_pString )
 
 int LOG_Initialise_Int( const char *p_pLogFileName )
 {
+	/* Creating a log file to write to makes writing to the network sockets
+	 * much slower, logging is enabled for the development build without the 
+	 * file server writing */
+#if defined ( DEBUG )
 	char *pLogFile = NULL;
 
 	DebugOut( "Initialising log file" );
@@ -72,6 +76,8 @@ int LOG_Initialise_Int( const char *p_pLogFileName )
 
 	free( pLogFile );
 
+#endif /* DEBUG */
+
 	LOG_Debug( "Log initialised" );
 
 	return 0;
@@ -99,7 +105,9 @@ void LOG_Debug_Int( const char *p_pMessage, ... )
 		vsprintf( Buffer + strlen( "[DEBUG] " ), p_pMessage, Args );
 		va_end( Args );
 
+#if defined ( DEBUG )
 		debug_write( g_FileHandle, Buffer, strlen( Buffer ) );
+#endif /* DEBUG */
 		debug_write( SNASM_STDOUT, Buffer, strlen( Buffer ) );
 	}
 }

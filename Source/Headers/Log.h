@@ -1,7 +1,7 @@
 #ifndef __TERMINAL_LOG_H__
 #define __TERMINAL_LOG_H__
 
-#if defined ( DEBUG )
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 #define LOG_Initialise LOG_Initialise_Int
 #define LOG_Terminate LOG_Terminate_Int
 #define LOG_Debug LOG_Debug_Int
