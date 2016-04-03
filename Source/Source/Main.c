@@ -82,7 +82,7 @@ float TestAspectRatio( GLYPHSET *p_pGlyphSet );
 void DrawOverlayText( GLYPHSET *p_pGlyphSet );
 void DrawDebugOverlay_Int( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo );
 
-#if defined ( DEBUG )
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 #define DrawDebugOverlay DrawDebugOverlay_Int
 #else
 #define DrawDebugOverlay sizeof
@@ -120,6 +120,8 @@ void main( void )
 	AUDIO_PARAMETERS AudioParameters;
 	RENDERER Renderer;
 	PNETWORK_CLIENT Client;
+	Uint8 MessageBuffer[ 128 ];
+	size_t MessageBufferLength = sizeof( MessageBuffer );
 
 	CAMERA TestCamera;
 	MATRIX4X4 Projection, Screen;
@@ -442,12 +444,10 @@ void main( void )
 		/* This part is so damn fragile... */
 		if( g_Peripherals[ 0 ].press &PDD_DGT_TA )
 		{
-			Uint8 Buffer[ 128 ];
-			size_t BufferLen = sizeof( Buffer );
 			NETWORK_MESSAGE Message;
 
-			memset( Buffer, 0, sizeof( Buffer ) );
-			MSG_CreateNetworkMessage( &Message, Buffer, BufferLen );
+			MSG_CreateNetworkMessage( &Message, MessageBuffer,
+				MessageBufferLength );
 			MSG_WriteUInt32( &Message, 256 );
 			MSG_WriteByte( &Message, strlen( "Rico" ) + 1 );
 			MSG_WriteString( &Message, "Rico", strlen( "Rico" ) + 1 );
@@ -458,12 +458,10 @@ void main( void )
 
 		if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
 		{
-			Uint8 Buffer[ 128 ];
-			size_t BufferLen = sizeof( Buffer );
 			NETWORK_MESSAGE Message;
 
-			memset( Buffer, 0, sizeof( Buffer ) );
-			MSG_CreateNetworkMessage( &Message, Buffer, BufferLen );
+			MSG_CreateNetworkMessage( &Message, MessageBuffer,
+				MessageBufferLength );
 			MSG_WriteUInt32( &Message, 256 );
 			MSG_WriteByte( &Message, strlen( "Rico" ) + 1 );
 			MSG_WriteString( &Message, "Rico", strlen( "Rico" ) + 1 );
