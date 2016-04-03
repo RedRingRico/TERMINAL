@@ -16,7 +16,7 @@
 #include <Model.h>
 #include <DA.h>
 #include <Audio.h>
-#include <Networking.h>
+#include <NetworkCore.h>
 #include <ngadns.h>
 #include <ngnetdb.h>
 #include <ngsocket.h>

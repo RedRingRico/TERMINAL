@@ -1,4 +1,4 @@
-#include <Networking.h>
+#include <NetworkCore.h>
 #include <Log.h>
 #include <ngdc.h>
 #include <ngip/ethernet.h>
