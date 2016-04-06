@@ -21,6 +21,7 @@
 #include <ngnetdb.h>
 #include <ngsocket.h>
 #include <string.h>
+#include <Stack.h>
 
 #include <NetworkClient.h>
 #include <NetworkMessage.h>
@@ -145,6 +146,52 @@ void main( void )
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
+	}
+
+	{
+		STACK TestStack;
+		Uint32 Number = 10;
+		int i;
+
+		STK_Initialise( &TestStack, &MemoryBlock, 5, sizeof( Uint32 ), 0,
+			"Test Stack" );
+
+		MEM_ListMemoryBlocks( &MemoryBlock );
+
+		for( i = 0; i < 6; ++i )
+		{
+			if( STK_Push( &TestStack, &Number ) == 0 )
+			{
+				LOG_Debug( "Pushed %lu onto the stack\n", Number );
+				Number += 8;
+			}
+		}
+
+		MEM_ListMemoryBlocks( &MemoryBlock );
+
+		LOG_Debug( "Stack has %lu items in it\n", STK_GetCount( &TestStack ) );
+
+		for( i = 0; i < 6; ++i )
+		{
+			Uint32 *pNumber;
+			pNumber = ( Uint32 * )STK_GetTopItem( &TestStack );
+			if( pNumber )
+			{
+				LOG_Debug( "Top of stack: %lu\n", *pNumber );
+			}
+			if( STK_Pop( &TestStack, &Number ) == 0 )
+			{
+				LOG_Debug( "Number popped: %lu\n", Number );
+			}
+		}
+
+		STK_Terminate( &TestStack );
+
+		MEM_ListMemoryBlocks( &MemoryBlock );
+
+		MEM_GarbageCollectMemoryBlock( &MemoryBlock );
+
+		MEM_ListMemoryBlocks( &MemoryBlock );
 	}
 
 	memset( g_VersionString, '\0', sizeof( g_VersionString ) );
