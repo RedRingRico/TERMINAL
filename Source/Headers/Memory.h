@@ -33,7 +33,7 @@ typedef struct _tagMEMORY_BLOCK
 	void				*pAllocatedBlock;
 	unsigned char		Alignment;
 	unsigned char		StructAlignment;
-}MEMORY_BLOCK;
+}MEMORY_BLOCK,*PMEMORY_BLOCK;
 
 int MEM_Initialise( void );
 void MEM_Terminate( void );
