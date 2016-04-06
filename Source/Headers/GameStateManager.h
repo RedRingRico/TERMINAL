@@ -34,6 +34,8 @@ int GSM_Exit( void );
 
 int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 	const char *p_pGameStateName, PGAMESTATE p_pGameState );
+bool GSM_IsStateInRegistry( PGAMESTATE_MANAGER p_pGameStateManager,
+	const char *p_pName, PGAMESTATE p_pGameState );
 
 #endif /* __TERMINAL_GAMESTATEMANAGER_H__ */
 

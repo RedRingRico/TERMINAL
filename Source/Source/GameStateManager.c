@@ -2,6 +2,7 @@
 #include <Log.h>
 #include <string.h>
 
+
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	PMEMORY_BLOCK p_pMemoryBlock )
 {
@@ -51,18 +52,8 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 		STK_Pop( &p_pGameStateManager->GameStateStack, NULL );
 	}
 
-	pRegistryItr = p_pGameStateManager->pRegistry;
-
-	while( pRegistryItr != NULL )
-	{
-		if( strcmp( p_pStateName, pRegistryItr->pName ) == 0 )
-		{
-			break;
-		}
-		pRegistryItr = pRegistryItr->pNext;
-	}
-
-	if( pRegistryItr == NULL )
+	if( GSM_IsStateInRegistry( p_pGameStateManager, p_pStateName,
+		&GameState ) == false )
 	{
 		LOG_Debug( "GSM_ChangeState <ERROR> Could not locate game state \""
 			"%s\"\n", p_pStateName );
@@ -70,7 +61,7 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
-	STK_Push( &p_pGameStateManager->GameStateStack, &pRegistryItr->GameState );
+	STK_Push( &p_pGameStateManager->GameStateStack, &GameState );
 
 	return 0;
 }
@@ -104,8 +95,38 @@ int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 
 	GS_Copy( &pNewEntry->GameState, p_pGameState );
 
+	pNewEntry->pNext = NULL;
 	pAppendTo->pNext = pNewEntry;
 
 	return 0;
+}
+
+bool GSM_IsStateInRegistry( PGAMESTATE_MANAGER p_pGameStateManager,
+	const char *p_pName, PGAMESTATE p_pGameState )
+{
+	PGAMESTATE_REGISTRY pRegistryItr = p_pGameStateManager->pRegistry;
+	bool StatePresent = false;
+
+	while( pRegistryItr != NULL )
+	{
+		if( strcmp( p_pName, pRegistryItr->pName ) == 0 )
+		{
+			StatePresent = true;
+			break;
+		}
+		pRegistryItr = pRegistryItr->pNext;
+	}
+
+	if( StatePresent == false )
+	{
+		return false;
+	}
+
+	if( p_pGameState != NULL )
+	{
+		p_pGameState = &pRegistryItr->GameState;
+	}
+
+	return StatePresent;
 }
 
