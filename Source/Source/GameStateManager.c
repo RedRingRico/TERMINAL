@@ -19,6 +19,7 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	}
 
 	p_pGameStateManager->pMemoryBlock = p_pMemoryBlock;
+	p_pGameStateManager->pTopGameState = NULL;
 
 	return 0;
 }
@@ -49,7 +50,7 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 	/* Pop all states */
 	while( STK_GetCount( &p_pGameStateManager->GameStateStack ) )
 	{
-		STK_Pop( &p_pGameStateManager->GameStateStack, NULL );
+		GSM_PopState( p_pGameStateManager );
 	}
 
 	if( GSM_IsStateInRegistry( p_pGameStateManager, p_pStateName,
@@ -61,7 +62,65 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
-	STK_Push( &p_pGameStateManager->GameStateStack, &GameState );
+	if( STK_Push( &p_pGameStateManager->GameStateStack, &GameState ) != 0 )
+	{
+		LOG_Debug( "GSM_ChangeState <ERROR> Something went wrong pushing the "
+			"state onto the stack\n" );
+
+		return 1;
+	}
+
+	return 0;
+}
+
+int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
+	const char *p_pStateName )
+{
+	GAMESTATE GameState;
+
+	if( GSM_IsStateInRegistry( p_pGameStateManager, p_pStateName,
+		&GameState ) == false )
+	{
+		LOG_Debug( "GSM_PushState <ERROR> State \"%s\" not in registry\n",
+			p_pStateName );
+
+		return 1;
+	}
+
+	if( STK_Push( &p_pGameStateManager->GameStateStack, &GameState ) != 0 )
+	{
+		LOG_Debug( "GSM_PushState <ERROR> Something went wrong pushing the "
+			"state onto the stack\n" );
+
+		return 1;
+	}
+
+	p_pGameStateManager->pTopGameState = STK_GetTopItem(
+		&p_pGameStateManager->GameStateStack );
+
+	p_pGameStateManager->pTopGameState->Load( NULL );
+	p_pGameStateManager->pTopGameState->Initialise( NULL );
+
+	return 0;
+}
+
+int GSM_PopState( PGAMESTATE_MANAGER p_pGameStateManager )
+{
+	if( STK_Pop( &p_pGameStateManager->GameStateStack, NULL ) != 0 )
+	{
+		LOG_Debug( "GSM_PopState <ERROR> Failed to pop game state from "
+			"stack\n" );
+
+		return 1;
+	}
+
+	/* Terminate game state */
+	p_pGameStateManager->pTopGameState->Terminate( NULL );
+	p_pGameStateManager->pTopGameState->Unload( NULL );
+
+	/* Re-acquire top state */
+	p_pGameStateManager->pTopGameState = STK_GetTopItem(
+		&p_pGameStateManager->GameStateStack );
 
 	return 0;
 }

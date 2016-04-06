@@ -17,6 +17,7 @@ typedef struct _tagGAMESTATE_MANAGER
 {
 	PMEMORY_BLOCK		pMemoryBlock;
 	GAMESTATE_REGISTRY	*pRegistry;
+	GAMESTATE			*pTopGameState;
 	STACK				GameStateStack;
 }GAMESTATE_MANAGER,*PGAMESTATE_MANAGER;
 
@@ -30,7 +31,8 @@ int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
 	const char *p_pStateName );
 int GSM_PopState( PGAMESTATE_MANAGER p_pGameStateManager );
 
-int GSM_Exit( void );
+int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager );
+int GSM_Exit( PGAMESTATE_MANAGER p_pGameStateManager );
 
 int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 	const char *p_pGameStateName, PGAMESTATE p_pGameState );
