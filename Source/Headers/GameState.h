@@ -7,7 +7,7 @@
  * parameters, use a struct */
 typedef int ( *GS_Function )( void * );
 
-typedef struct _tagGAME_STATE
+typedef struct _tagGAMESTATE
 {
 	GS_Function	Load;
 	GS_Function	Initialise;
@@ -16,10 +16,12 @@ typedef struct _tagGAME_STATE
 	GS_Function	Terminate;
 	GS_Function	Unload;
 	bool		Paused;
-}GAME_STATE,*PGAME_STATE;
+}GAMESTATE,*PGAMESTATE;
 
-void GS_Pause( PGAME_STATE p_pGameState );
-void GS_Resume( PGAME_STATE p_pGameState );
+void GS_Copy( PGAMESTATE p_pCopy, PGAMESTATE p_pOriginal );
+
+void GS_Pause( PGAMESTATE p_pGameState );
+void GS_Resume( PGAMESTATE p_pGameState );
 
 #endif /* __TERMINAL_GAMESTATE_H__ */
 
