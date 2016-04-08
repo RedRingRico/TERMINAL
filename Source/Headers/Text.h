@@ -14,7 +14,7 @@ typedef struct _tagGLYPH
 	Sint16	XOffset;
 	Sint16	YOffset;
 	Sint16	XAdvance;
-}GLYPH;
+}GLYPH,*PGLYPH;
 
 typedef struct _tagGLYPHSET
 {
@@ -25,7 +25,7 @@ typedef struct _tagGLYPHSET
 	Uint16			BaseLine;
 	Uint16			Width;
 	Uint16			Height;
-}GLYPHSET;
+}GLYPHSET,*PGLYPHSET;
 
 int TXT_Initialise( void );
 
