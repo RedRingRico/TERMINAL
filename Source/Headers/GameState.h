@@ -16,7 +16,7 @@ typedef struct _tagGAMESTATE
 	GS_Function						Render;
 	GS_Function						Terminate;
 	GS_Function						Unload;
-	struct GAMESTATE_MANAGER		*pGameStateManager;
+	struct _tagGAMESTATE_MANAGER	*pGameStateManager;
 	bool							Paused;
 }GAMESTATE,*PGAMESTATE;
 
