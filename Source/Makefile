@@ -248,3 +248,6 @@ xlnk.% :
 
 
 endif
+
+clean:
+	-rd /s /q "$(TOPDIR)\Obj" >nul: 2>nul:
