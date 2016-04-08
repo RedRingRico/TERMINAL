@@ -2,6 +2,7 @@
 #define __TERMINAL_GAMESTATE_H__
 
 #include <Stack.h>
+#include <GameStateManager.h>
 
 /* Game state functions can accept a parameter of any type, for multiple
  * parameters, use a struct */
@@ -9,13 +10,14 @@ typedef int ( *GS_Function )( void * );
 
 typedef struct _tagGAMESTATE
 {
-	GS_Function	Load;
-	GS_Function	Initialise;
-	GS_Function	Update;
-	GS_Function	Render;
-	GS_Function	Terminate;
-	GS_Function	Unload;
-	bool		Paused;
+	GS_Function						Load;
+	GS_Function						Initialise;
+	GS_Function						Update;
+	GS_Function						Render;
+	GS_Function						Terminate;
+	GS_Function						Unload;
+	struct GAMESTATE_MANAGER		*pGameStateManager;
+	bool							Paused;
 }GAMESTATE,*PGAMESTATE;
 
 void GS_Copy( PGAMESTATE p_pCopy, PGAMESTATE p_pOriginal );

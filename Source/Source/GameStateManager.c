@@ -1,7 +1,7 @@
 #include <GameStateManager.h>
+#include <GameState.h>
 #include <Log.h>
 #include <string.h>
-
 
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	PMEMORY_BLOCK p_pMemoryBlock )
@@ -20,6 +20,7 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 
 	p_pGameStateManager->pMemoryBlock = p_pMemoryBlock;
 	p_pGameStateManager->pTopGameState = NULL;
+	p_pGameStateManager->Running = false;
 
 	return 0;
 }
@@ -42,9 +43,10 @@ void GSM_Terminate( PGAMESTATE_MANAGER p_pGameStateManager )
 }
 
 int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
-	const char *p_pStateName )
+	const char *p_pStateName, void *p_pGameStateLoadArguments,
+	void *p_pGameStateInitialiseArguments )
 {
-	GAMESTATE GameState;
+	PGAMESTATE pGameState;
 	PGAMESTATE_REGISTRY pRegistryItr;
 
 	/* Pop all states */
@@ -54,7 +56,7 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 	}
 
 	if( GSM_IsStateInRegistry( p_pGameStateManager, p_pStateName,
-		&GameState ) == false )
+		&pGameState ) == false )
 	{
 		LOG_Debug( "GSM_ChangeState <ERROR> Could not locate game state \""
 			"%s\"\n", p_pStateName );
@@ -62,7 +64,8 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
-	if( STK_Push( &p_pGameStateManager->GameStateStack, &GameState ) != 0 )
+	if( GSM_PushState( p_pGameStateManager, p_pStateName,
+		p_pGameStateLoadArguments, p_pGameStateInitialiseArguments ) != 0 )
 	{
 		LOG_Debug( "GSM_ChangeState <ERROR> Something went wrong pushing the "
 			"state onto the stack\n" );
@@ -70,16 +73,19 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
+	p_pGameStateManager->Running = true;
+
 	return 0;
 }
 
 int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
-	const char *p_pStateName )
+	const char *p_pStateName, void *p_pGameStateLoadArguments,
+	void *p_pGameStateInitialiseArguments )
 {
-	GAMESTATE GameState;
+	PGAMESTATE pGameState;
 
 	if( GSM_IsStateInRegistry( p_pGameStateManager, p_pStateName,
-		&GameState ) == false )
+		&pGameState ) == false )
 	{
 		LOG_Debug( "GSM_PushState <ERROR> State \"%s\" not in registry\n",
 			p_pStateName );
@@ -87,7 +93,12 @@ int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
-	if( STK_Push( &p_pGameStateManager->GameStateStack, &GameState ) != 0 )
+	if( p_pGameStateManager->pTopGameState != NULL )
+	{
+		GS_Pause( p_pGameStateManager->pTopGameState );
+	}
+
+	if( STK_Push( &p_pGameStateManager->GameStateStack, pGameState ) != 0 )
 	{
 		LOG_Debug( "GSM_PushState <ERROR> Something went wrong pushing the "
 			"state onto the stack\n" );
@@ -98,8 +109,9 @@ int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
 	p_pGameStateManager->pTopGameState = STK_GetTopItem(
 		&p_pGameStateManager->GameStateStack );
 
-	p_pGameStateManager->pTopGameState->Load( NULL );
-	p_pGameStateManager->pTopGameState->Initialise( NULL );
+	p_pGameStateManager->pTopGameState->Load( p_pGameStateLoadArguments );
+	p_pGameStateManager->pTopGameState->Initialise(
+		p_pGameStateInitialiseArguments );
 
 	return 0;
 }
@@ -122,49 +134,101 @@ int GSM_PopState( PGAMESTATE_MANAGER p_pGameStateManager )
 	p_pGameStateManager->pTopGameState = STK_GetTopItem(
 		&p_pGameStateManager->GameStateStack );
 
+	if( p_pGameStateManager->pTopGameState != NULL )
+	{
+		GS_Resume( p_pGameStateManager->pTopGameState );
+	}
+
 	return 0;
 }
 
+int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
+{
+	p_pGameStateManager->pTopGameState->Update( p_pGameStateManager );
+	p_pGameStateManager->pTopGameState->Render( NULL );
+
+	return 0;
+}
+
+int GSM_Quit( PGAMESTATE_MANAGER p_pGameStateManager )
+{
+	p_pGameStateManager->Running = false;
+
+	return 0;
+}
+
+bool GSM_IsRunning( PGAMESTATE_MANAGER p_pGameStateManager )
+{
+	return p_pGameStateManager->Running;
+}
+
 int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
-	const char *p_pGameStateName, PGAMESTATE p_pGameState )
+	const char *p_pGameStateName, PGAMESTATE p_pGameState, size_t p_Size )
 {
 	PGAMESTATE_REGISTRY pRegistryItr = p_pGameStateManager->pRegistry;
 	PGAMESTATE_REGISTRY pNewEntry;
-	PGAMESTATE_REGISTRY pAppendTo;
 
-	while( pRegistryItr != NULL )
+	/* First item in registry */
+	if( p_pGameStateManager->pRegistry == NULL )
 	{
-		if( strcmp( p_pGameStateName, pRegistryItr->pName ) == 0 )
-		{
-			LOG_Debug( "GSM_RegisterGameState <ERROR> Attempting to "
-				"re-register game state \"%s\"\n", p_pGameStateName );
+		p_pGameStateManager->pRegistry =
+			syMalloc( sizeof( GAMESTATE_REGISTRY ) );
 
-			return 1;
+		pNewEntry = p_pGameStateManager->pRegistry;
+
+		pNewEntry->pName = syMalloc( strlen( p_pGameStateName ) + 1 );
+		strncpy( pNewEntry->pName, p_pGameStateName,
+			strlen( p_pGameStateName ) );
+		pNewEntry->pName[ strlen( p_pGameStateName ) ] = '\0';
+
+		pNewEntry->pGameState = syMalloc( p_Size );
+
+		GS_Copy( pNewEntry->pGameState, p_pGameState );
+
+		pNewEntry->pNext = NULL;
+	}
+	else
+	{
+		PGAMESTATE_REGISTRY pAppendTo;
+
+		while( pRegistryItr != NULL )
+		{
+			if( strcmp( p_pGameStateName, pRegistryItr->pName ) == 0 )
+			{
+				LOG_Debug( "GSM_RegisterGameState <ERROR> Attempting to "
+					"re-register game state \"%s\"\n", p_pGameStateName );
+
+				return 1;
+			}
+
+			pAppendTo = pRegistryItr;
+			pRegistryItr = pRegistryItr->pNext;
 		}
 
-		pAppendTo = pRegistryItr;
-		pRegistryItr = pRegistryItr->pNext;
+		pNewEntry = syMalloc( sizeof( GAMESTATE_REGISTRY ) );
+
+		pNewEntry->pName = syMalloc( strlen( p_pGameStateName ) + 1 );
+		strncpy( pNewEntry->pName, p_pGameStateName,
+			strlen( p_pGameStateName ) );
+		pNewEntry->pName[ strlen( p_pGameStateName ) ] = '\0';
+
+		pNewEntry->pGameState = syMalloc( p_Size );
+
+		GS_Copy( pNewEntry->pGameState, p_pGameState );
+
+		pNewEntry->pNext = NULL;
+		pAppendTo->pNext = pNewEntry;
 	}
-
-	pNewEntry = syMalloc( sizeof( GAMESTATE_REGISTRY ) );
-
-	pNewEntry->pName = syMalloc( strlen( p_pGameStateName ) + 1 );
-	strncpy( pNewEntry->pName, p_pGameStateName, strlen( p_pGameStateName ) );
-	pNewEntry->pName[ strlen( p_pGameStateName ) ] = '\0';
-
-	GS_Copy( &pNewEntry->GameState, p_pGameState );
-
-	pNewEntry->pNext = NULL;
-	pAppendTo->pNext = pNewEntry;
 
 	return 0;
 }
 
 bool GSM_IsStateInRegistry( PGAMESTATE_MANAGER p_pGameStateManager,
-	const char *p_pName, PGAMESTATE p_pGameState )
+	const char *p_pName, PGAMESTATE *p_ppGameState )
 {
 	PGAMESTATE_REGISTRY pRegistryItr = p_pGameStateManager->pRegistry;
 	bool StatePresent = false;
+	size_t Itr = 0;
 
 	while( pRegistryItr != NULL )
 	{
@@ -174,6 +238,7 @@ bool GSM_IsStateInRegistry( PGAMESTATE_MANAGER p_pGameStateManager,
 			break;
 		}
 		pRegistryItr = pRegistryItr->pNext;
+		++Itr;
 	}
 
 	if( StatePresent == false )
@@ -181,9 +246,9 @@ bool GSM_IsStateInRegistry( PGAMESTATE_MANAGER p_pGameStateManager,
 		return false;
 	}
 
-	if( p_pGameState != NULL )
+	if( p_ppGameState != NULL )
 	{
-		p_pGameState = &pRegistryItr->GameState;
+		( *p_ppGameState ) = pRegistryItr->pGameState;
 	}
 
 	return StatePresent;
