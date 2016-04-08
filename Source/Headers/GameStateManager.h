@@ -39,8 +39,7 @@ int GSM_Quit( PGAMESTATE_MANAGER p_pGameStateManager );
 bool GSM_IsRunning( PGAMESTATE_MANAGER p_pGameStateManager );
 
 int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
-	const char *p_pGameStateName, struct _tagGAMESTATE *p_pGameState,
-	size_t p_Size );
+	const char *p_pGameStateName, struct _tagGAMESTATE *p_pGameState );
 bool GSM_IsStateInRegistry( PGAMESTATE_MANAGER p_pGameStateManager,
 	const char *p_pName, struct _tagGAMESTATE **p_ppGameState );
 

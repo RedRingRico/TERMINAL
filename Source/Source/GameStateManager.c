@@ -163,7 +163,7 @@ bool GSM_IsRunning( PGAMESTATE_MANAGER p_pGameStateManager )
 }
 
 int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
-	const char *p_pGameStateName, PGAMESTATE p_pGameState, size_t p_Size )
+	const char *p_pGameStateName, PGAMESTATE p_pGameState )
 {
 	PGAMESTATE_REGISTRY pRegistryItr = p_pGameStateManager->pRegistry;
 	PGAMESTATE_REGISTRY pNewEntry;
@@ -181,7 +181,7 @@ int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 			strlen( p_pGameStateName ) );
 		pNewEntry->pName[ strlen( p_pGameStateName ) ] = '\0';
 
-		pNewEntry->pGameState = syMalloc( p_Size );
+		pNewEntry->pGameState = syMalloc( sizeof( GAMESTATE ) );
 
 		GS_Copy( pNewEntry->pGameState, p_pGameState );
 
@@ -212,7 +212,7 @@ int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 			strlen( p_pGameStateName ) );
 		pNewEntry->pName[ strlen( p_pGameStateName ) ] = '\0';
 
-		pNewEntry->pGameState = syMalloc( p_Size );
+		pNewEntry->pGameState = syMalloc( sizeof( GAMESTATE ) );
 
 		GS_Copy( pNewEntry->pGameState, p_pGameState );
 
