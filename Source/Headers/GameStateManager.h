@@ -2,6 +2,7 @@
 #define __TERMINAL_GAMESTATEMANAGER_H__
 
 #include <GameState.h>
+#include <GameOptions.h>
 #include <Memory.h>
 
 typedef struct _tagGAMESTATE_REGISTRY
@@ -16,6 +17,7 @@ typedef struct _tagGAMESTATE_REGISTRY
 typedef struct _tagGAMESTATE_MANAGER
 {
 	PMEMORY_BLOCK			pMemoryBlock;
+	GAME_OPTIONS			GameOptions;
 	GAMESTATE_REGISTRY		*pRegistry;
 	struct _tagGAMESTATE	*pTopGameState;
 	bool					Running;
