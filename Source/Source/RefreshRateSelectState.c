@@ -1,6 +1,7 @@
 #include <RefreshRateSelectState.h>
 #include <Renderer.h>
 #include <Peripheral.h>
+#include <AspectRatioSelectState.h>
 
 typedef struct _tagREFRESHRATESELECT_GAMESTATE
 {
@@ -126,6 +127,10 @@ static int RRSS_Update( void *p_pArgs )
 		}
 		else
 		{
+			ASPECTRATIOSELECT AspectRatioArgs;
+
+			AspectRatioArgs.pGlyphSet = RefreshRateSelectState.pGlyphSet;
+
 			/* Done, change state */
 			if( ( RefreshRateSelectState.TestPass == true ) &&
 				( RefreshRateSelectState.SixtyHz == true ) )
@@ -134,11 +139,8 @@ static int RRSS_Update( void *p_pArgs )
 					KM_DSPBPP_RGB888, TRUE, FALSE );
 			}
 
-			/*GSM_ChangeState( RefreshRateSelectState.Base.pGameStateManager,
-				"Aspect ratio select", NULL, NULL );*/
-
-			/* Quit for now */
-			GSM_Quit( RefreshRateSelectState.Base.pGameStateManager );
+			GSM_ChangeState( RefreshRateSelectState.Base.pGameStateManager,
+				GAME_STATE_ASPECTRATIOSELECT, &AspectRatioArgs, NULL );
 		}
 
 		Alpha += AlphaInc;
