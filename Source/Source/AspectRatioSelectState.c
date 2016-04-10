@@ -261,6 +261,8 @@ static int ARSS_Update( void *p_pArgs )
 		}
 		else
 		{
+			AspectRatioSelectState.Base.pGameStateManager->
+				GameOptions.AspectRatio = AspectRatioSelectState.AspectRatio;
 			/* Done, onto the main menu */
 			GSM_Quit( AspectRatioSelectState.Base.pGameStateManager );
 		}
