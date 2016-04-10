@@ -1,4 +1,5 @@
 #include <AspectRatioSelectState.h>
+#include <MainMenuState.h>
 #include <GameState.h>
 #include <Camera.h>
 #include <Vector3.h>
@@ -261,10 +262,16 @@ static int ARSS_Update( void *p_pArgs )
 		}
 		else
 		{
+			MAINMENU MainMenuArgs;
+
+			MainMenuArgs.pGlyphSet = AspectRatioSelectState.pGlyphSet;
+
 			AspectRatioSelectState.Base.pGameStateManager->
 				GameOptions.AspectRatio = AspectRatioSelectState.AspectRatio;
+
 			/* Done, onto the main menu */
-			GSM_Quit( AspectRatioSelectState.Base.pGameStateManager );
+			GSM_ChangeState( AspectRatioSelectState.Base.pGameStateManager,
+				GAME_STATE_MAINMENU, &MainMenuArgs, NULL );
 		}
 
 		Alpha += AlphaInc;
