@@ -22,6 +22,8 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	p_pGameStateManager->pTopGameState = NULL;
 	p_pGameStateManager->Running = false;
 
+	p_pGameStateManager->ppGlyphSet = syMalloc( sizeof( PGLYPHSET ) * 2 );
+
 	return 0;
 }
 
@@ -38,6 +40,8 @@ void GSM_Terminate( PGAMESTATE_MANAGER p_pGameStateManager )
 
 		pRegistryItr = pNext;
 	}
+
+	syFree( p_pGameStateManager->ppGlyphSet );
 
 	STK_Terminate( &p_pGameStateManager->GameStateStack );
 }
@@ -160,6 +164,20 @@ int GSM_Quit( PGAMESTATE_MANAGER p_pGameStateManager )
 bool GSM_IsRunning( PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	return p_pGameStateManager->Running;
+}
+
+int GSM_RegisterGlyphSet( PGAMESTATE_MANAGER p_pGameStateManager,
+	const Uint32 p_Index, PGLYPHSET p_pGlyphSet )
+{
+	p_pGameStateManager->ppGlyphSet[ p_Index ] = p_pGlyphSet;
+
+	return 0;
+}
+
+PGLYPHSET GSM_GetGlyphSet( PGAMESTATE_MANAGER p_pGameStateManager,
+	const Uint32 p_Index )
+{
+	return p_pGameStateManager->ppGlyphSet[ p_Index ];
 }
 
 int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,

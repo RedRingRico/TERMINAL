@@ -4,6 +4,10 @@
 #include <GameState.h>
 #include <GameOptions.h>
 #include <Memory.h>
+#include <Text.h>
+
+#define GSM_GLYPH_SET_DEBUG	0
+#define GSM_GLYPH_SET_GUI_1	1
 
 typedef struct _tagGAMESTATE_REGISTRY
 {
@@ -20,6 +24,7 @@ typedef struct _tagGAMESTATE_MANAGER
 	GAME_OPTIONS			GameOptions;
 	GAMESTATE_REGISTRY		*pRegistry;
 	struct _tagGAMESTATE	*pTopGameState;
+	PGLYPHSET				*ppGlyphSet;
 	bool					Running;
 	STACK					GameStateStack;
 }GAMESTATE_MANAGER,*PGAMESTATE_MANAGER;
@@ -39,6 +44,11 @@ int GSM_PopState( PGAMESTATE_MANAGER p_pGameStateManager );
 int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager );
 int GSM_Quit( PGAMESTATE_MANAGER p_pGameStateManager );
 bool GSM_IsRunning( PGAMESTATE_MANAGER p_pGameStateManager );
+
+int GSM_RegisterGlyphSet( PGAMESTATE_MANAGER p_pGameStateManager,
+	const Uint32 p_Index, PGLYPHSET p_pGlyphSet );
+PGLYPHSET GSM_GetGlyphSet( PGAMESTATE_MANAGER p_pGameStateManager,
+	const Uint32 p_Index );
 
 int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 	const char *p_pGameStateName, struct _tagGAMESTATE *p_pGameState );
