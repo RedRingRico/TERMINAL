@@ -4,10 +4,9 @@
 #include <Renderer.h>
 #include <Menu.h>
 #include <Log.h>
+#include <MultiPlayerState.h>
 
-#define SOFT_RESET_STANDARD_GAMEPAD \
-	( PDD_DGT_TA | PDD_DGT_TB | PDD_DGT_TX | PDD_DGT_TY | PDD_DGT_ST )
-const Uint32 PDD_SOFT_RESET_STANDARD_GAMEPAD =
+static const Uint32 PDD_SOFT_RESET_STANDARD_GAMEPAD =
 	( PDD_DGT_TA | PDD_DGT_TB | PDD_DGT_TX | PDD_DGT_TY | PDD_DGT_ST );
 
 typedef struct _tagMAINMENU_GAMESTATE
@@ -20,6 +19,7 @@ typedef struct _tagMAINMENU_GAMESTATE
 static MAINMENU_GAMESTATE MainMenuState;
 
 static int BootROM( void *p_pArgs );
+static int LaunchMultiPlayer( void *p_pArgs );
 
 static int MMS_Load( void *p_pArgs )
 {
@@ -32,13 +32,14 @@ static int MMS_Load( void *p_pArgs )
 	TextColour.dwPacked = 0xFFFFFFFF;
 	HighlightColour.dwPacked = 0xFF00FF00;
 
-	MainMenuState.pGlyphSet = pArguments->pGlyphSet;
+	MainMenuState.pGlyphSet = GSM_GetGlyphSet(
+		MainMenuState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
 
-	MenuItems[ 0 ].pName = "SINGLE PLAYER";
+	MenuItems[ 0 ].pName = "SINGLE PLAYER [COMING 20XX]";
 	MenuItems[ 0 ].Function = NULL;
 
 	MenuItems[ 1 ].pName = "MULTI PLAYER";
-	MenuItems[ 1 ].Function = NULL;
+	MenuItems[ 1 ].Function = LaunchMultiPlayer;
 
 	MenuItems[ 2 ].pName = "OPTIONS";
 	MenuItems[ 2 ].Function = NULL;
@@ -51,7 +52,9 @@ static int MMS_Load( void *p_pArgs )
 	SelectionHighlight.pString = "$ ";
 
 	if( MNU_Initialise( &MainMenuState.Menu, MenuItems, 4, &SelectionHighlight,
-		pArguments->pGlyphSet, TextColour, MENU_ITEM_ALIGNMENT_LEFT ) != 0 )
+		GSM_GetGlyphSet( MainMenuState.Base.pGameStateManager,
+			GSM_GLYPH_SET_GUI_1 ), TextColour,
+			MENU_ITEM_ALIGNMENT_LEFT ) != 0 )
 	{
 		LOG_Debug( "MMS_Load <ERROR> Failed to initialise the menu\n" );
 
@@ -124,6 +127,13 @@ static int MMS_Render( void *p_pArgs )
 			320.0f - ( TextLength * 0.5f ), 32.0f,
 			"[TERMINAL] //MAIN MENU" );
 
+		TXT_MeasureString( MainMenuState.pGlyphSet, "[A] select",
+			&TextLength );
+		TXT_RenderString( MainMenuState.pGlyphSet, &TextColour,
+			640.0f - 64.0f - TextLength,
+			480.0f - ( 32.0f + ( float )MainMenuState.pGlyphSet->LineHeight ),
+			"[A] select" );
+
 		MNU_Render( &MainMenuState.Menu, 1.5f, 320.0f, 240.0f );
 
 		REN_SwapBuffers( );
@@ -157,6 +167,14 @@ int MMS_RegisterWithGameStateManager(
 
 	return GSM_RegisterGameState( p_pGameStateManager, GAME_STATE_MAINMENU,
 		( GAMESTATE * )&MainMenuState );
+}
+
+static int LaunchMultiPlayer( void *p_pArgs )
+{
+	GSM_PushState( MainMenuState.Base.pGameStateManager,
+		GAME_STATE_MULTIPLAYER_MAIN, NULL, NULL );
+
+	return 0;
 }
 
 static int BootROM( void *p_pArgs )
