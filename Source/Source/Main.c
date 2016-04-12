@@ -22,6 +22,11 @@
 #include <ngsocket.h>
 #include <string.h>
 #include <Stack.h>
+#include <GameStateManager.h>
+#include <RefreshRateSelectState.h>
+#include <AspectRatioSelectState.h>
+#include <MainMenuState.h>
+#include <MultiPlayerState.h>
 
 #include <NetworkClient.h>
 #include <NetworkMessage.h>
@@ -78,8 +83,6 @@ typedef struct _tagSOUND
 	Sint32	Size;
 }SOUND;
 
-bool SelectPALRefresh( GLYPHSET *p_pGlyphSet );
-float TestAspectRatio( GLYPHSET *p_pGlyphSet );
 void DrawOverlayText( GLYPHSET *p_pGlyphSet );
 void DrawDebugOverlay_Int( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo );
 
@@ -123,6 +126,7 @@ void main( void )
 	PNETWORK_CLIENT Client;
 	Uint8 MessageBuffer[ 128 ];
 	size_t MessageBufferLength = sizeof( MessageBuffer );
+	GAMESTATE_MANAGER GameStateManager;
 
 	CAMERA TestCamera;
 	MATRIX4X4 Projection, Screen;
@@ -146,52 +150,6 @@ void main( void )
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
-	}
-
-	{
-		STACK TestStack;
-		Uint32 Number = 10;
-		int i;
-
-		STK_Initialise( &TestStack, &MemoryBlock, 5, sizeof( Uint32 ), 0,
-			"Test Stack" );
-
-		MEM_ListMemoryBlocks( &MemoryBlock );
-
-		for( i = 0; i < 6; ++i )
-		{
-			if( STK_Push( &TestStack, &Number ) == 0 )
-			{
-				LOG_Debug( "Pushed %lu onto the stack\n", Number );
-				Number += 8;
-			}
-		}
-
-		MEM_ListMemoryBlocks( &MemoryBlock );
-
-		LOG_Debug( "Stack has %lu items in it\n", STK_GetCount( &TestStack ) );
-
-		for( i = 0; i < 6; ++i )
-		{
-			Uint32 *pNumber;
-			pNumber = ( Uint32 * )STK_GetTopItem( &TestStack );
-			if( pNumber )
-			{
-				LOG_Debug( "Top of stack: %lu\n", *pNumber );
-			}
-			if( STK_Pop( &TestStack, &Number ) == 0 )
-			{
-				LOG_Debug( "Number popped: %lu\n", Number );
-			}
-		}
-
-		STK_Terminate( &TestStack );
-
-		MEM_ListMemoryBlocks( &MemoryBlock );
-
-		MEM_GarbageCollectMemoryBlock( &MemoryBlock );
-
-		MEM_ListMemoryBlocks( &MemoryBlock );
 	}
 
 	memset( g_VersionString, '\0', sizeof( g_VersionString ) );
@@ -389,19 +347,47 @@ void main( void )
 	TestCamera.NearPlane = 0.001f; /* 1cm */
 	TestCamera.FarPlane = 10000.0f; /* 10km (too much?) */
 
+	GSM_Initialise( &GameStateManager, &MemoryBlock );
+	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_DEBUG, &GlyphSet );
+	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_GUI_1, &GlyphSet );
+
+	RRSS_RegisterWithGameStateManager( &GameStateManager );
+	ARSS_RegisterWithGameStateManager( &GameStateManager );
+	MMS_RegisterWithGameStateManager( &GameStateManager );
+	MP_RegisterMainWithGameStateManager( &GameStateManager );
+
 	if( AVCable == SYE_CBL_PAL )
 	{
-		bool SixtyHz;
-		SixtyHz = SelectPALRefresh( &GlyphSet );
+		REFRESHRATESELECT RefreshRateArgs;
+		RefreshRateArgs.pGlyphSet = &GlyphSet;
 
-		if( SixtyHz )
-		{
-			kmSetDisplayMode( KM_DSPMODE_NTSCNI640x480, KM_DSPBPP_RGB888,
-				TRUE, FALSE);
-		}
+		GSM_ChangeState( &GameStateManager, GAME_STATE_REFRESHRATESELECT,
+			&RefreshRateArgs, NULL );
+	}
+	else
+	{
+		ASPECTRATIOSELECT AspectRatioArgs;
+		AspectRatioArgs.pGlyphSet = &GlyphSet;
+
+		GSM_ChangeState( &GameStateManager, GAME_STATE_ASPECTRATIOSELECT,
+			&AspectRatioArgs, NULL );
 	}
 
-	TestCamera.AspectRatio = TestAspectRatio( &GlyphSet );
+	while( GSM_IsRunning( &GameStateManager ) == true )
+	{
+		GSM_Run( &GameStateManager );
+	}
+
+	LOG_Debug( "Rebooting" );
+
+	GSM_Terminate( &GameStateManager );
+	AUD_Terminate( );
+	REN_Terminate( );
+	LOG_Terminate( );
+	HW_Terminate( );
+	HW_Reboot( );
+
+	/* Unused code below, get rid of it! */
 
 	if( MDL_Initialise( ) != 0 )
 	{
@@ -837,569 +823,6 @@ void main( void )
 	LOG_Terminate( );
 	HW_Terminate( );
 	HW_Reboot( );
-}
-
-bool SelectPALRefresh( GLYPHSET *p_pGlyphSet )
-{
-	bool CableSelect = true;
-	bool SixtyHz = false;
-	float Spacing = 50.0f;
-	bool ModeTest = false;
-	int TestStage = 0;
-	Uint32 StartTime, EndTime;
-	Uint32 ElapsedTime;
-	bool TestPass = false;
-	bool ModeSelected = false;
-
-	while( CableSelect )
-	{
-		static float Alpha = 1.0f;
-		static float AlphaInc = 0.02f;
-		KMBYTE AlphaByte;
-		float TextLength;
-		KMPACKEDARGB TextColour;
-
-		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
-		{
-			char PrintBuffer[ 80 ];
-			if( DA_GetData( PrintBuffer, 80, 3 ) )
-			{
-				g_ConnectedToDA = true;
-			}
-		}
-
-		if( ModeSelected )
-		{
-			CableSelect = false;
-			continue;
-		}
-
-		StartTime = syTmrGetCount( );
-
-		if( ( g_Peripherals[ 0 ].press & PDD_DGT_TA ) &&
-			( ModeTest == false ) )
-		{
-			acDigiOpen( 10, ( KTU32 )g_Accept.pMemoryLocation,
-				g_Select.Size, AC_16BIT, 44100 );
-			acDigiRequestEvent( 10, ( g_Accept.Size >> 1 ) - 1 );
-			acDigiPlay( 10, 0, AC_LOOP_OFF );
-
-			ModeTest = true;
-			TestStage = 0;
-		}
-
-		REN_Clear( );
-
-		TextColour.dwPacked = 0xFFFFFFFF;
-
-		if( ModeTest )
-		{
-			if( SixtyHz )
-			{
-				if( TestStage == 0 )
-				{
-					TXT_MeasureString( p_pGlyphSet, "The display will change "
-						"mode now for five seconds", &TextLength );
-					TXT_RenderString( p_pGlyphSet, &TextColour,
-						320.0f - ( TextLength / 2.0f ),
-						( float )p_pGlyphSet->LineHeight * 4.0f,
-						"The display will change mode now for five seconds" );
-
-					TXT_MeasureString( p_pGlyphSet, "Press 'A' to continue",
-						&TextLength );
-					TXT_RenderString( p_pGlyphSet, &TextColour,
-						320.0f - ( TextLength / 2.0f ),
-						240.0f - ( ( float )p_pGlyphSet->LineHeight / 2.0f ),
-						"Press 'A' to continue" );
-
-					if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
-					{
-						ElapsedTime = 0UL;
-						TestStage = 1;
-
-						acDigiOpen( 10, ( KTU32 )g_Accept.pMemoryLocation,
-							g_Select.Size, AC_16BIT, 44100 );
-						acDigiRequestEvent( 10, ( g_Accept.Size >> 1 ) - 1 );
-						acDigiPlay( 10, 0, AC_LOOP_OFF );
-
-						if( SixtyHz )
-						{
-							kmSetDisplayMode( KM_DSPMODE_NTSCNI640x480,
-								KM_DSPBPP_RGB888, TRUE, FALSE);
-						}
-						else
-						{
-							kmSetDisplayMode( KM_DSPMODE_PALNI640x480EXT,
-								KM_DSPBPP_RGB888, TRUE, FALSE);
-						}
-					}
-				}
-				/* Display test */
-				else if( TestStage == 1 )
-				{
-					char TimeLeft[ 80 ];
-					memset( TimeLeft, '\0', sizeof( TimeLeft ) );
-					sprintf( TimeLeft, "Time remaining: %ld",
-						5000000UL - ElapsedTime );
-					TXT_MeasureString( p_pGlyphSet,
-						"Time remaining: 0000000", &TextLength );
-					TXT_RenderString( p_pGlyphSet, &TextColour,
-						320.0f - ( TextLength / 2.0f ),
-						240.0f - ( ( float ) p_pGlyphSet->LineHeight * 6.0f ),
-						TimeLeft );
-
-					TXT_MeasureString( p_pGlyphSet,
-						"Some fucking cool artwork", &TextLength );
-					TXT_RenderString( p_pGlyphSet, &TextColour,
-						320.0f - ( TextLength / 2.0f ),
-						240.0f - ( ( float )p_pGlyphSet->LineHeight / 2.0f ),
-						"Some fucking cool artwork" );
-
-					if( ElapsedTime >= 5000000UL )
-					{
-						TestStage = 2;
-
-						kmSetDisplayMode( KM_DSPMODE_PALNI640x480EXT,
-							KM_DSPBPP_RGB888, TRUE, FALSE);
-					}
-				}
-				/* Confirm test */
-				else if( TestStage == 2 )
-				{
-					TXT_MeasureString( p_pGlyphSet, "Did the picture appear "
-						"stable?", &TextLength );
-					TXT_RenderString( p_pGlyphSet, &TextColour,
-						320.0f - ( TextLength / 2.0f ),
-						( float )p_pGlyphSet->LineHeight * 4.0f,
-						"Did the picture appear stable?" );
-
-					TXT_MeasureString( p_pGlyphSet, "Press 'A' to confirm",
-						&TextLength );
-					TXT_RenderString( p_pGlyphSet, &TextColour,
-						320.0f - ( TextLength / 2.0f ),
-						( float )p_pGlyphSet->LineHeight * 5.5f,
-						"Press 'A' to confirm" );
-
-					if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
-						( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
-					{
-						acDigiOpen( 10, ( KTU32 )g_Select.pMemoryLocation,
-							g_Select.Size, AC_16BIT, 44100 );
-						acDigiRequestEvent( 10, ( g_Select.Size >> 1 ) - 1 );
-						acDigiPlay( 10, 0, AC_LOOP_OFF );
-
-						TestPass = !TestPass;
-						Alpha = 1.0f;
-					}
-
-					if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
-					{
-						acDigiOpen( 10, ( KTU32 )g_Accept.pMemoryLocation,
-							g_Select.Size, AC_16BIT, 44100 );
-						acDigiRequestEvent( 10, ( g_Accept.Size >> 1 ) - 1 );
-						acDigiPlay( 10, 0, AC_LOOP_OFF );
-
-						ModeTest = false;
-						ModeSelected = true;
-					}
-
-					if( TestPass )
-					{
-						TextColour.byte.bAlpha = AlphaByte;
-					}
-					else
-					{
-						TextColour.byte.bAlpha = 255;
-					}
-
-					TXT_MeasureString( p_pGlyphSet, "Yes", &TextLength );
-					TXT_RenderString( p_pGlyphSet, &TextColour,
-						320.0f - ( TextLength ) - Spacing,
-						( 240.0f - ( float )p_pGlyphSet->LineHeight / 2.0f ),
-						"Yes" );
-
-					if( !TestPass )
-					{
-						TextColour.byte.bAlpha = AlphaByte;
-					}
-					else
-					{
-						TextColour.byte.bAlpha = 255;
-					}
-
-					TXT_RenderString( p_pGlyphSet, &TextColour,
-						320.0f + Spacing,
-						( 240.0f - ( float )p_pGlyphSet->LineHeight / 2.0f ),
-						"No" );
-				}
-			}
-			else
-			{
-				ModeSelected = true;
-			}
-		}
-		else
-		{
-			if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
-				( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
-			{
-				acDigiOpen( 10, ( KTU32 )g_Select.pMemoryLocation,
-					g_Select.Size, AC_16BIT, 44100 );
-				acDigiRequestEvent( 10, ( g_Select.Size >> 1 ) - 1 );
-				acDigiPlay( 10, 0, AC_LOOP_OFF );
-
-				SixtyHz = !SixtyHz;
-				Alpha = 1.0f;
-			}
-
-			TXT_MeasureString( p_pGlyphSet, "Select output mode",
-				&TextLength );
-			TXT_RenderString( p_pGlyphSet, &TextColour,
-				320.0f - ( TextLength / 2.0f ),
-				( float )p_pGlyphSet->LineHeight * 4.0f,
-				"Select output mode" );
-
-			TXT_MeasureString( p_pGlyphSet, "Press 'A' to select",
-				&TextLength );
-			TXT_RenderString( p_pGlyphSet, &TextColour,
-				320.0f - ( TextLength / 2.0f ),
-				( 480.0f - ( float )p_pGlyphSet->LineHeight * 4.0f ),
-				"Press 'A' to select" );
-
-			if( !SixtyHz )
-			{
-				TextColour.byte.bAlpha = AlphaByte;
-			}
-			else
-			{
-				TextColour.byte.bAlpha = 255;
-			}
-
-			TXT_MeasureString( p_pGlyphSet, "50Hz", &TextLength );
-			TXT_RenderString( p_pGlyphSet, &TextColour,
-				320.0f - ( TextLength ) - Spacing,
-				( 240.0f - ( float )p_pGlyphSet->LineHeight / 2.0f ),
-				"50Hz" );
-
-			if( SixtyHz )
-			{
-				TextColour.byte.bAlpha = AlphaByte;
-			}
-			else
-			{
-				TextColour.byte.bAlpha = 255;
-			}
-
-			TXT_RenderString( p_pGlyphSet, &TextColour,
-				320.0f + Spacing,
-				( 240.0f - ( float )p_pGlyphSet->LineHeight / 2.0f ),
-				"60Hz" );
-		}
-
-		Alpha += AlphaInc;
-
-		if( Alpha <= 0.0f )
-		{
-			AlphaInc = 0.02f;
-			Alpha = 0.0f;
-			AlphaByte = 0;
-		}
-		else if( Alpha >= 1.0f )
-		{
-			AlphaInc = -0.02f;
-			Alpha = 1.0f;
-			AlphaByte = 255;
-		}
-		else
-		{
-			AlphaByte = ( KMBYTE )( Alpha * 255.0f );
-		}
-
-		DrawOverlayText( p_pGlyphSet );
-		DrawDebugOverlay( p_pGlyphSet, NULL );
-
-		REN_SwapBuffers( );
-
-		EndTime = syTmrGetCount( );
-
-		ElapsedTime +=
-			syTmrCountToMicro( syTmrDiffCount( StartTime, EndTime ) );
-	}
-
-	if( TestPass && SixtyHz )
-	{
-		return true;
-	}
-
-	return false;
-}
-
-float TestAspectRatio( GLYPHSET *p_pGlyphSet )
-{
-	float AspectRatio = 4.0f / 3.0f;
-	float TextLength;
-	bool SelectAspect = true;
-	bool FourThree = true;
-	CAMERA AspectCamera;
-	KMVERTEX_01 Square[ 4 ];
-	VECTOR3 SquareVertsT[ 4 ];
-	VECTOR3 SquareVerts[ 4 ];
-	MATRIX4X4 Projection, View, ViewProjection, World, Screen;
-	VECTOR3 Translate = { 0.0f, 0.0f, 100.0f };
-	int i;
-	float Alpha = 1.0f;
-	float AlphaInc = 0.02f;
-	KMBYTE AlphaByte;
-	KMPACKEDARGB TextColour;
-	float Spacing = 50.0f;
-	KMPACKEDARGB BaseColour;
-	KMSTRIPCONTEXT SquareContext;
-	KMSTRIPHEAD	SquareStripHead;
-	bool AButtonHeld = false;
-
-	memset( &SquareContext, 0, sizeof( KMSTRIPCONTEXT ) );
-
-	SquareContext.nSize = sizeof( SquareContext );
-	SquareContext.StripControl.nListType = KM_TRANS_POLYGON;
-	SquareContext.StripControl.nUserClipMode = KM_USERCLIP_DISABLE;
-	SquareContext.StripControl.nShadowMode = KM_NORMAL_POLYGON;
-	SquareContext.StripControl.bOffset = KM_FALSE;
-	SquareContext.StripControl.bGouraud = KM_TRUE;
-	SquareContext.ObjectControl.nDepthCompare = KM_ALWAYS;
-	SquareContext.ObjectControl.nCullingMode = KM_NOCULLING;
-	SquareContext.ObjectControl.bZWriteDisable = KM_FALSE;
-	SquareContext.ObjectControl.bDCalcControl = KM_FALSE;
-	BaseColour.dwPacked = 0xFFFFFFFF;
-	SquareContext.type.splite.Base = BaseColour;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].nSRCBlendingMode =
-		KM_SRCALPHA;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].nDSTBlendingMode =
-		KM_INVSRCALPHA;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].bSRCSelect = KM_FALSE;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].bDSTSelect = KM_FALSE;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].nFogMode = KM_NOFOG;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].bColorClamp = KM_FALSE;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].bUseAlpha = KM_TRUE;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].bIgnoreTextureAlpha =
-		KM_FALSE;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].nFlipUV = KM_NOFLIP;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].nClampUV = KM_CLAMP_UV;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].nFilterMode = KM_BILINEAR;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].bSuperSampleMode = KM_FALSE;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].dwMipmapAdjust = 
-		KM_MIPMAP_D_ADJUST_1_00;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].nTextureShadingMode =
-		KM_MODULATE_ALPHA;
-	SquareContext.ImageControl[ KM_IMAGE_PARAM1 ].pTextureSurfaceDesc = NULL;
-
-	kmGenerateStripHead01( &SquareStripHead, &SquareContext );
-
-	SquareVerts[ 0 ].X = -10.0f;
-	SquareVerts[ 0 ].Y = -10.0f;
-	SquareVerts[ 0 ].Z = -10.0f;
-
-	SquareVerts[ 1 ].X = -10.0f;
-	SquareVerts[ 1 ].Y = 10.0f;
-	SquareVerts[ 1 ].Z = -10.0f;
-
-	SquareVerts[ 2 ].X = 10.0f;
-	SquareVerts[ 2 ].Y = -10.0f;
-	SquareVerts[ 2 ].Z = -10.0f;
-
-	SquareVerts[ 3 ].X = 10.0f;
-	SquareVerts[ 3 ].Y = 10.0f;
-	SquareVerts[ 3 ].Z = -10.0f;
-
-	MAT44_SetIdentity( &World );
-	MAT44_Translate( &World, &Translate );
-
-	AspectCamera.Position.X = 0.0f;
-	AspectCamera.Position.Y = 0.0f;
-	AspectCamera.Position.Z = 0.0f;
-
-	AspectCamera.LookAt.X = 0.0f;
-	AspectCamera.LookAt.Y = 0.0f;
-	AspectCamera.LookAt.Z = 1.0f;
-
-	AspectCamera.WorldUp.X = 0.0f;
-	AspectCamera.WorldUp.Y = 1.0f;
-	AspectCamera.WorldUp.Z = 0.0f;
-
-	AspectCamera.GateWidth = 640.0f;
-	AspectCamera.GateHeight = 480.0f;
-
-	AspectCamera.AspectRatio = AspectRatio;
-	AspectCamera.FieldOfView = ( 3.141592654f / 4.0f );
-	AspectCamera.NearPlane = 1.0f;
-	AspectCamera.FarPlane = 100000.0f;
-	
-	CAM_CalculateProjectionMatrix( &Projection, &AspectCamera );
-	CAM_CalculateScreenMatrix( &Screen, &AspectCamera );
-
-	TextColour.byte.bBlue = 255;
-	TextColour.byte.bGreen = 254;
-	TextColour.byte.bRed = 83;
-
-	/* Seems pretty unclean to me, but on PAL-60 select, there's no way around
-	 * it */
-	if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
-	{
-		AButtonHeld = true;
-	}
-
-	while( SelectAspect )
-	{
-		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
-		{
-			char PrintBuffer[ 80 ];
-			if( DA_GetData( PrintBuffer, 80, 3 ) )
-			{
-				g_ConnectedToDA = true;
-			}
-		}
-
-		if( !AButtonHeld )
-		{
-			if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
-			{
-				acDigiOpen( 11, ( KTU32 )g_Accept.pMemoryLocation,
-					g_Accept.Size, AC_16BIT, 44100 );
-				acDigiRequestEvent( 11, ( g_Accept.Size >> 1 ) - 1 );
-				acDigiPlay( 11, 0, AC_LOOP_OFF );
-
-				SelectAspect = false;
-			}
-		}
-		else
-		{
-			if( g_Peripherals[ 0 ].release & PDD_DGT_TA )
-			{
-				AButtonHeld = false;
-			}
-		}
-
-		if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
-			( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
-		{
-			acDigiOpen( 10, ( KTU32 )g_Select.pMemoryLocation, g_Select.Size,
-				AC_16BIT, 44100 );
-			acDigiRequestEvent( 10, ( g_Select.Size >> 1 ) - 1 );
-			acDigiPlay( 10, 0, AC_LOOP_OFF );
-
-			FourThree = !FourThree;
-			Alpha = 1.0f;
-		}
-
-		TextColour.byte.bAlpha = 140;
-
-		REN_Clear( );
-
-		TXT_MeasureString( p_pGlyphSet, "Select aspect ratio",
-			&TextLength );
-		TXT_RenderString( p_pGlyphSet, &TextColour,
-			320.0f - ( TextLength / 2.0f ),
-			( float )p_pGlyphSet->LineHeight * 4.0f,
-			"Select aspect ratio" );
-
-		TXT_MeasureString( p_pGlyphSet, "The square should not be distorted",
-			&TextLength );
-		TXT_RenderString( p_pGlyphSet, &TextColour,
-			320.0f - ( TextLength / 2.0f ),
-			( float )p_pGlyphSet->LineHeight * 5.5f,
-			"The square should not be distorted" );
-
-		TXT_MeasureString( p_pGlyphSet, "Press 'A' to select",
-			&TextLength );
-		TXT_RenderString( p_pGlyphSet, &TextColour,
-			320.0f - ( TextLength / 2.0f ),
-			( 480.0f - ( float )p_pGlyphSet->LineHeight * 4.0f ),
-			"Press 'A' to select" );
-
-		if( FourThree )
-		{
-			TextColour.byte.bAlpha = AlphaByte;
-			AspectCamera.AspectRatio = 4.0f / 3.0f;
-		}
-		else
-		{
-			TextColour.byte.bAlpha = 140;
-			AspectCamera.AspectRatio = 16.0f / 9.0f;
-		}
-
-		TXT_MeasureString( p_pGlyphSet, "4:3", &TextLength );
-		TXT_RenderString( p_pGlyphSet, &TextColour,
-			320.0f - ( TextLength ) - Spacing,
-			360.0f,
-			"4:3" );
-
-		if( !FourThree )
-		{
-			TextColour.byte.bAlpha = AlphaByte;
-		}
-		else
-		{
-			TextColour.byte.bAlpha = 140;
-		}
-
-		TXT_RenderString( p_pGlyphSet, &TextColour,
-			320.0f + Spacing,
-			360.0f,
-			"16:9" );
-
-		CAM_CalculateProjectionMatrix( &Projection, &AspectCamera );
-		CAM_CalculateScreenMatrix( &Screen, &AspectCamera );
-		CAM_CalculateViewMatrix( &View, &AspectCamera );
-
-		MAT44_Multiply( &ViewProjection, &World, &View );
-		MAT44_Multiply( &ViewProjection, &ViewProjection, &Projection );
-		MAT44_Multiply( &ViewProjection, &ViewProjection, &Screen );
-
-		MAT44_TransformVerticesRHW( ( float * )SquareVertsT,
-			( float * )SquareVerts, 4, sizeof( SquareVertsT[ 0 ] ),
-			sizeof( SquareVerts[ 0 ] ), &ViewProjection );
-
-		for( i = 0; i < 4; ++i )
-		{
-			Square[ i ].ParamControlWord = KM_VERTEXPARAM_NORMAL;
-			Square[ i ].fX = SquareVertsT[ i ].X;
-			Square[ i ].fY = SquareVertsT[ i ].Y;
-			Square[ i ].u.fInvW = SquareVertsT[ i ].Z;
-			Square[ i ].fBaseAlpha = 0.7f;
-			Square[ i ].fBaseRed = 83.0f / 255.0f;
-			Square[ i ].fBaseGreen = 254.0f / 255.0f;
-			Square[ i ].fBaseBlue = 1.0f;
-		}
-
-		Square[ 3 ].ParamControlWord = KM_VERTEXPARAM_ENDOFSTRIP;
-
-		REN_DrawPrimitives01( &SquareStripHead, Square, 4 );
-
-		Alpha += AlphaInc;
-
-		if( Alpha <= 0.0f )
-		{
-			AlphaInc = 0.02f;
-			Alpha = 0.0f;
-			AlphaByte = 0;
-		}
-		else if( Alpha >= 1.0f )
-		{
-			AlphaInc = -0.02f;
-			Alpha = 1.0f;
-			AlphaByte = 255;
-		}
-		else
-		{
-			AlphaByte = ( KMBYTE )( Alpha * 255.0f );
-		}
-
-		DrawOverlayText( p_pGlyphSet );
-		DrawDebugOverlay( p_pGlyphSet, NULL );
-
-		REN_SwapBuffers( );
-	}
-
-	return AspectCamera.AspectRatio;
 }
 
 void DrawOverlayText( GLYPHSET *p_pGlyphSet )
