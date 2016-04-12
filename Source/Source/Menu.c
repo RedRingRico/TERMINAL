@@ -54,6 +54,7 @@ int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 		if( p_MenuItemCount > 0 )
 		{
 			size_t Index;
+			size_t MenuSize = sizeof( MENU_ITEM );
 
 			p_pMenu->pMenuItems =
 				syMalloc( p_MenuItemCount * sizeof( MENU_ITEM ) );
@@ -64,8 +65,9 @@ int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 			/* Fix up the pointers */
 			for( Index = 0; Index < p_MenuItemCount; ++Index )
 			{
+				size_t Offset = ( Index + 1 ) * MenuSize;
 				p_pMenu->pMenuItems[ Index ].pNext =
-					p_pMenu->pMenuItems + ( Index * sizeof( MENU_ITEM ) );
+					( PMENU_ITEM )( ( size_t )p_pMenu->pMenuItems + Offset );
 			}
 
 			p_pMenu->pMenuItems[ p_MenuItemCount - 1 ].pNext = NULL;
@@ -90,14 +92,7 @@ void MNU_Terminate( PMENU p_pMenu )
 {
 	syFree( p_pMenu->pSelectionHighlight );
 
-	while( p_pMenu->pMenuItems != NULL )
-	{
-		PMENU_ITEM pNext = p_pMenu->pMenuItems->pNext;
-
-		syFree( p_pMenu->pMenuItems );
-
-		p_pMenu->pMenuItems = pNext;
-	}
+	syFree( p_pMenu->pMenuItems );
 }
 
 void MNU_SelectNextMenuItem( PMENU p_pMenu )
