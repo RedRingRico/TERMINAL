@@ -335,10 +335,15 @@ void NET_Terminate( void )
 {
 	NET_DisconnectFromISP( );
 
-	if( NET_Status != NET_STATUS_ERROR || NET_Status != NET_STATUS_NODEVICE )
+	if( NET_Initialised == true )
 	{
 		ngExit( 0 );
 	}
+
+	/*if( NET_Status != NET_STATUS_ERROR || NET_Status != NET_STATUS_NODEVICE )
+	{
+		ngExit( 0 );
+	}*/
 }
 
 int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
@@ -633,7 +638,7 @@ void NET_Update( void )
 						 * support this */
 						LOG_Debug( "Modem reset" );
 						ngExit( 0 );
-						NET_Status = NET_STATUS_NODEVICE;
+						NET_Status = NET_STATUS_DISCONNECTED;
 						NET_Initialised = false;
 						break;
 					}
@@ -843,8 +848,27 @@ int NET_DisconnectFromISP( void )
 
 		if( NET_DeviceHardware == NET_DEVICE_HARDWARE_MODEM )
 		{
-			ngPppStop( NET_pInterface );
-			NET_Status = NET_STATUS_PPP_POLL;
+			switch( NET_Status )
+			{
+				case NET_STATUS_NEGOTIATING:
+				{
+					ngDevioClose( NET_DeviceControlBlock );
+					--NET_DevOpen;
+					NET_Status = NET_STATUS_RESET;
+					break;
+				}
+				case NET_STATUS_PPP_POLL:
+				{
+					ngPppStop( NET_pInterface );
+					break;
+				}
+				case NET_STATUS_CONNECTED:
+				{
+					ngPppStop( NET_pInterface );
+					NET_Status = NET_STATUS_PPP_POLL;
+					break;
+				}
+			}
 		}
 		else if( NET_DeviceHardware == NET_DEVICE_HARDWARE_LAN )
 		{
