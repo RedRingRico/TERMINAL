@@ -148,8 +148,13 @@ int GSM_PopState( PGAMESTATE_MANAGER p_pGameStateManager )
 
 int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 {
+	Uint32 StartTime = syTmrGetCount( );
+
 	p_pGameStateManager->pTopGameState->Update( p_pGameStateManager );
 	p_pGameStateManager->pTopGameState->Render( NULL );
+
+	p_pGameStateManager->pTopGameState->ElapsedGameTime +=
+		syTmrCountToMicro( syTmrDiffCount( StartTime, syTmrGetCount( ) ) );
 
 	return 0;
 }

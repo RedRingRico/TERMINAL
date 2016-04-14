@@ -18,6 +18,7 @@ typedef struct _tagGAMESTATE
 	GS_Function						Unload;
 	struct _tagGAMESTATE_MANAGER	*pGameStateManager;
 	bool							Paused;
+	Uint32							ElapsedGameTime;
 }GAMESTATE,*PGAMESTATE;
 
 void GS_Copy( PGAMESTATE p_pCopy, PGAMESTATE p_pOriginal );
