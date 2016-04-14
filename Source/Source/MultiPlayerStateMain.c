@@ -14,6 +14,8 @@ typedef struct _tagMPM_GAMESTATE
 
 static MPM_GAMESTATE MultiPlayerMainState;
 
+static int ConnectToISP( void *p_pArgs );
+
 static int MPM_Load( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
@@ -31,7 +33,7 @@ static int MPM_Load( void *p_pArgs )
 	MenuItems[ 1 ].Function = NULL;
 
 	MenuItems[ 2 ].pName = "INTERNET";
-	MenuItems[ 2 ].Function = NULL;
+	MenuItems[ 2 ].Function = ConnectToISP;
 
 	SelectionHighlight.Base.Type = SELECTION_HIGHLIGHT_TYPE_STRING;
 	SelectionHighlight.Base.HighlightColour = HighlightColour;
@@ -155,4 +157,13 @@ int MP_RegisterMainWithGameStateManager(
 	return GSM_RegisterGameState( p_pGameStateManager,
 		GAME_STATE_MULTIPLAYER_MAIN, ( GAMESTATE * )&MultiPlayerMainState );
 }
+
+static int ConnectToISP( void *p_pArgs )
+{
+	GSM_ChangeState( MultiPlayerMainState.Base.pGameStateManager,
+		GAME_STATE_MULTIPLAYER_ISPCONNECT, NULL, NULL );
+
+	return 0;
+}
+
 

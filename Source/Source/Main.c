@@ -355,6 +355,7 @@ void main( void )
 	ARSS_RegisterWithGameStateManager( &GameStateManager );
 	MMS_RegisterWithGameStateManager( &GameStateManager );
 	MP_RegisterMainWithGameStateManager( &GameStateManager );
+	MP_RegisterISPConnectWithGameStateManager( &GameStateManager );
 
 	if( AVCable == SYE_CBL_PAL )
 	{
