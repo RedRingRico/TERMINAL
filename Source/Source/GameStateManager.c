@@ -4,25 +4,33 @@
 #include <string.h>
 
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
-	PMEMORY_BLOCK p_pMemoryBlock )
+	PGAMESTATE_MEMORY_BLOCKS p_pMemoryBlocks )
 {
 	p_pGameStateManager->pRegistry = NULL;
 	p_pGameStateManager->pRegistry->pNext = NULL;
 
-	if( STK_Initialise( &p_pGameStateManager->GameStateStack, p_pMemoryBlock,
-		10, sizeof( GAMESTATE ), 0,	"Game State Stack" )  != 0 )
+
+	p_pGameStateManager->pTopGameState = NULL;
+	p_pGameStateManager->Running = false;
+
+	p_pGameStateManager->ppGlyphSet = syMalloc( sizeof( PGLYPHSET ) * 2 );
+
+	p_pGameStateManager->MemoryBlocks.pSystemMemory =
+		p_pMemoryBlocks->pSystemMemory;
+	p_pGameStateManager->MemoryBlocks.pGraphicsMemory =
+		p_pMemoryBlocks->pGraphicsMemory;
+	p_pGameStateManager->MemoryBlocks.pAudioMemory =
+		p_pMemoryBlocks->pAudioMemory;
+
+	if( STK_Initialise( &p_pGameStateManager->GameStateStack,
+		p_pGameStateManager->MemoryBlocks.pSystemMemory, 10,
+		sizeof( GAMESTATE ), 0,	"Game State Stack" )  != 0 )
 	{
 		LOG_Debug( "GSM_Initialise <ERROR> Failed to allocate memory for the "
 			"game state stack\n" );
 
 		return 1;
 	}
-
-	p_pGameStateManager->pMemoryBlock = p_pMemoryBlock;
-	p_pGameStateManager->pTopGameState = NULL;
-	p_pGameStateManager->Running = false;
-
-	p_pGameStateManager->ppGlyphSet = syMalloc( sizeof( PGLYPHSET ) * 2 );
 
 	return 0;
 }

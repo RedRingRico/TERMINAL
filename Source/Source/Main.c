@@ -108,8 +108,7 @@ void main( void )
 	KMSURFACEDESC FrontBuffer, BackBuffer;
 	PKMDWORD pVertexBuffer;
 	KMVERTEXBUFFDESC VertexBufferDesc;
-	MEMORY_BLOCK MemoryBlock;
-	void *pSomeMemory, *pBlock1, *pBlock2;
+	void *pGSMSystem, *pGSMGraphics, *pGSMAudio;
 	GLYPHSET GlyphSet;
 	Uint32 StartTime, EndTime;
 	SYE_CBL AVCable;
@@ -127,6 +126,8 @@ void main( void )
 	Uint8 MessageBuffer[ 128 ];
 	size_t MessageBufferLength = sizeof( MessageBuffer );
 	GAMESTATE_MANAGER GameStateManager;
+	GAMESTATE_MEMORY_BLOCKS GameStateMemoryBlocks;
+	MEMORY_BLOCK SystemMemoryBlock, GraphicsMemoryBlock, AudioMemoryBlock;
 
 	CAMERA TestCamera;
 	MATRIX4X4 Projection, Screen;
@@ -141,16 +142,6 @@ void main( void )
 	LOG_Initialise( NULL );
 	LOG_Debug( "TERMINAL" );
 	LOG_Debug( "Version: %s", GIT_VERSION );
-
-	pSomeMemory = syMalloc( 1024*1024*8 );
-	if( MEM_InitialiseMemoryBlock( &MemoryBlock, pSomeMemory, 1024*1024*8, 4,
-		"System Root" ) != 0 )
-	{
-		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*8 );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
-	}
 
 	memset( g_VersionString, '\0', sizeof( g_VersionString ) );
 	sprintf( g_VersionString, "[TERMINAL] | %s | %s", GIT_VERSION,
@@ -347,7 +338,51 @@ void main( void )
 	TestCamera.NearPlane = 0.001f; /* 1cm */
 	TestCamera.FarPlane = 10000.0f; /* 10km (too much?) */
 
-	GSM_Initialise( &GameStateManager, &MemoryBlock );
+	pGSMSystem = syMalloc( 1024*1024*6 );
+
+	if( MEM_InitialiseMemoryBlock( &SystemMemoryBlock,
+		pGSMSystem, 1024*1024*6, 4, "GSM: System" ) != 0 )
+	{
+		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*4 );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	pGSMGraphics = syMalloc( 1024*1024*2 );
+
+	if( MEM_InitialiseMemoryBlock( &GraphicsMemoryBlock,
+		pGSMGraphics, 1024*1024*2, 32, "GSM: Graphics" ) != 0 )
+	{
+		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*2 );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	pGSMAudio = syMalloc( 1024*1024*1 );
+
+	if( MEM_InitialiseMemoryBlock( &AudioMemoryBlock,
+		pGSMAudio, 1024*1024*1, 32, "GSM: Audio" ) != 0 )
+	{
+		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*1 );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	GameStateMemoryBlocks.pSystemMemory = &SystemMemoryBlock;
+	GameStateMemoryBlocks.pGraphicsMemory = &GraphicsMemoryBlock;
+	GameStateMemoryBlocks.pAudioMemory = &AudioMemoryBlock;
+
+	if( GSM_Initialise( &GameStateManager, &GameStateMemoryBlocks ) != 0 )
+	{
+		LOG_Debug( "Failed to initialise the game state manager\n" );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
 	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_DEBUG, &GlyphSet );
 	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_GUI_1, &GlyphSet );
 
@@ -356,6 +391,7 @@ void main( void )
 	MMS_RegisterWithGameStateManager( &GameStateManager );
 	MP_RegisterMainWithGameStateManager( &GameStateManager );
 	MP_RegisterISPConnectWithGameStateManager( &GameStateManager );
+	MP_RegisterGameListServerWithGameStateManager( &GameStateManager );
 
 	if( AVCable == SYE_CBL_PAL )
 	{

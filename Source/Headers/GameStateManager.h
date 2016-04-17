@@ -9,6 +9,14 @@
 #define GSM_GLYPH_SET_DEBUG	0
 #define GSM_GLYPH_SET_GUI_1	1
 
+/* This should probably also include alignment */
+typedef struct _tagGAMESTATE_MEMORY_BLOCKS
+{
+	PMEMORY_BLOCK	pSystemMemory;
+	PMEMORY_BLOCK	pGraphicsMemory;
+	PMEMORY_BLOCK	pAudioMemory;
+}GAMESTATE_MEMORY_BLOCKS,*PGAMESTATE_MEMORY_BLOCKS;
+
 typedef struct _tagGAMESTATE_REGISTRY
 {
 	/* The name should be replaced with an unsigned int to improve
@@ -20,17 +28,17 @@ typedef struct _tagGAMESTATE_REGISTRY
 
 typedef struct _tagGAMESTATE_MANAGER
 {
-	PMEMORY_BLOCK			pMemoryBlock;
 	GAME_OPTIONS			GameOptions;
 	GAMESTATE_REGISTRY		*pRegistry;
 	struct _tagGAMESTATE	*pTopGameState;
 	PGLYPHSET				*ppGlyphSet;
+	GAMESTATE_MEMORY_BLOCKS	MemoryBlocks;
 	bool					Running;
 	STACK					GameStateStack;
 }GAMESTATE_MANAGER,*PGAMESTATE_MANAGER;
 
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
-	PMEMORY_BLOCK p_pMemoryBlock );
+	PGAMESTATE_MEMORY_BLOCKS p_pMemoryBlocks );
 void GSM_Terminate( PGAMESTATE_MANAGER p_pGameStateManager );
 
 int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,

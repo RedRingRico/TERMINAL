@@ -12,6 +12,7 @@
 #include <ngappp.h>
 #include <ngadns.h>
 #include <ngeth.h>
+
 typedef enum
 {
 	NET_STATUS_NODEVICE,
@@ -58,6 +59,12 @@ typedef enum
 	NET_CONNECTION_STATE_CONNECTED,
 	NET_CONNECTION_STATE_UNKNOWN
 }NET_CONNECTION_STATE;
+
+typedef enum
+{
+	NET_DISCONNECT_STATUS_USER_CANCELLED,
+	NET_DISCONNECT_STATUS_USER_DISCONNECTED
+}NET_DISCONNECT_STATUS;
 
 int NET_Initialise( void );
 void NET_Terminate( void );
