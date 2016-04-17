@@ -16,11 +16,14 @@ int NCL_Initialise( PNETWORK_CLIENT p_pClient, const char *p_pServerIP,
 	NET_CreateSocketAddress( &p_pClient->SocketAddress,
 		inet_addr( p_pServerIP ), htons( p_ServerPort ) );
 
+	NET_BindSocketUDP( &p_pClient->Socket, &p_pClient->SocketAddress );
+
 	return 0;
 }
 
 void NCL_Terminate( PNETWORK_CLIENT p_pClient )
 {
+	NET_DestroySocketUDP( &p_pClient->Socket );
 }
 
 void NCL_SendMessage( PNETWORK_CLIENT p_pClient, PNETWORK_MESSAGE p_pMessage )
