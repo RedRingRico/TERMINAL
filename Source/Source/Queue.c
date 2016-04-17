@@ -28,7 +28,7 @@ int QUE_Initialise( PQUEUE p_pQueue, PMEMORY_BLOCK p_pMemoryBlock,
 
 void QUE_Terminate( PQUEUE p_pQueue )
 {
-	MEM_FreeFromBlock( p_pQueue->pQueue, p_pQueue->pMemoryBlock );
+	MEM_FreeFromBlock( p_pQueue->pMemoryBlock, p_pQueue->pQueue );
 
 	p_pQueue->Front = 0;
 	p_pQueue->Count = 0;
@@ -50,6 +50,8 @@ int QUE_Enqueue( PQUEUE p_pQueue, void *p_pItem )
 		EnqueuePosition += ( size_t )p_pQueue->pQueue;
 		memcpy( ( void * )EnqueuePosition, p_pItem,
 			p_pQueue->ItemSize );
+
+		p_pQueue->Count += p_pQueue->ItemSize;
 
 		return 0;
 	}
