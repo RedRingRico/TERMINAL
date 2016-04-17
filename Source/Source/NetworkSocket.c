@@ -14,6 +14,15 @@ int NET_CreateSocketUDP( PSOCKET_UDP p_pSocket )
 	return 0;
 }
 
+void NET_DestroySocketUDP( PSOCKET_UDP p_pSocket )
+{
+	if( p_pSocket->Socket != INVALID_SOCKET )
+	{
+		closesocket( p_pSocket->Socket );
+		p_pSocket->Socket = INVALID_SOCKET;
+	}
+}
+
 int NET_BindSocketUDP( PSOCKET_UDP p_pSocket, PSOCKET_ADDRESS p_pAddress )
 {
 	if( bind( p_pSocket->Socket, &p_pAddress->SocketAddress,
@@ -38,6 +47,23 @@ int NET_SocketSendTo( PSOCKET_UDP p_pSocket, const void *p_pData,
 	}
 
 	return -1;
+}
+
+int NET_SocketReceiveFrom( PSOCKET_UDP p_pSocket, void *p_pData,
+	const size_t p_Length, PSOCKET_ADDRESS p_pAddress )
+{
+	int FromLength = NET_GetSocketAddressSize( p_pAddress );
+	int ReadBytes = recvfrom( p_pSocket->Socket, p_pData, p_Length, 0,
+		&p_pAddress->SocketAddress, &FromLength );
+
+	if( ReadBytes >= 0 )
+	{
+		return ReadBytes;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 int NET_SetSocketNonBlocking( int p_Socket, bool p_NonBlocking )
