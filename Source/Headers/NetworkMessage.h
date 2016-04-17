@@ -24,6 +24,8 @@ typedef struct _tagNETWORK_MESSAGE
 
 int MSG_CreateNetworkMessage( PNETWORK_MESSAGE p_pMessage,
 	Uint8 *p_pBuffer, size_t p_Length );
+int MSG_CopyNetworkMessage( PNETWORK_MESSAGE p_pCopy,
+	PNETWORK_MESSAGE p_pOriginal, size_t p_SizeToCopy );
 void MSG_DestroyNetworkMessage( PNETWORK_MESSAGE p_pMessage );
 
 void MSG_Clear( PNETWORK_MESSAGE p_pMessage );

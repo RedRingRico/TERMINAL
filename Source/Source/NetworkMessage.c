@@ -18,7 +18,7 @@ int MSG_CreateNetworkMessage( PNETWORK_MESSAGE p_pMessage,
 	}
 	else
 	{
-		p_pMessage->pData = malloc( p_Length );
+		p_pMessage->pData = syMalloc( p_Length );
 
 		if( p_pMessage->pData == NULL )
 		{
@@ -35,11 +35,35 @@ int MSG_CreateNetworkMessage( PNETWORK_MESSAGE p_pMessage,
 	return 0;
 }
 
+int MSG_CopyNetworkMessage( PNETWORK_MESSAGE p_pCopy,
+	PNETWORK_MESSAGE p_pOriginal, size_t p_SizeToCopy )
+{
+	p_pCopy->pData = syMalloc( p_SizeToCopy );
+
+	if( p_pCopy->pData == NULL )
+	{
+		LOG_Debug( "MSG_CopyNetworkMessage <ERORR> Failed to allocate memory "
+			"for the copied message\n" );
+
+		return 1;
+	}
+
+	memcpy( p_pCopy->pData, p_pOriginal->pData, p_SizeToCopy );
+
+	p_pCopy->Flags =
+		p_pOriginal->Flags |= NETWORK_MESSAGE_FLAG_INTERNAL_BUFFER;
+	p_pCopy->MaxSize = p_SizeToCopy;
+	p_pCopy->Size = 0;
+	p_pCopy->Head = 0;
+
+	return 0;
+}
+
 void MSG_DestroyNetworkMessage( PNETWORK_MESSAGE p_pMessage )
 {
 	if( p_pMessage->Flags & NETWORK_MESSAGE_FLAG_INTERNAL_BUFFER )
 	{
-		free( p_pMessage->pData );
+		syFree( p_pMessage->pData );
 		p_pMessage->pData = NULL;
 		p_pMessage->Flags &= ~NETWORK_MESSAGE_FLAG_INTERNAL_BUFFER;
 	}
@@ -199,7 +223,7 @@ void MSG_CopyToExternalBuffer( PNETWORK_MESSAGE p_pMessage,
 		return;
 	}
 
-	memcpy( p_pDestination, &p_pMessage[ p_pMessage->Head ], p_Size );
+	memcpy( p_pDestination, &p_pMessage->pData[ p_pMessage->Head ], p_Size );
 	p_pMessage->Head += p_Size;
 }
 
