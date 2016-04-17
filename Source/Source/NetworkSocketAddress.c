@@ -21,7 +21,7 @@ int NET_CreateSocketAddress( PSOCKET_ADDRESS p_pSocketAddress,
 	return 0;
 }
 
-size_t NET_GetSocketAddressSize( PSOCKET_ADDRESS p_pSocketAddress )
+int NET_GetSocketAddressSize( PSOCKET_ADDRESS p_pSocketAddress )
 {
 	return sizeof( p_pSocketAddress->SocketAddress );
 }
