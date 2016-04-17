@@ -683,6 +683,9 @@ int NET_ConnectToISP( void )
 		ntInfGetDialString( 0, 0, DialCmd, sizeof( DialCmd ) );
 		strncpy( NET_CountryInit, "AT", sizeof( NET_CountryInit ) );
 		ntInfBuildFlagString( NET_ModemFlags, sizeof( NET_ModemFlags ) );
+#if defined ( DEBUG ) || defined( DEVELOPMENT )
+		strcat( NET_ModemFlags, "M1L3" );
+#endif /* DEBUG || DEVELOPMENT */
 		ntInfGetModemInit( 0, NET_UserInit, sizeof( NET_UserInit ) );
 		strncpy( NET_Dial, DialCmd, sizeof( DialCmd ) );
 		ntInfGetLoginId( 0, User, sizeof( User ) );
