@@ -120,12 +120,13 @@ void main( void )
 	GAMESTATE_MANAGER GameStateManager;
 	GAMESTATE_MEMORY_BLOCKS GameStateMemoryBlocks;
 	MEMORY_BLOCK SystemMemoryBlock, GraphicsMemoryBlock, AudioMemoryBlock;
+	MEMORY_FREESTAT MemoryFree;
 
 	CAMERA TestCamera;
 	MATRIX4X4 Projection, Screen;
 	MODEL Level, Hiro;
 
-	if( HW_Initialise( KM_DSPBPP_RGB888, &AVCable ) != 0 )
+	if( HW_Initialise( KM_DSPBPP_RGB888, &AVCable, &MemoryFree ) != 0 )
 	{
 		HW_Terminate( );
 		HW_Reboot( );
@@ -439,6 +440,27 @@ void main( void )
 	GSM_Terminate( &GameStateManager );
 	AUD_Terminate( );
 	REN_Terminate( );
+
+	syFree( pGSMAudio );
+	syFree( pGSMGraphics );
+	syFree( pGSMSystem );
+	syFree( pVertexBuffer );
+
+#if defined ( DEBUG )
+	{
+		Uint32 Free, BiggestFree;
+
+		syMallocStat( &Free, &BiggestFree );
+
+		LOG_Debug( "Memory freed, %ld bytes on heap\n", Free );
+		if( ( MemoryFree.Free - Free ) > 0 )
+		{
+			LOG_Debug( "Unaccounted for memory: %ld\n",
+				MemoryFree.Free - Free );
+		}
+	}
+#endif /* DEBUG */
+
 	LOG_Terminate( );
 	HW_Terminate( );
 	HW_Reboot( );

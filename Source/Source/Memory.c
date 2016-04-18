@@ -22,18 +22,16 @@ extern Uint8 *_BSG_END;
 #define MEM_IsAligned( pPtr, Align ) \
 	( ( ( size_t )( pPtr ) & ( ( Align ) - 1 ) ) == 0 )
 
-int MEM_Initialise( void )
+int MEM_Initialise( PMEMORY_FREESTAT p_pMemoryFree )
 {
 	syMallocInit( MEM_HEAP_AREA, MEM_HEAP_SIZE );
 
 #if defined ( DEBUG )
 	{
-		Uint32 Free, BiggestFree;
-
-		syMallocStat( &Free, &BiggestFree );
+		syMallocStat( &p_pMemoryFree->Free, &p_pMemoryFree->BiggestFree );
 
 		LOG_Debug( "Memory initialised with a heap of %ld bytes",
-			BiggestFree );
+			p_pMemoryFree->Free );
 	}
 #endif /* DEBUG */
 

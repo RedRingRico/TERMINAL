@@ -38,7 +38,13 @@ typedef struct _tagMEMORY_BLOCK
 	unsigned char		StructAlignment;
 }MEMORY_BLOCK,*PMEMORY_BLOCK;
 
-int MEM_Initialise( void );
+typedef struct _tagMEMORY_FREESTAT
+{
+	Uint32	Free;
+	Uint32	BiggestFree;
+}MEMORY_FREESTAT,*PMEMORY_FREESTAT;
+
+int MEM_Initialise( PMEMORY_FREESTAT p_pMemoryFree );
 void MEM_Terminate( void );
 
 int MEM_InitialiseMemoryBlock( MEMORY_BLOCK *p_pBlock, void *p_pMemoryPointer,

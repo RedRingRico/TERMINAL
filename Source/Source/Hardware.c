@@ -6,7 +6,8 @@
 
 KMVOID PALExtCallback( PKMVOID p_pArgs );
 
-int HW_Initialise( KMBPPMODE p_BPP, SYE_CBL *p_pCableType )
+int HW_Initialise( KMBPPMODE p_BPP, SYE_CBL *p_pCableType,
+	PMEMORY_FREESTAT p_pMemoryFree )
 {
 	KMDISPLAYMODE DisplayMode;
 
@@ -41,7 +42,7 @@ int HW_Initialise( KMBPPMODE p_BPP, SYE_CBL *p_pCableType )
 	set_imask( 15 );
 
 	syHwInit( );
-	MEM_Initialise( );
+	MEM_Initialise( p_pMemoryFree );
     syStartGlobalConstructor( );
 	kmInitDevice( KM_DREAMCAST );
 
