@@ -53,8 +53,9 @@ static int MMS_Load( void *p_pArgs )
 
 	if( MNU_Initialise( &MainMenuState.Menu, MenuItems, 4, &SelectionHighlight,
 		GSM_GetGlyphSet( MainMenuState.Base.pGameStateManager,
-			GSM_GLYPH_SET_GUI_1 ), TextColour,
-			MENU_ITEM_ALIGNMENT_LEFT ) != 0 )
+			GSM_GLYPH_SET_GUI_1 ), TextColour, MENU_ITEM_ALIGNMENT_LEFT,
+		MainMenuState.Base.pGameStateManager->MemoryBlocks.pSystemMemory ) !=
+		0 )
 	{
 		LOG_Debug( "MMS_Load <ERROR> Failed to initialise the menu\n" );
 

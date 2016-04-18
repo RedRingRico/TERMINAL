@@ -43,8 +43,9 @@ static int MPM_Load( void *p_pArgs )
 		sizeof( MenuItems ) / sizeof( MenuItems[ 0 ] ),
 		&SelectionHighlight,
 		GSM_GetGlyphSet( MultiPlayerMainState.Base.pGameStateManager,
-			GSM_GLYPH_SET_GUI_1 ), TextColour,
-			MENU_ITEM_ALIGNMENT_LEFT ) != 0 )
+			GSM_GLYPH_SET_GUI_1 ), TextColour, MENU_ITEM_ALIGNMENT_LEFT,
+		MultiPlayerMainState.Base.pGameStateManager->MemoryBlocks.pSystemMemory
+		) != 0 )
 	{
 		LOG_Debug( "MPM_Load <ERROR> Failed to initialise the menu\n" );
 

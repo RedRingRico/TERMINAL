@@ -4,14 +4,15 @@
 int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 	size_t p_MenuItemCount, PSELECTION_HIGHLIGHT p_pSelectionHighlight,
 	PGLYPHSET p_pGlyphSet, KMPACKEDARGB p_TextColour,
-	MENU_ITEM_ALIGNMENT p_MenuItemAlignment )
+	MENU_ITEM_ALIGNMENT p_MenuItemAlignment, PMEMORY_BLOCK p_pMemoryBlock )
 {
 	switch( p_pSelectionHighlight->Type )
 	{
 		case SELECTION_HIGHLIGHT_TYPE_BOX:
 		{
 			p_pMenu->pSelectionHighlight =
-				syMalloc( sizeof( SELECTION_HIGHLIGHT_BOX ) );
+				MEM_AllocateFromBlock( p_pMemoryBlock,
+					sizeof( SELECTION_HIGHLIGHT_BOX ), "Menu: SHB" );
 			memcpy( p_pMenu->pSelectionHighlight, p_pSelectionHighlight,
 				sizeof( SELECTION_HIGHLIGHT_BOX ) );
 
@@ -21,9 +22,15 @@ int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 		{
 			PSELECTION_HIGHLIGHT_STRING pHighlightString;
 			PSELECTION_HIGHLIGHT_STRING pHighlightStringParam;
+#if defined ( DEBUG )
+			char String[ 64 ] = "Menu: SHS String: ";
+#else
+			char String[ 1 ] = "";
+#endif /* DEBUG */
 
 			p_pMenu->pSelectionHighlight =
-				syMalloc( sizeof( SELECTION_HIGHLIGHT_STRING ) );
+				MEM_AllocateFromBlock( p_pMemoryBlock,
+					sizeof( SELECTION_HIGHLIGHT_STRING ), "Menu: SHS" );
 			memcpy( p_pMenu->pSelectionHighlight, p_pSelectionHighlight,
 				sizeof( SELECTION_HIGHLIGHT_STRING ) );
 			pHighlightString =
@@ -31,8 +38,12 @@ int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 
 			pHighlightStringParam =
 				( PSELECTION_HIGHLIGHT_STRING )p_pSelectionHighlight;
-			pHighlightString->pString = syMalloc( strlen(
-				pHighlightStringParam->pString ) + 1 );
+#if defined ( DEBUG )
+			strcat( String, pHighlightStringParam->pString );
+#endif /* DEBUG */
+			pHighlightString->pString = MEM_AllocateFromBlock( p_pMemoryBlock,
+				strlen( pHighlightStringParam->pString ) + 1,
+				String );
 			strncpy( pHighlightString->pString, pHighlightStringParam->pString,
 				strlen( pHighlightStringParam->pString ) );
 			pHighlightString->pString[
@@ -57,10 +68,14 @@ int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 			size_t MenuSize = sizeof( MENU_ITEM );
 
 			p_pMenu->pMenuItems =
-				syMalloc( p_MenuItemCount * sizeof( MENU_ITEM ) );
+				MEM_AllocateFromBlock( p_pMemoryBlock,
+				p_MenuItemCount * sizeof( MENU_ITEM ), "Menu: Menu items" );
 
 			memcpy( p_pMenu->pMenuItems, p_pMenuItems,
 				p_MenuItemCount * sizeof( MENU_ITEM ) );
+
+			/* At this point, the menu item names should probably also be
+			 * copied */
 
 			/* Fix up the pointers */
 			for( Index = 0; Index < p_MenuItemCount; ++Index )
@@ -80,6 +95,7 @@ int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 		p_pMenu->MenuItemCount = 0;
 	}
 
+	p_pMenu->pMemoryBlock = p_pMemoryBlock;
 	p_pMenu->SelectedMenuItem = 0;
 	p_pMenu->pGlyphSet = p_pGlyphSet;
 	p_pMenu->TextColour = p_TextColour;
@@ -90,9 +106,31 @@ int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 
 void MNU_Terminate( PMENU p_pMenu )
 {
-	syFree( p_pMenu->pSelectionHighlight );
+	MEM_GarbageCollectMemoryBlock( p_pMenu->pMemoryBlock );
+	MEM_ListMemoryBlocks( p_pMenu->pMemoryBlock );
 
-	syFree( p_pMenu->pMenuItems );
+	switch( p_pMenu->pSelectionHighlight->Type )
+	{
+		case SELECTION_HIGHLIGHT_TYPE_STRING:
+		{
+			PSELECTION_HIGHLIGHT_STRING pSelectionHighlight =
+				( PSELECTION_HIGHLIGHT_STRING )p_pMenu->pSelectionHighlight;
+
+			MEM_FreeFromBlock( p_pMenu->pMemoryBlock,
+				pSelectionHighlight->pString );
+			break;
+		}
+	}
+
+	MEM_FreeFromBlock( p_pMenu->pMemoryBlock, p_pMenu->pSelectionHighlight );
+
+	if( p_pMenu->pMenuItems != NULL )
+	{
+		MEM_FreeFromBlock( p_pMenu->pMemoryBlock, p_pMenu->pMenuItems );
+	}
+
+	MEM_GarbageCollectMemoryBlock( p_pMenu->pMemoryBlock );
+	MEM_ListMemoryBlocks( p_pMenu->pMemoryBlock );
 }
 
 void MNU_SelectNextMenuItem( PMENU p_pMenu )

@@ -2,6 +2,7 @@
 #define __TERMINAL_MENU_H__
 
 #include <Text.h>
+#include <Memory.h>
 #include <shinobi.h>
 #include <kamui2.h>
 
@@ -60,6 +61,7 @@ typedef struct _tagSELECTION_HIGHLIGHT_STRING
 typedef struct _tagMENU
 {
 	PMENU_ITEM				pMenuItems;
+	PMEMORY_BLOCK			pMemoryBlock;
 	size_t					MenuItemCount;
 	size_t					SelectedMenuItem;
 	PSELECTION_HIGHLIGHT	pSelectionHighlight;
@@ -71,7 +73,7 @@ typedef struct _tagMENU
 int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 	size_t p_MenuItemCount, PSELECTION_HIGHLIGHT p_pSelectionHighlight,
 	PGLYPHSET p_pGlyphSet, KMPACKEDARGB p_TextColour,
-	MENU_ITEM_ALIGNMENT p_MenuItemAlignment );
+	MENU_ITEM_ALIGNMENT p_MenuItemAlignment, PMEMORY_BLOCK p_pMemoryBlock );
 void MNU_Terminate( PMENU p_pMenu );
 
 void MNU_SelectNextMenuItem( PMENU p_pMenu );
