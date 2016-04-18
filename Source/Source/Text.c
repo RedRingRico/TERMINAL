@@ -93,7 +93,8 @@ int TXT_Initialise( void )
 	return 0;
 }
 
-int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
+int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet,
+	PMEMORY_BLOCK p_pMemoryBlock )
 {
 	GDFS FileHandle;
 	long FileBlocks;
@@ -116,7 +117,8 @@ int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 
 	gdFsGetFileSctSize( FileHandle, &FileBlocks );
 
-	pFileContents = syMalloc( FileBlocks * 2048 );
+	pFileContents = ( Uint32 * )MEM_AllocateFromBlock( p_pMemoryBlock,
+		FileBlocks * 2048, p_pFileName );
 
 	if( gdFsReqRd32( FileHandle, FileBlocks, pFileContents ) < 0 )
 	{
@@ -136,7 +138,7 @@ int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 		( pFileContents[ 2 ] != 'F' ) ||
 		( pFileContents[ 3 ] != 0x03 ) )
 	{
-		syFree( pFileContents );
+		MEM_FreeFromBlock( p_pMemoryBlock, pFileContents );
 
 		LOG_Debug( "Font file is not a binary file" );
 
@@ -208,7 +210,7 @@ int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet )
 		}
 	}
 
-	syFree( pFileContents );
+	MEM_FreeFromBlock( p_pMemoryBlock, pFileContents );
 
 	return 0;
 }

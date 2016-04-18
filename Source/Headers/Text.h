@@ -1,9 +1,10 @@
 #ifndef __TERMINAL_TEXT_H__
 #define __TERMINAL_TEXT_H__
 
+#include <Texture.h>
+#include <Memory.h>
 #include <shinobi.h>
 #include <kamui2.h>
-#include <Texture.h>
 
 typedef struct _tagGLYPH
 {
@@ -30,7 +31,7 @@ typedef struct _tagGLYPHSET
 int TXT_Initialise( void );
 
 int TXT_CreateGlyphSetFromFile( char *p_pFileName,
-	GLYPHSET *p_pGlyphSet );
+	GLYPHSET *p_pGlyphSet, PMEMORY_BLOCK p_pMemoryBlock );
 int TXT_SetTextureForGlyphSet( char *p_pFileName,
 	GLYPHSET *p_pGlyphSet );
 

@@ -167,7 +167,7 @@ void main( void )
 	}
 
 	if( MEM_InitialiseMemoryBlock( &SystemMemoryBlock,
-		pGSMSystem, MEM_MIB( 6 ), 4, "GSM: System" ) != 0 )
+		pGSMSystem, MEM_MIB( 6 ), 32, "GSM: System" ) != 0 )
 	{
 		LOG_Debug( "Could not allocate %ld bytes of memory for the system",
 			MEM_MIB( 6 ) );
@@ -331,7 +331,7 @@ void main( void )
 	}
 
 	if( TXT_CreateGlyphSetFromFile( "/FONTS/WHITERABBIT.FNT",
-		&GlyphSet ) != 0 )
+		&GlyphSet, &SystemMemoryBlock ) != 0 )
 	{
 		LOG_Debug( "Failed to load the glyph descriptions" );
 
@@ -440,6 +440,14 @@ void main( void )
 	GSM_Terminate( &GameStateManager );
 	AUD_Terminate( );
 	REN_Terminate( );
+
+	MEM_GarbageCollectMemoryBlock( &AudioMemoryBlock );
+	MEM_GarbageCollectMemoryBlock( &GraphicsMemoryBlock );
+	MEM_GarbageCollectMemoryBlock( &SystemMemoryBlock );
+
+	MEM_ListMemoryBlocks( &AudioMemoryBlock );
+	MEM_ListMemoryBlocks( &GraphicsMemoryBlock );
+	MEM_ListMemoryBlocks( &SystemMemoryBlock );
 
 	syFree( pGSMAudio );
 	syFree( pGSMGraphics );
