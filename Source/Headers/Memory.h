@@ -7,6 +7,9 @@
 #define MEM_SH4_P2NonCachedMemory( p_pAddress ) \
 	( ( ( ( long ) p_pAddress ) & 0x0FFFFFFF ) | 0xA0000000 )
 
+#define MEM_KIB( p_Amount ) ( p_Amount << 10 )
+#define MEM_MIB( p_Amount ) ( p_Amount << 20 )
+
 typedef struct _tagMEMORY_BLOCK_HEADER
 {
 	struct _tagMEMORY_BLOCK_HEADER	*pNext;
