@@ -127,8 +127,12 @@ int REN_Initialise( PRENDERER p_pRenderer,
 	memset( &g_StripHead16, 0, sizeof( g_StripHead16 ) );
 	kmGenerateStripHead16( &g_StripHead16, &g_DefaultStripContext );
 
+	p_pRenderer->pMemoryBlock = p_pConfiguration->pMemoryBlock;
+
 	/* Allocate memory for 2,000 vertices of type 05 */
-	p_pRenderer->pVertices05 = syMalloc( 2000 * sizeof( KMVERTEX5 ) );
+	p_pRenderer->pVertices05 = MEM_AllocateFromBlock(
+		p_pRenderer->pMemoryBlock, 2000 * sizeof( KMVERTEX5 ),
+		"Renderer: Temporary vertices [TYPE 05]" );
 
 	LOG_Debug( "Vertices allocated at 0x%08X", p_pRenderer->pVertices05 );
 
@@ -140,8 +144,9 @@ int REN_Initialise( PRENDERER p_pRenderer,
 	return 0;
 }
 
-void REN_Terminate( void )
+void REN_Terminate( PRENDERER p_pRenderer )
 {
+	MEM_FreeFromBlock( p_pRenderer->pMemoryBlock, p_pRenderer->pVertices05 );
 }
 
 void REN_SetClearColour( float p_Red, float p_Green, float p_Blue )

@@ -255,6 +255,8 @@ void main( void )
 	RendererConfiguration.PassInfo[ 0 ].fBufferSize[ 3 ] = 0.0f;
 	RendererConfiguration.PassInfo[ 0 ].fBufferSize[ 4 ] = 50.0f;
 
+	RendererConfiguration.pMemoryBlock = &GraphicsMemoryBlock;
+
 	REN_Initialise( &Renderer, &RendererConfiguration );
 
 	//kmSetWaitVsyncCallback((void *)NET_Update, NULL);
@@ -269,22 +271,11 @@ void main( void )
 	{
 		LOG_Debug( "Failed to set up the Audio64 interface" );
 
-		REN_Terminate( );
+		REN_Terminate( &Renderer );
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
 	}
-
-	/*if( NET_Initialise( ) > 0 )
-	{
-		LOG_Debug( "Failed to set up the NexGen network stack" );
-
-		AUD_Terminate( );
-		REN_Terminate( );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
-	}*/
 
 	acSetTransferMode( AC_TRANSFER_DMA );
 	acSystemSetVolumeMode( USELINEAR );
@@ -298,7 +289,7 @@ void main( void )
 		LOG_Debug( "Failed to load the audio sample: /AUDIO/SELECT.WAV" );
 
 		AUD_Terminate( );
-		REN_Terminate( );
+		REN_Terminate( &Renderer );
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
@@ -313,7 +304,7 @@ void main( void )
 		LOG_Debug( "Failed to load the audio sample: /AUDIO/ACCEPT.WAV" );
 
 		AUD_Terminate( );
-		REN_Terminate( );
+		REN_Terminate( &Renderer );
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
@@ -324,7 +315,7 @@ void main( void )
 		LOG_Debug( "Failed to initialise the text system" );
 
 		AUD_Terminate( );
-		REN_Terminate( );
+		REN_Terminate( &Renderer );
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
@@ -336,7 +327,7 @@ void main( void )
 		LOG_Debug( "Failed to load the glyph descriptions" );
 
 		AUD_Terminate( );
-		REN_Terminate( );
+		REN_Terminate( &Renderer );
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
@@ -347,7 +338,7 @@ void main( void )
 		LOG_Debug( "Failed to load the glyph texture" );
 
 		AUD_Terminate( );
-		REN_Terminate( );
+		REN_Terminate( &Renderer );
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
@@ -439,7 +430,7 @@ void main( void )
 
 	GSM_Terminate( &GameStateManager );
 	AUD_Terminate( );
-	REN_Terminate( );
+	REN_Terminate( &Renderer );
 
 	MEM_GarbageCollectMemoryBlock( &AudioMemoryBlock );
 	MEM_GarbageCollectMemoryBlock( &GraphicsMemoryBlock );
@@ -480,7 +471,7 @@ void main( void )
 		LOG_Debug( "Failed to initialise the model library" );
 
 		AUD_Terminate( );
-		REN_Terminate( );
+		REN_Terminate( &Renderer );
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
@@ -491,7 +482,7 @@ void main( void )
 		LOG_Debug( "Failed to load the Hiro model" );
 
 		AUD_Terminate( );
-		REN_Terminate( );
+		REN_Terminate( &Renderer );
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
@@ -502,7 +493,7 @@ void main( void )
 		LOG_Debug( "Failed to load the level model" );
 
 		AUD_Terminate( );
-		REN_Terminate( );
+		REN_Terminate( &Renderer );
 		LOG_Terminate( );
 		HW_Terminate( );
 		HW_Reboot( );
@@ -862,7 +853,7 @@ void main( void )
 
 	NET_Terminate( );
 	AUD_Terminate( );
-	REN_Terminate( );
+	REN_Terminate( &Renderer );
 	LOG_Terminate( );
 	HW_Terminate( );
 	HW_Reboot( );

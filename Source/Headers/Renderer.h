@@ -1,6 +1,7 @@
 #ifndef __TERMINAL_RENDERER_H__
 #define __TERMINAL_RENDERER_H__
 
+#include <Memory.h>
 #include <kamui2.h>
 #include <shinobi.h>
 
@@ -17,6 +18,7 @@ typedef struct _tagDREAMCAST_RENDERERCONFIGURATION
 	KMUINT32			VertexBufferSize;
 	KMUINT32			PassCount;
 	KMPASSINFO			PassInfo[ KM_MAX_DISPLAY_LIST_PASS ];
+	PMEMORY_BLOCK		pMemoryBlock;
 }DREAMCAST_RENDERERCONFIGURATION;
 
 typedef struct _tagRENDERER
@@ -25,11 +27,12 @@ typedef struct _tagRENDERER
 	Uint32			CulledPolygons;
 	Uint32			GeneratedPolygons;
 	PKMVERTEX_05	pVertices05;
+	PMEMORY_BLOCK	pMemoryBlock;
 }RENDERER,*PRENDERER;
 
 int REN_Initialise( PRENDERER p_pRenderer,
 	const DREAMCAST_RENDERERCONFIGURATION *p_pConfiguration );
-void REN_Terminate( void );
+void REN_Terminate( PRENDERER p_pRenderer );
 
 void REN_SetClearColour( float p_Red, float p_Green, float p_Blue );
 
