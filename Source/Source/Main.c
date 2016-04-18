@@ -28,9 +28,6 @@
 #include <MainMenuState.h>
 #include <MultiPlayerState.h>
 
-#include <NetworkClient.h>
-#include <NetworkMessage.h>
-
 #include <FileSystem.h>
 
 #include <ac.h>
@@ -45,8 +42,6 @@
 KMDWORD g_pTextureWorkArea[ MAX_TEXTURES * 24 / 4 + MAX_SMALLVQ * 76 / 4 ];
 
 #define MILESTONE_STRING "Milestone 0 - Technical Debt"
-
-float CameraFocus = 1500.0f;
 
 unsigned char RecvBuf[ 1024 * 8 ];
 unsigned char SendBuf[ 1024 * 8 ];
@@ -122,9 +117,6 @@ void main( void )
 	PERF_INFO PerfInfo;
 	AUDIO_PARAMETERS AudioParameters;
 	RENDERER Renderer;
-	PNETWORK_CLIENT Client;
-	Uint8 MessageBuffer[ 128 ];
-	size_t MessageBufferLength = sizeof( MessageBuffer );
 	GAMESTATE_MANAGER GameStateManager;
 	GAMESTATE_MEMORY_BLOCKS GameStateMemoryBlocks;
 	MEMORY_BLOCK SystemMemoryBlock, GraphicsMemoryBlock, AudioMemoryBlock;
@@ -142,6 +134,64 @@ void main( void )
 	LOG_Initialise( NULL );
 	LOG_Debug( "TERMINAL" );
 	LOG_Debug( "Version: %s", GIT_VERSION );
+
+	if( ( pGSMSystem = syMalloc( MEM_MIB( 6 ) ) ) == NULL )
+	{
+		LOG_Debug( "Could not use syMalloc to allocate %ld bytes of memory "
+			"for the system", MEM_MIB( 6 ) );
+
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( ( pGSMGraphics = syMalloc( MEM_MIB( 2 ) ) ) == NULL )
+	{
+		LOG_Debug( "Could not use syMalloc to allocate %ld bytes of memory "
+			"for the graphics", MEM_MIB( 2 ) );
+
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( ( pGSMAudio = syMalloc( MEM_MIB( 1 ) ) ) == NULL )
+	{
+		LOG_Debug( "Could not use syMalloc to allocate %ld bytes of memory "
+			"for the audio", MEM_MIB( 2 ) );
+
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( MEM_InitialiseMemoryBlock( &SystemMemoryBlock,
+		pGSMSystem, MEM_MIB( 6 ), 4, "GSM: System" ) != 0 )
+	{
+		LOG_Debug( "Could not allocate %ld bytes of memory for the system",
+			MEM_MIB( 6 ) );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( MEM_InitialiseMemoryBlock( &GraphicsMemoryBlock,
+		pGSMGraphics, 1024*1024*2, 32, "GSM: Graphics" ) != 0 )
+	{
+		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*2 );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
+
+	if( MEM_InitialiseMemoryBlock( &AudioMemoryBlock,
+		pGSMAudio, 1024*1024*1, 32, "GSM: Audio" ) != 0 )
+	{
+		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*1 );
+		LOG_Terminate( );
+		HW_Terminate( );
+		HW_Reboot( );
+	}
 
 	memset( g_VersionString, '\0', sizeof( g_VersionString ) );
 	sprintf( g_VersionString, "[TERMINAL] | %s | %s", GIT_VERSION,
@@ -167,6 +217,7 @@ void main( void )
 	scif_putq( 'N' );
 	scif_putq( 'A' );
 	scif_putq( 'L' );
+	/* Set the cursor to the next row */
 	scif_putq( ']' );
 	scif_putq( 0x1B );
 	scif_putq( '[' );
@@ -210,6 +261,7 @@ void main( void )
 	scif_close( );
 
 	AudioParameters.IntCallback = NULL;
+	AudioParameters.pMemoryBlock = &AudioMemoryBlock;
 
 	/* Initialise sound */
 	if( AUD_Initialise( &AudioParameters ) != 0 )
@@ -337,39 +389,6 @@ void main( void )
 	TestCamera.FieldOfView = ( 3.141592654f / 4.0f );
 	TestCamera.NearPlane = 0.001f; /* 1cm */
 	TestCamera.FarPlane = 10000.0f; /* 10km (too much?) */
-
-	pGSMSystem = syMalloc( 1024*1024*6 );
-
-	if( MEM_InitialiseMemoryBlock( &SystemMemoryBlock,
-		pGSMSystem, 1024*1024*6, 4, "GSM: System" ) != 0 )
-	{
-		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*4 );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
-	}
-
-	pGSMGraphics = syMalloc( 1024*1024*2 );
-
-	if( MEM_InitialiseMemoryBlock( &GraphicsMemoryBlock,
-		pGSMGraphics, 1024*1024*2, 32, "GSM: Graphics" ) != 0 )
-	{
-		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*2 );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
-	}
-
-	pGSMAudio = syMalloc( 1024*1024*1 );
-
-	if( MEM_InitialiseMemoryBlock( &AudioMemoryBlock,
-		pGSMAudio, 1024*1024*1, 32, "GSM: Audio" ) != 0 )
-	{
-		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*1 );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
-	}
 
 	GameStateMemoryBlocks.pSystemMemory = &SystemMemoryBlock;
 	GameStateMemoryBlocks.pGraphicsMemory = &GraphicsMemoryBlock;
@@ -500,49 +519,6 @@ void main( void )
 			Renderer.GeneratedPolygons = 0;
 
 		StartTime = syTmrGetCount( );
-
-		if( g_Peripherals[ 0 ].press & PDD_DGT_ST )
-		{
-			Run = 0;
-		}
-
-		if( g_Peripherals[ 0 ].press & PDD_DGT_TY )
-		{
-			NET_ConnectToISP( );
-		}
-
-		/* This part is so damn fragile... */
-		if( g_Peripherals[ 0 ].press &PDD_DGT_TA )
-		{
-			NETWORK_MESSAGE Message;
-
-			MSG_CreateNetworkMessage( &Message, MessageBuffer,
-				MessageBufferLength );
-			MSG_WriteUInt32( &Message, 256 );
-			MSG_WriteByte( &Message, strlen( "Rico" ) + 1 );
-			MSG_WriteString( &Message, "Rico", strlen( "Rico" ) + 1 );
-			NCL_Initialise( &Client, "192.168.2.116", 50000 );
-			NCL_SendMessage( &Client, &Message );
-			MSG_DestroyNetworkMessage( &Message );
-		}
-
-		if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
-		{
-			NETWORK_MESSAGE Message;
-
-			MSG_CreateNetworkMessage( &Message, MessageBuffer,
-				MessageBufferLength );
-			MSG_WriteUInt32( &Message, 256 );
-			MSG_WriteByte( &Message, strlen( "Rico" ) + 1 );
-			MSG_WriteString( &Message, "Rico", strlen( "Rico" ) + 1 );
-			NCL_SendMessage( &Client, &Message );
-			MSG_DestroyNetworkMessage( &Message );
-		}
-
-		if( g_Peripherals[ 0 ].press & PDD_DGT_TX )
-		{
-			NET_DisconnectFromISP( );
-		}
 
 		if( g_Peripherals[ 0 ].x1 > 0 )
 		{

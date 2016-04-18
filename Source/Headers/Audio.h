@@ -3,6 +3,7 @@
 
 #include <ac.h>
 #include <shinobi.h>
+#include <Memory.h>
 
 #define AUDIO_PARAMETER_FLAG_TRANSFER_DMA	1
 #define AUDIO_PARAMETER_FLAG_LINEAR_VOLUME	2
@@ -22,6 +23,7 @@ typedef struct _tagAUDIO_VOICE
 
 typedef struct _tagAUDIO_PARAMETERS
 {
+	PMEMORY_BLOCK		pMemoryBlock;
 	AC_CALLBACK_HANDLER	IntCallback;
 	Uint32				Flags;
 }AUDIO_PARAMETERS,*PAUDIO_PARAMETERS;

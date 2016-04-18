@@ -38,9 +38,8 @@ int AUD_Initialise( PAUDIO_PARAMETERS p_pAudioParameters )
 	DriverImageSize = SECTOR_ALIGN( DriverSize );
 
 	/* Temporarily load the driver */
-	/* REMINDER:
-	 * This should be using the memory manager */
-	pDriverImage = ( Uint32 * )syMalloc( DriverImageSize );
+	pDriverImage = ( Uint32 * )MEM_AllocateFromBlock(
+		p_pAudioParameters->pMemoryBlock, DriverImageSize, "Audio driver" );
 
 	if( pDriverImage == NULL )
 	{
@@ -80,7 +79,7 @@ int AUD_Initialise( PAUDIO_PARAMETERS p_pAudioParameters )
 	}
 #endif /* DEBUG */
 
-	syFree( pDriverImage );
+	MEM_FreeFromBlock( p_pAudioParameters->pMemoryBlock, pDriverImage );
 
 	return 0;
 }
