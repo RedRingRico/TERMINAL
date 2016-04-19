@@ -39,6 +39,8 @@ echo %GITVERSION%| sed -e "s/[0-9].[0-9].[0-9]//" -e "s/-//" > git_build
 SET /P GITBUILD=<git_build
 del git_build
 
+IF "%GITBUILD%"=="" SET GITBUILD=0
+
 git rev-parse --abbrev-ref HEAD > git_branch
 SET /P GITBRANCH=<git_branch
 del git_branch
