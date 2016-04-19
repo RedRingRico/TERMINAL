@@ -13,8 +13,6 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	p_pGameStateManager->pTopGameState = NULL;
 	p_pGameStateManager->Running = false;
 
-	p_pGameStateManager->ppGlyphSet = syMalloc( sizeof( PGLYPHSET ) * 2 );
-
 	p_pGameStateManager->MemoryBlocks.pSystemMemory =
 		p_pMemoryBlocks->pSystemMemory;
 	p_pGameStateManager->MemoryBlocks.pGraphicsMemory =
@@ -22,9 +20,13 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	p_pGameStateManager->MemoryBlocks.pAudioMemory =
 		p_pMemoryBlocks->pAudioMemory;
 
+	p_pGameStateManager->ppGlyphSet = MEM_AllocateFromBlock(
+		p_pGameStateManager->MemoryBlocks.pSystemMemory,
+		sizeof( PGLYPHSET ) * 2, "GSM: Glyph set" );
+
 	if( STK_Initialise( &p_pGameStateManager->GameStateStack,
 		p_pGameStateManager->MemoryBlocks.pSystemMemory, 10,
-		sizeof( GAMESTATE ), 0,	"Game State Stack" )  != 0 )
+		sizeof( GAMESTATE ), 0,	"GSM: Game State Stack" )  != 0 )
 	{
 		LOG_Debug( "GSM_Initialise <ERROR> Failed to allocate memory for the "
 			"game state stack\n" );
@@ -39,17 +41,28 @@ void GSM_Terminate( PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	PGAMESTATE_REGISTRY pRegistryItr = p_pGameStateManager->pRegistry;
 
+	/* Pop all states */
+	while( STK_GetCount( &p_pGameStateManager->GameStateStack ) )
+	{
+		GSM_PopState( p_pGameStateManager );
+	}
+
 	while( pRegistryItr != NULL )
 	{
 		PGAMESTATE_REGISTRY pNext = pRegistryItr->pNext;
 
-		syFree( pRegistryItr->pName );
-		syFree( pRegistryItr );
+		MEM_FreeFromBlock( p_pGameStateManager->MemoryBlocks.pSystemMemory,
+			pRegistryItr->pName );
+		MEM_FreeFromBlock( p_pGameStateManager->MemoryBlocks.pSystemMemory,
+			pRegistryItr->pGameState );
+		MEM_FreeFromBlock( p_pGameStateManager->MemoryBlocks.pSystemMemory,
+			pRegistryItr );
 
 		pRegistryItr = pNext;
 	}
 
-	syFree( p_pGameStateManager->ppGlyphSet );
+	MEM_FreeFromBlock( p_pGameStateManager->MemoryBlocks.pSystemMemory,
+		p_pGameStateManager->ppGlyphSet );
 
 	STK_Terminate( &p_pGameStateManager->GameStateStack );
 }
@@ -202,17 +215,36 @@ int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 	/* First item in registry */
 	if( p_pGameStateManager->pRegistry == NULL )
 	{
+#if defined ( DEBUG )
+		char Name[ 64 ] = "GS Name: ";
+		char Registry[ 64 ] = "GS Registry: ";
+		char GameState[ 64 ] = "GS: ";
+		strcat( Name, p_pGameStateName );
+		strcat( Registry, p_pGameStateName );
+		strcat( GameState, p_pGameStateName );
+#else
+		char *Name = p_pGameStateName;
+		char *Registry = p_pGameStateName;
+		char *GameState = p_pGameStateName;
+#endif /* DEBUG */
+
 		p_pGameStateManager->pRegistry =
-			syMalloc( sizeof( GAMESTATE_REGISTRY ) );
+			MEM_AllocateFromBlock(
+				p_pGameStateManager->MemoryBlocks.pSystemMemory,
+				sizeof( GAMESTATE_REGISTRY ), Registry );
 
 		pNewEntry = p_pGameStateManager->pRegistry;
 
-		pNewEntry->pName = syMalloc( strlen( p_pGameStateName ) + 1 );
+		pNewEntry->pName = MEM_AllocateFromBlock(
+			p_pGameStateManager->MemoryBlocks.pSystemMemory,
+			strlen( p_pGameStateName ) + 1, Name );
 		strncpy( pNewEntry->pName, p_pGameStateName,
 			strlen( p_pGameStateName ) );
 		pNewEntry->pName[ strlen( p_pGameStateName ) ] = '\0';
 
-		pNewEntry->pGameState = syMalloc( sizeof( GAMESTATE ) );
+		pNewEntry->pGameState = MEM_AllocateFromBlock(
+			p_pGameStateManager->MemoryBlocks.pSystemMemory,
+			sizeof( GAMESTATE ), GameState );
 
 		GS_Copy( pNewEntry->pGameState, p_pGameState );
 
@@ -221,6 +253,18 @@ int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 	else
 	{
 		PGAMESTATE_REGISTRY pAppendTo;
+#if defined ( DEBUG )
+		char Name[ 64 ] = "GS Name: ";
+		char Registry[ 64 ] = "GS Registry: ";
+		char GameState[ 64 ] = "GS: ";
+		strcat( Name, p_pGameStateName );
+		strcat( Registry, p_pGameStateName );
+		strcat( GameState, p_pGameStateName );
+#else
+		char *Name = p_pGameStateName;
+		char *Registry = p_pGameStateName;
+		char *GameState = p_pGameStateName;
+#endif /* DEBUG */
 
 		while( pRegistryItr != NULL )
 		{
@@ -236,14 +280,22 @@ int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 			pRegistryItr = pRegistryItr->pNext;
 		}
 
-		pNewEntry = syMalloc( sizeof( GAMESTATE_REGISTRY ) );
+		pNewEntry = MEM_AllocateFromBlock(
+				p_pGameStateManager->MemoryBlocks.pSystemMemory,
+				sizeof( GAMESTATE_REGISTRY ), Registry );
+ 
 
-		pNewEntry->pName = syMalloc( strlen( p_pGameStateName ) + 1 );
+		pNewEntry->pName = MEM_AllocateFromBlock(
+			p_pGameStateManager->MemoryBlocks.pSystemMemory,
+			strlen( p_pGameStateName ) + 1, Name );
+
 		strncpy( pNewEntry->pName, p_pGameStateName,
 			strlen( p_pGameStateName ) );
 		pNewEntry->pName[ strlen( p_pGameStateName ) ] = '\0';
 
-		pNewEntry->pGameState = syMalloc( sizeof( GAMESTATE ) );
+		pNewEntry->pGameState = MEM_AllocateFromBlock(
+			p_pGameStateManager->MemoryBlocks.pSystemMemory,
+			sizeof( GAMESTATE ), GameState );
 
 		GS_Copy( pNewEntry->pGameState, p_pGameState );
 
