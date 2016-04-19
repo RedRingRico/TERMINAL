@@ -477,7 +477,7 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( MDL_LoadModel( &Hiro, "/MODELS/HIRO.TML" ) != 0 )
+	if( MDL_LoadModel( &Hiro, "/MODELS/HIRO.TML", NULL ) != 0 )
 	{
 		LOG_Debug( "Failed to load the Hiro model" );
 
@@ -488,7 +488,7 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( MDL_LoadModel( &Level, "/MODELS/MOCK_LEVEL.TML" ) != 0 )
+	if( MDL_LoadModel( &Level, "/MODELS/MOCK_LEVEL.TML", NULL ) != 0 )
 	{
 		LOG_Debug( "Failed to load the level model" );
 

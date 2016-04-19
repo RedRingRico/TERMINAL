@@ -13,7 +13,8 @@ typedef struct _tagCHUNK
 	Uint32 Size;
 }CHUNK,*PCHUNK;
 
-static int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh );
+static int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh,
+	PMEMORY_BLOCK p_pMemoryBlock );
 static KMSTRIPHEAD	MDL_ModelStripHead;
 
 int MDL_Initialise( void )
@@ -69,7 +70,8 @@ void MDL_Terminate( void )
 {
 }
 
-int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName )
+int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName,
+	PMEMORY_BLOCK p_pMemoryBlock )
 {
 	GDFS FileHandle;
 	long FileBlocks;
@@ -90,11 +92,12 @@ int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName )
 	gdFsGetFileSize( FileHandle, &FileSize );
 	gdFsGetFileSctSize( FileHandle, &FileBlocks );
 
-	pFileContents = syMalloc( FileBlocks * 2048 );
+	pFileContents = MEM_AllocateFromBlock( p_pMemoryBlock,
+		FileBlocks * 2048, "Model buffer" );
 
 	if( gdFsReqRd32( FileHandle, FileBlocks, pFileContents ) < 0 )
 	{
-		syFree( pFileContents );
+		MEM_FreeFromBlock( p_pMemoryBlock, pFileContents );
 		LOG_Debug( "Could not load the model into memory: %s", p_pFileName );
 
 		return 1;
@@ -113,7 +116,7 @@ int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName )
 		Header.ID[ 2 ] != 'L' ||
 		Header.ID[ 3 ] != 'M' )
 	{
-		syFree( pFileContents );
+		MEM_FreeFromBlock( p_pMemoryBlock, pFileContents );
 
 		LOG_Debug( "Model file is not recognised as being valid: %s",
 			p_pFileName );
@@ -125,7 +128,8 @@ int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName )
 	LOG_Debug( "\t%d meshes found", Header.MeshCount );
 	p_pModel->MeshCount = Header.MeshCount;
 
-	p_pModel->pMeshes = syMalloc( Header.MeshCount * sizeof( MESH ) );
+	p_pModel->pMeshes = MEM_AllocateFromBlock( p_pMemoryBlock,
+		Header.MeshCount * sizeof( MESH ), "Model mesh buffer" );
 
 	FilePosition += sizeof( Header );
 
@@ -142,12 +146,12 @@ int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName )
 				int MeshSize = 0;
 
 				MeshSize = MDL_ReadMeshData( pFileContents + FilePosition,
-					&p_pModel->pMeshes[ MeshIndex ] );
+					&p_pModel->pMeshes[ MeshIndex ], p_pMemoryBlock );
 
 				if( MeshSize == 0 )
 				{
-					syFree( pFileContents );
-					syFree( p_pModel->pMeshes );
+					MEM_FreeFromBlock( p_pMemoryBlock, pFileContents );
+					MEM_FreeFromBlock( p_pMemoryBlock, p_pModel->pMeshes );
 
 					return 1;
 				}
@@ -165,7 +169,9 @@ int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName )
 		}
 	}
 
-	syFree( pFileContents );
+	MEM_FreeFromBlock( p_pMemoryBlock, pFileContents );
+
+	p_pModel->pMemoryBlock = p_pMemoryBlock;
 
 	return 0;
 }
@@ -178,28 +184,44 @@ void MDL_DeleteModel( PMODEL p_pModel )
 	{
 		for( Mesh = 0; Mesh < p_pModel->MeshCount; ++Mesh )
 		{
-			if( p_pModel->pMeshes[ Mesh ].Vertices.pPosition )
+			if( p_pModel->pMeshes[ Mesh ].Vertices.pPosition != NULL )
 			{
-				syFree( p_pModel->pMeshes[ Mesh ].Vertices.pPosition );
+				MEM_FreeFromBlock( p_pModel->pMemoryBlock,
+					p_pModel->pMeshes[ Mesh ].Vertices.pPosition );
 			}
 
-			if( p_pModel->pMeshes[ Mesh ].pIndices )
+			if( p_pModel->pMeshes[ Mesh ].Vertices.pNormal != NULL )
 			{
-				syFree( p_pModel->pMeshes[ Mesh ].pIndices );
+				MEM_FreeFromBlock( p_pModel->pMemoryBlock,
+					p_pModel->pMeshes[ Mesh ].Vertices.pNormal );
 			}
 
-			if( p_pModel->pMeshes[ Mesh ].pKamuiVertices )
+			if( p_pModel->pMeshes[ Mesh ].Vertices.pUV != NULL )
 			{
-				syFree( p_pModel->pMeshes[ Mesh ].pKamuiVertices );
+				MEM_FreeFromBlock( p_pModel->pMemoryBlock,
+					p_pModel->pMeshes[ Mesh ].Vertices.pUV );
 			}
 
-			if( &p_pModel->pMeshes[ Mesh ] )
+			if( p_pModel->pMeshes[ Mesh ].pIndices != NULL )
 			{
-				syFree( &p_pModel->pMeshes[ Mesh ] );
+				MEM_FreeFromBlock( p_pModel->pMemoryBlock,
+					p_pModel->pMeshes[ Mesh ].pIndices );
+			}
+
+			if( p_pModel->pMeshes[ Mesh ].pKamuiVertices != NULL )
+			{
+				MEM_FreeFromBlock( p_pModel->pMemoryBlock,
+					p_pModel->pMeshes[ Mesh ].pKamuiVertices );
+			}
+
+			if( &p_pModel->pMeshes[ Mesh ] != NULL )
+			{
+				MEM_FreeFromBlock( p_pModel->pMemoryBlock,
+					&p_pModel->pMeshes[ Mesh ] );
 			}
 		}
 
-		syFree( p_pModel->pMeshes );
+		MEM_FreeFromBlock( p_pModel->pMemoryBlock, p_pModel->pMeshes );
 	}
 }
 
@@ -378,7 +400,8 @@ RENDER_NORMAL:
 	}
 }
 
-int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
+static int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh,
+	PMEMORY_BLOCK p_pMemoryBlock )
 {
 	MESH_CHUNK MeshChunk;
 	size_t DataPosition = 0;
@@ -391,21 +414,24 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 	DataPosition += sizeof( MESH_CHUNK );
 
 	p_pMesh->FaceCount = MeshChunk.ListCount / 3;
-	p_pMesh->Vertices.pPosition = syMalloc( sizeof( VECTOR3 ) *
-		MeshChunk.ListCount );
-	p_pMesh->Vertices.pNormal = syMalloc( sizeof( VECTOR3 ) *
-		MeshChunk.ListCount );
-	p_pMesh->Vertices.pUV = syMalloc( sizeof( UV ) *
-		MeshChunk.ListCount );
-	p_pMesh->TransformedVertices.pPosition = syMalloc( sizeof( VECTOR3 ) *
-		MeshChunk.ListCount );
-	p_pMesh->pIndices = syMalloc( sizeof( Uint32 ) * MeshChunk.ListCount );
-	p_pMesh->pKamuiVertices =
-		syMalloc( sizeof( KMVERTEX_05 ) * MeshChunk.ListCount );
+	p_pMesh->Vertices.pPosition = MEM_AllocateFromBlock( p_pMemoryBlock,
+		sizeof( VECTOR3 ) * MeshChunk.ListCount, "Mesh: Position vertices" );
+	p_pMesh->Vertices.pNormal = MEM_AllocateFromBlock( p_pMemoryBlock,
+		sizeof( VECTOR3 ) *	MeshChunk.ListCount, "Mesh: Normal vertices" );
+	p_pMesh->Vertices.pUV = MEM_AllocateFromBlock( p_pMemoryBlock,
+		sizeof( UV ) *MeshChunk.ListCount, "Mesh: UV vertices" );
+	p_pMesh->TransformedVertices.pPosition = MEM_AllocateFromBlock(
+		p_pMemoryBlock, sizeof( VECTOR3 ) * MeshChunk.ListCount,
+		"Mesh transformed position vertices" );
+	p_pMesh->pIndices = MEM_AllocateFromBlock( p_pMemoryBlock,
+		sizeof( Uint32 ) * MeshChunk.ListCount, "Mesh: Indices" );
+	p_pMesh->pKamuiVertices = MEM_AllocateFromBlock( p_pMemoryBlock,
+		sizeof( KMVERTEX_05 ) * MeshChunk.ListCount, "Mesh: Kamui vertices" );
 	p_pMesh->IndexCount = MeshChunk.ListCount;
 
-	pOriginalVertices = syMalloc( sizeof( MODEL_VERTEX_PACKED ) *
-		MeshChunk.VertexCount );
+	pOriginalVertices = MEM_AllocateFromBlock( p_pMemoryBlock,
+		sizeof( MODEL_VERTEX_PACKED ) * MeshChunk.VertexCount,
+		"Mesh: Temporary vertices" );
 
 	memcpy( pOriginalVertices, &p_pData[ DataPosition ],
 		sizeof( MODEL_VERTEX_PACKED ) * MeshChunk.VertexCount );
@@ -486,7 +512,7 @@ int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh )
 
 	memcpy( &p_pMesh->BoundingBox, &BoundingBox, sizeof( BoundingBox ) );
 
-	syFree( pOriginalVertices );
+	MEM_FreeFromBlock( p_pMemoryBlock, pOriginalVertices );
 
 	return DataPosition;
 }

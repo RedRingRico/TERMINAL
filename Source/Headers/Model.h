@@ -7,6 +7,7 @@
 #include <Matrix4x4.h>
 #include <Renderer.h>
 #include <Plane.h>
+#include <Memory.h>
 
 typedef struct _tagMODEL_HEADER
 {
@@ -17,15 +18,17 @@ typedef struct _tagMODEL_HEADER
 
 typedef struct _tagMODEL
 {
-	size_t	PolygonCount;
-	size_t	MeshCount;
-	MESH	*pMeshes;
+	size_t			PolygonCount;
+	size_t			MeshCount;
+	MESH			*pMeshes;
+	PMEMORY_BLOCK	pMemoryBlock;
 }MODEL,*PMODEL;
 
 int MDL_Initialise( void );
 void MDL_Terminate( void );
 
-int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName );
+int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName,
+	PMEMORY_BLOCK p_pMemoryBlock );
 void MDL_DeleteModel( PMODEL p_pModel );
 void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 	const VECTOR3 *p_pLightPosition );
