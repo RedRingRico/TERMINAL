@@ -100,7 +100,9 @@ static int GLS_Update( void *p_pArgs )
 				NETWORK_MESSAGE Message;
 
 				MSG_CreateNetworkMessage( &Message, MessageBuffer,
-					MessageBufferLength );
+					MessageBufferLength,
+					GameListServerState.Base.pGameStateManager->MemoryBlocks.
+						pSystemMemory );
 				MSG_WriteUInt32( &Message, 256 );
 				MSG_WriteByte( &Message, strlen( "Rico" ) + 1 );
 				MSG_WriteString( &Message, "Rico", strlen( "Rico" ) + 1 );
@@ -229,7 +231,9 @@ static void GLS_ReadIncomingPackets( void )
 	int TotalReadBytes = 0;
 	NETWORK_MESSAGE NetworkMessage;
 
-	MSG_CreateNetworkMessage( &NetworkMessage, PacketMemory, PacketSize );
+	MSG_CreateNetworkMessage( &NetworkMessage, PacketMemory, PacketSize,
+		GameListServerState.Base.pGameStateManager->MemoryBlocks.
+			pSystemMemory );
 
 	while( ReceivedPackets < MAX_PACKETS_PER_UPDATE )
 	{

@@ -1,6 +1,7 @@
 #ifndef __TERMINAL_NETWORKMESSAGE_H__
 #define __TERMINAL_NETWORKMESSAGE_H__
 
+#include <Memory.h>
 #include <shinobi.h>
 
 #define NETWORK_MESSAGE_FLAG_OVERFLOW			1
@@ -13,17 +14,19 @@
 #define SIZEOF_UINT32 sizeof( Uint32 )
 #define SIZEOF_FLOAT sizeof( float )
 
+/* Size: 24 bytes */
 typedef struct _tagNETWORK_MESSAGE
 {
-	Uint8	*pData;
-	size_t	MaxSize;
-	size_t	Size;
-	size_t	Head;
-	Uint32	Flags;
+	Uint8			*pData;
+	PMEMORY_BLOCK	pMemoryBlock;
+	size_t			MaxSize;
+	size_t			Size;
+	size_t			Head;
+	Uint32			Flags;
 }NETWORK_MESSAGE,*PNETWORK_MESSAGE;
 
 int MSG_CreateNetworkMessage( PNETWORK_MESSAGE p_pMessage,
-	Uint8 *p_pBuffer, size_t p_Length );
+	Uint8 *p_pBuffer, size_t p_Length, PMEMORY_BLOCK p_pMemoryBlock );
 int MSG_CopyNetworkMessage( PNETWORK_MESSAGE p_pCopy,
 	PNETWORK_MESSAGE p_pOriginal, size_t p_SizeToCopy );
 void MSG_DestroyNetworkMessage( PNETWORK_MESSAGE p_pMessage );

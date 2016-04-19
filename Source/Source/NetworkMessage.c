@@ -9,7 +9,7 @@ void MSG_CopyToExternalBuffer( PNETWORK_MESSAGE p_pMessage,
 	void *p_pDestination, const size_t p_Size );
 
 int MSG_CreateNetworkMessage( PNETWORK_MESSAGE p_pMessage,
-	Uint8 *p_pBuffer, size_t p_Length )
+	Uint8 *p_pBuffer, size_t p_Length, PMEMORY_BLOCK p_pMemoryBlock )
 {
 	if( p_pBuffer )
 	{
@@ -18,7 +18,8 @@ int MSG_CreateNetworkMessage( PNETWORK_MESSAGE p_pMessage,
 	}
 	else
 	{
-		p_pMessage->pData = syMalloc( p_Length );
+		p_pMessage->pData = MEM_AllocateFromBlock( p_pMemoryBlock, p_Length,
+			"Network message" );
 
 		if( p_pMessage->pData == NULL )
 		{
@@ -31,6 +32,7 @@ int MSG_CreateNetworkMessage( PNETWORK_MESSAGE p_pMessage,
 	p_pMessage->MaxSize = p_Length;
 	p_pMessage->Size = 0;
 	p_pMessage->Head = 0;
+	p_pMessage->pMemoryBlock = p_pMemoryBlock;
 
 	return 0;
 }
@@ -38,7 +40,8 @@ int MSG_CreateNetworkMessage( PNETWORK_MESSAGE p_pMessage,
 int MSG_CopyNetworkMessage( PNETWORK_MESSAGE p_pCopy,
 	PNETWORK_MESSAGE p_pOriginal, size_t p_SizeToCopy )
 {
-	p_pCopy->pData = syMalloc( p_SizeToCopy );
+	p_pCopy->pData = MEM_AllocateFromBlock( p_pOriginal->pMemoryBlock,
+		p_SizeToCopy, "Network message copy" );
 
 	if( p_pCopy->pData == NULL )
 	{
@@ -55,6 +58,7 @@ int MSG_CopyNetworkMessage( PNETWORK_MESSAGE p_pCopy,
 	p_pCopy->MaxSize = p_SizeToCopy;
 	p_pCopy->Size = 0;
 	p_pCopy->Head = 0;
+	p_pCopy->pMemoryBlock = p_pOriginal->pMemoryBlock;
 
 	return 0;
 }
@@ -63,7 +67,7 @@ void MSG_DestroyNetworkMessage( PNETWORK_MESSAGE p_pMessage )
 {
 	if( p_pMessage->Flags & NETWORK_MESSAGE_FLAG_INTERNAL_BUFFER )
 	{
-		syFree( p_pMessage->pData );
+		MEM_FreeFromBlock( p_pMessage->pMemoryBlock, p_pMessage->pData );
 		p_pMessage->pData = NULL;
 		p_pMessage->Flags &= ~NETWORK_MESSAGE_FLAG_INTERNAL_BUFFER;
 	}
