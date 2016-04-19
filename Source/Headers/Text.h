@@ -32,8 +32,8 @@ int TXT_Initialise( void );
 
 int TXT_CreateGlyphSetFromFile( char *p_pFileName,
 	GLYPHSET *p_pGlyphSet, PMEMORY_BLOCK p_pMemoryBlock );
-int TXT_SetTextureForGlyphSet( char *p_pFileName,
-	GLYPHSET *p_pGlyphSet );
+int TXT_SetTextureForGlyphSet( char *p_pFileName, GLYPHSET *p_pGlyphSet,
+	PMEMORY_BLOCK p_pMemoryBlock );
 
 void TXT_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,
 	float p_X, float p_Y, char *p_pString );

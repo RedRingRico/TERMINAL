@@ -24,7 +24,7 @@ typedef struct _tagMODEL
 	PMEMORY_BLOCK	pMemoryBlock;
 }MODEL,*PMODEL;
 
-int MDL_Initialise( void );
+int MDL_Initialise( PMEMORY_BLOCK p_pMemoryBlock );
 void MDL_Terminate( void );
 
 int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName,

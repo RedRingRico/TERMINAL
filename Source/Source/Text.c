@@ -215,9 +215,11 @@ int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet,
 	return 0;
 }
 
-int TXT_SetTextureForGlyphSet( char *p_pFileName, GLYPHSET *p_pGlyphSet )
+int TXT_SetTextureForGlyphSet( char *p_pFileName, GLYPHSET *p_pGlyphSet,
+	PMEMORY_BLOCK p_pMemoryBlock )
 {
-	return TEX_LoadTexture( &p_pGlyphSet->Texture, p_pFileName );
+	return TEX_LoadTexture( &p_pGlyphSet->Texture, p_pFileName,
+		p_pMemoryBlock );
 }
 
 void TXT_RenderString( GLYPHSET *p_pGlyphSet, KMPACKEDARGB *p_pColour,

@@ -17,13 +17,14 @@ static int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh,
 	PMEMORY_BLOCK p_pMemoryBlock );
 static KMSTRIPHEAD	MDL_ModelStripHead;
 
-int MDL_Initialise( void )
+static TEXTURE g_ModelTexture;
+
+int MDL_Initialise( PMEMORY_BLOCK p_pMemoryBlock )
 {
 	KMPACKEDARGB BaseColour;
 	KMSTRIPCONTEXT ModelContext;
-	TEXTURE ModelTexture;
 
-	TEX_LoadTexture( &ModelTexture, "/MODELS/CUBE.PVR" );
+	TEX_LoadTexture( &g_ModelTexture, "/MODELS/CUBE.PVR", p_pMemoryBlock );
 
 	memset( &ModelContext, 0, sizeof( KMSTRIPCONTEXT ) );
 
@@ -59,7 +60,7 @@ int MDL_Initialise( void )
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].nTextureShadingMode =
 		KM_MODULATE;
 	ModelContext.ImageControl[ KM_IMAGE_PARAM1 ].pTextureSurfaceDesc =
-		&ModelTexture.SurfaceDescription;
+		&g_ModelTexture.SurfaceDescription;
 
 	kmGenerateStripHead05( &MDL_ModelStripHead, &ModelContext );
 
@@ -68,6 +69,7 @@ int MDL_Initialise( void )
 
 void MDL_Terminate( void )
 {
+	TEX_DeleteTexture( &g_ModelTexture );
 }
 
 int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName,
@@ -80,8 +82,6 @@ int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName,
 	size_t FilePosition = 0;
 	MODEL_HEADER Header;
 	size_t MeshIndex = 0;
-	/* Temporarily testing out the texture */
-	TEXTURE ModelTexture;
 
 	if( !( FileHandle = FS_OpenFile( p_pFileName ) ) )
 	{

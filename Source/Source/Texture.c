@@ -17,7 +17,8 @@ typedef struct _tagPVRT_HEADER
 	Uint16	Height;
 }PVRT_HEADER,*PPVRT_HEADER;
 
-int TEX_LoadTexture( PTEXTURE p_pTexture, const char *p_pFileName )
+int TEX_LoadTexture( PTEXTURE p_pTexture, const char *p_pFileName,
+	PMEMORY_BLOCK p_pMemoryBlock )
 {
 	GDFS FileHandle;
 	long FileBlocks;
@@ -38,7 +39,8 @@ int TEX_LoadTexture( PTEXTURE p_pTexture, const char *p_pFileName )
 	gdFsGetFileSize( FileHandle, &FileSize );
 	gdFsGetFileSctSize( FileHandle, &FileBlocks );
 
-	pTexture = syMalloc( FileBlocks * 2048 );
+	pTexture = MEM_AllocateFromBlock( p_pMemoryBlock, FileBlocks * 2048,
+		p_pFileName );
 
 	gdFsReqRd32( FileHandle, FileBlocks, pTexture );
 	
@@ -86,7 +88,7 @@ int TEX_LoadTexture( PTEXTURE p_pTexture, const char *p_pFileName )
 	{
 	}
 
-	syFree( pTexture );
+	MEM_FreeFromBlock( p_pMemoryBlock, pTexture );
 
 	return 0;
 }

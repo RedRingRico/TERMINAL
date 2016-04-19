@@ -333,7 +333,8 @@ void main( void )
 		HW_Reboot( );
 	}
 
-	if( TXT_SetTextureForGlyphSet( "/FONTS/WHITERABBIT.PVR", &GlyphSet ) != 0 )
+	if( TXT_SetTextureForGlyphSet( "/FONTS/WHITERABBIT.PVR", &GlyphSet,
+		&GraphicsMemoryBlock ) != 0 )
 	{
 		LOG_Debug( "Failed to load the glyph texture" );
 
@@ -466,7 +467,7 @@ void main( void )
 
 	/* Unused code below, get rid of it! */
 
-	if( MDL_Initialise( ) != 0 )
+	if( MDL_Initialise( &GraphicsMemoryBlock ) != 0 )
 	{
 		LOG_Debug( "Failed to initialise the model library" );
 
