@@ -117,8 +117,8 @@ int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet,
 
 	gdFsGetFileSctSize( FileHandle, &FileBlocks );
 
-	pFileContents = ( Uint32 * )MEM_AllocateFromBlock( p_pMemoryBlock,
-		FileBlocks * 2048, p_pFileName );
+	pFileContents = MEM_AllocateFromBlock( p_pMemoryBlock, FileBlocks * 2048,
+		p_pFileName );
 
 	if( gdFsReqRd32( FileHandle, FileBlocks, pFileContents ) < 0 )
 	{
@@ -211,6 +211,7 @@ int TXT_CreateGlyphSetFromFile( char *p_pFileName, GLYPHSET *p_pGlyphSet,
 	}
 
 	MEM_FreeFromBlock( p_pMemoryBlock, pFileContents );
+	MEM_GarbageCollectMemoryBlock( p_pMemoryBlock );
 
 	return 0;
 }

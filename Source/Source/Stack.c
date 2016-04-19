@@ -28,6 +28,8 @@ int STK_Initialise( PSTACK p_pStack, PMEMORY_BLOCK p_pMemoryBlock,
 void STK_Terminate( PSTACK p_pStack )
 {
 	MEM_FreeFromBlock( p_pStack->pMemoryBlock, p_pStack->pStack );
+	MEM_GarbageCollectMemoryBlock( p_pStack->pMemoryBlock );
+
 	p_pStack->Top = 0;
 	p_pStack->Capacity = 0;
 	p_pStack->ItemSize = 0;

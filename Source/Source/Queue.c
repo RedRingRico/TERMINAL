@@ -29,6 +29,7 @@ int QUE_Initialise( PQUEUE p_pQueue, PMEMORY_BLOCK p_pMemoryBlock,
 void QUE_Terminate( PQUEUE p_pQueue )
 {
 	MEM_FreeFromBlock( p_pQueue->pMemoryBlock, p_pQueue->pQueue );
+	MEM_GarbageCollectMemoryBlock( p_pQueue->pMemoryBlock );
 
 	p_pQueue->Front = 0;
 	p_pQueue->Count = 0;
