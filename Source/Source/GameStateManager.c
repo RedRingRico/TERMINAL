@@ -99,6 +99,7 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 	}
 
 	p_pGameStateManager->Running = true;
+	p_pGameStateManager->pTopGameState->Update( p_pGameStateManager );
 
 	return 0;
 }
