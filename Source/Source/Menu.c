@@ -107,7 +107,6 @@ int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 void MNU_Terminate( PMENU p_pMenu )
 {
 	MEM_GarbageCollectMemoryBlock( p_pMenu->pMemoryBlock );
-	MEM_ListMemoryBlocks( p_pMenu->pMemoryBlock );
 
 	switch( p_pMenu->pSelectionHighlight->Type )
 	{
@@ -130,7 +129,6 @@ void MNU_Terminate( PMENU p_pMenu )
 	}
 
 	MEM_GarbageCollectMemoryBlock( p_pMenu->pMemoryBlock );
-	MEM_ListMemoryBlocks( p_pMenu->pMemoryBlock );
 }
 
 void MNU_SelectNextMenuItem( PMENU p_pMenu )
