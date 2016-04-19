@@ -244,13 +244,23 @@ static int MPISP_Render( void *p_pArgs )
 
 static int MPISP_Terminate( void *p_pArgs )
 {
+	/* Wait for a successful disconnect */
+	NET_Update( );
+
 	NET_DisconnectFromISP( );
+
+	while( ( ISPConnectState.NetStatus = NET_GetStatus( ) ) !=
+		NET_STATUS_DISCONNECTED )
+	{
+		NET_Update( );
+	}
 
 	return 0;
 }
 
 static int MPISP_Unload( void *p_pArgs )
 {
+	LOG_Debug( "MPISP_Unload <INFO> Terminating the network\n" );
 	NET_Terminate( );
 
 	return 0;
