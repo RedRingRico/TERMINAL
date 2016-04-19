@@ -196,20 +196,6 @@ int NET_Initialise( void )
 	 * therfore requiring polling the device rather than initialising it and
 	 * forgetting about it */
 	int ReturnStatus;
-#if defined ( DEBUG )
-	/* 5 - Errors
-	 * 2 - Normal debug information
-	 * 1 - More verbose debug information
-	 * 0 - USE ONLY IF COMPLETELY NECESSARY
-	 */
-	ngDebugSetLevel( 1 );
-	/* Allow DHCP debugging */
-	ngDebugSetModule( NG_DBG_DHCP, 1 );
-	ngDebugSetModule( NG_DBG_PPP, 1 );
-	ngDebugSetModule( NG_DBG_APP, 1 );
-	ngDebugSetModule( NG_DBG_DRV, 1 );
-	ngDebugSetModule( NG_DBG_CORE, 1 );
-#endif /* DEBUG */
 	
 	/* In the future, probe for more devices if NG_EINIT_DEVOPEN is returned
 	 * until there are no more devices left to try, then return a no device
@@ -237,7 +223,7 @@ int NET_Initialise( void )
 	 * 1 - More verbose debug information
 	 * 0 - USE ONLY IF COMPLETELY NECESSARY
 	 */
-	ngDebugSetLevel( 1 );
+	ngDebugSetLevel( 2 );
 	/* Allow DHCP debugging */
 	ngDebugSetModule( NG_DBG_DHCP, 1 );
 	ngDebugSetModule( NG_DBG_PPP, 1 );
@@ -322,9 +308,9 @@ int NET_Initialise( void )
 	/* Initialise the asynchronous DNS work area */
 	ngADnsInit( 8, ( void * )&NET_DNSWorkArea );
 
-	ngYield( );
-
 	LOG_Debug( "Initialsed NexGen: %s", ngGetVersionString( ) );
+
+	ngYield( );
 
 	NET_Initialised = true;
 
@@ -333,17 +319,13 @@ int NET_Initialise( void )
 
 void NET_Terminate( void )
 {
-	NET_DisconnectFromISP( );
-
 	if( NET_Initialised == true )
 	{
+		LOG_Debug( "NET_Terminate <INFO> Called\n" );
+		NET_DisconnectFromISP( );
+		ntInfExit( );
 		ngExit( 0 );
 	}
-
-	/*if( NET_Status != NET_STATUS_ERROR || NET_Status != NET_STATUS_NODEVICE )
-	{
-		ngExit( 0 );
-	}*/
 }
 
 int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
@@ -637,6 +619,7 @@ void NET_Update( void )
 						 * dial, but the infrastrucutre isn't present to
 						 * support this */
 						LOG_Debug( "Modem reset" );
+						ntInfExit( );
 						ngExit( 0 );
 						NET_Status = NET_STATUS_DISCONNECTED;
 						NET_Initialised = false;
@@ -877,6 +860,7 @@ int NET_DisconnectFromISP( void )
 		{
 			NET_Status = NET_STATUS_NODEVICE;
 			NET_Initialised = false;
+			ntInfExit( );
 			ngExit( 0 );
 		}
 	}
