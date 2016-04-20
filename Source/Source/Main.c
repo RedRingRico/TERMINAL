@@ -41,7 +41,7 @@
 #pragma aligndata32( g_pTextureWorkArea )
 KMDWORD g_pTextureWorkArea[ MAX_TEXTURES * 24 / 4 + MAX_SMALLVQ * 76 / 4 ];
 
-#define MILESTONE_STRING "Milestone 0 - Technical Debt"
+#define MILESTONE_STRING "Milestone 1 - Networked Multiplayer"
 
 unsigned char RecvBuf[ 1024 * 8 ];
 unsigned char SendBuf[ 1024 * 8 ];
