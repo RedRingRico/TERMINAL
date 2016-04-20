@@ -263,6 +263,7 @@ int NET_Initialise( void )
 			}
 		}
 
+		ntInfExit( );
 		ngExit( 0 );
 
 		return 0;//ErrorCode;
@@ -334,9 +335,12 @@ void NET_Terminate( void )
 
 		LOG_Debug( "\tDONE!\n" );
 
-		NET_Status = NET_STATUS_NODEVICE;
-		ntInfExit( );
-		ngExit( 0 );
+		if( NET_Status != NET_STATUS_NODEVICE )
+		{
+			NET_Status = NET_STATUS_NODEVICE;
+			ntInfExit( );
+			ngExit( 0 );
+		}
 	}
 }
 
@@ -656,11 +660,12 @@ int NET_ConnectToISP( void )
 	Uint32 Flag;
 	int Value;
 
-	/* Set up the device again (for now) */
+	/* Can't do anything until the network stack is initialised */
 	if( NET_Initialised == false )
 	{
-		LOG_Debug( "Reinitialising network device" );
-		NET_Initialise( );
+		LOG_Debug( "NET_ConnectToISP <ERROR> Network not initialised\n" );
+
+		return 1;
 	}
 
 	if( NET_DeviceHardware == NET_DEVICE_HARDWARE_MODEM )
