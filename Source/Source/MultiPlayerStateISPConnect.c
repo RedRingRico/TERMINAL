@@ -30,7 +30,11 @@ static int MPISP_Load( void *p_pArgs )
 
 static int MPISP_Initialise( void *p_pArgs )
 {
-	NET_ConnectToISP( );
+	if( NET_ConnectToISP( ) != 0 )
+	{
+		GSM_ChangeState( ISPConnectState.Base.pGameStateManager,
+			GAME_STATE_MAINMENU, NULL, NULL );
+	}
 
 	ISPConnectState.UserDisconnect = false;
 	ISPConnectState.WaitForDisconnect = false;
@@ -58,6 +62,7 @@ static int MPISP_Update( void *p_pArgs )
 		switch( ISPConnectState.NetStatus )
 		{
 			case NET_STATUS_DISCONNECTED:
+			case NET_STATUS_NODEVICE:
 			{
 				ISPConnectState.UserDisconnect = false;
 				GSM_ChangeState( ISPConnectState.Base.pGameStateManager,
@@ -249,10 +254,13 @@ static int MPISP_Terminate( void *p_pArgs )
 
 	NET_DisconnectFromISP( );
 
-	while( ( ISPConnectState.NetStatus = NET_GetStatus( ) ) !=
-		NET_STATUS_DISCONNECTED )
+	ISPConnectState.NetStatus = NET_GetStatus( );
+
+	while( ( ISPConnectState.NetStatus != NET_STATUS_DISCONNECTED ) &&
+		( ISPConnectState.NetStatus != NET_STATUS_NODEVICE ) )
 	{
 		NET_Update( );
+		ISPConnectState.NetStatus = NET_GetStatus( );
 	}
 
 	return 0;

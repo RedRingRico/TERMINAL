@@ -91,7 +91,8 @@ void *STK_GetTopItem( PSTACK p_pStack )
 
 	if( p_pStack->Top == 0 )
 	{
-		LOG_Debug( "STK_GetTopItem <ERROR> No items left on stack\n" );
+		LOG_Debug( "STK_GetTopItem <INFO> No items left on stack\n" );
+
 		return NULL;
 	}
 
