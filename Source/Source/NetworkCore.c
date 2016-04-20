@@ -321,8 +321,20 @@ void NET_Terminate( void )
 {
 	if( NET_Initialised == true )
 	{
-		LOG_Debug( "NET_Terminate <INFO> Called\n" );
+		LOG_Debug( "NET_Terminate <INFO> Disconnecting from ISP\n" );
+		/* Safely disconnect */
 		NET_DisconnectFromISP( );
+		NET_Update( );
+
+		while( ( NET_Status != NET_STATUS_DISCONNECTED ) &&
+			( NET_Status != NET_STATUS_NODEVICE ) )
+		{
+			NET_Update( );
+		}
+
+		LOG_Debug( "\tDONE!\n" );
+
+		NET_Status = NET_STATUS_NODEVICE;
 		ntInfExit( );
 		ngExit( 0 );
 	}
@@ -459,7 +471,7 @@ void NET_Update( void )
 						int i = 1;
 						int Char;
 
-						strcpy( NET_ModemSpeed, NET_ModemState.mdst_buf );
+						/*strcpy( NET_ModemSpeed, NET_ModemState.mdst_buf );
 						i = strlen( NET_ModemSpeed );
 						pCharPtr = NET_ModemSpeed + i;
 
@@ -491,16 +503,16 @@ void NET_Update( void )
 
 						*pCharPtr = '\0';
 						LOG_Debug( "Connection speed: %s",
-							NET_ModemSpeed );
+							NET_ModemSpeed );*/
 
 						ngDevioClose( NET_DeviceControlBlock );
 						--NET_DevOpen;
 
-						if( Char != NG_EWOULDBLOCK )
+						/*if( Char != NG_EWOULDBLOCK )
 						{
 							NET_Status = NET_STATUS_DISCONNECTED;
 							LOG_Debug( "Failed to gather the modem speed" );
-						}
+						}*/
 
 						ngIfOpen( NET_pInterface );
 						++NET_IfaceOpen;
@@ -621,7 +633,7 @@ void NET_Update( void )
 						LOG_Debug( "Modem reset" );
 						ntInfExit( );
 						ngExit( 0 );
-						NET_Status = NET_STATUS_DISCONNECTED;
+						NET_Status = NET_STATUS_NODEVICE;
 						NET_Initialised = false;
 						break;
 					}
@@ -858,10 +870,7 @@ int NET_DisconnectFromISP( void )
 		}
 		else if( NET_DeviceHardware == NET_DEVICE_HARDWARE_LAN )
 		{
-			NET_Status = NET_STATUS_NODEVICE;
-			NET_Initialised = false;
-			ntInfExit( );
-			ngExit( 0 );
+			NET_Status = NET_STATUS_DISCONNECTED;
 		}
 	}
 
