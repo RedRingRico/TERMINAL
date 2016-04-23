@@ -64,6 +64,8 @@ void MEM_GarbageCollectMemoryBlock( MEMORY_BLOCK *p_pBlock );
 void *MEM_AllocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_Size,
 	const char *p_pName );
 void MEM_FreeFromBlock( MEMORY_BLOCK *p_pBlock, void *p_pPointer );
+void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
+	void *p_pOriginalPointer );
 
 size_t MEM_GetFreeBlockSize( MEMORY_BLOCK *p_pBlock );
 size_t MEM_GetUsedBlockSize( MEMORY_BLOCK *p_pBlock );

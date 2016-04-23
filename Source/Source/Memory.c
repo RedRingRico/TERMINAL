@@ -159,6 +159,15 @@ MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK *p_pBlock,
 					FreeSize );
 				pNewBlock->pNext = NULL;
 
+#if defined ( DEBUG )
+				if( ( pNewBlock->Name == NULL ) ||
+					( strlen( pNewBlock->Name ) == 0 ) )
+				{
+					memcpy( pNewBlock->Name, pHeader->Name,
+						sizeof( pHeader->Name ) );
+				}
+#endif /* DEBUG */
+
 				MEM_CreateMemoryBlock( pHeader, false, TotalSize, p_Size );
 				pHeader->pNext = pNewBlock;
 			}
@@ -282,6 +291,134 @@ void MEM_FreeFromBlock( MEMORY_BLOCK *p_pBlock, void *p_pPointer )
 	MEMORY_BLOCK_HEADER *pFree = MEM_GetBlockHeader( p_pPointer );
 
 	pFree->Flags |= MEM_BLOCK_FREE;
+}
+
+void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
+	void *p_pOriginalPointer )
+{
+	MEMORY_BLOCK_HEADER *pHeader;
+	size_t DesiredSize;
+
+	pHeader = MEM_GetBlockHeader( p_pOriginalPointer );
+
+	if( p_NewSize < pHeader->Size )
+	{
+		/* Resize downward, join with the next chunk if possible */
+		if( pHeader->pNext->Flags & MEM_BLOCK_FREE )
+		{
+		}
+		else
+		{
+		}
+	}
+	else
+	{
+		/* Is there enough memory in the next block (plus the next if possible)
+		 * to just resize the current chunk of memory? */
+		bool MemoryContiguous = false;
+		MEMORY_BLOCK_HEADER *pNextBlock = pHeader->pNext;
+
+		DesiredSize = p_NewSize - pHeader->Size;
+		
+		while( pNextBlock != NULL )
+		{
+			/* Join two blocks if they are both free */
+			if( ( pNextBlock->Flags & MEM_BLOCK_FREE ) &&
+				( pNextBlock->pNext != NULL ) )
+			{
+				if( pNextBlock->pNext->Flags & MEM_BLOCK_FREE )
+				{
+#if defined ( DEBUG )
+					memcpy( pNextBlock->Name, pNextBlock->pNext->Name,
+						sizeof( pHeader->Name ) );
+#endif /* DEBUG */
+					pNextBlock->Size += pNextBlock->pNext->Size;
+					pNextBlock->pNext = pNextBlock->pNext->pNext;
+				}
+			}
+
+			if( pNextBlock->Flags & MEM_BLOCK_FREE )
+			{
+				if( pNextBlock->Size >= DesiredSize )
+				{
+					MemoryContiguous = true;
+
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if( ( pNextBlock == NULL ) || ( MemoryContiguous == false ) )
+		{
+			MEMORY_BLOCK_HEADER *pNewBlock = NULL;
+			void *pNewMemory = NULL;
+
+			MEM_GarbageCollectMemoryBlock( p_pBlock );
+
+			pNewBlock = MEM_GetFreeBlock( p_pBlock, p_NewSize );
+
+			if( pNewBlock == NULL )
+			{
+				return NULL;
+			}
+
+			pNewMemory = MEM_GetPointerFromBlock( pNewBlock );
+
+			/* Copy the memory contents to the new block */
+			memcpy( pNewMemory, p_pOriginalPointer, pHeader->Size );
+#if defined ( DEBUG )
+			memcpy( pNewBlock->Name, pHeader->Name, sizeof( pHeader->Name ) );
+#endif /* DEBUG */
+
+			/* Free the old memory */
+			pHeader->Flags |= MEM_BLOCK_FREE;
+
+			return pNewMemory;
+		}
+		else
+		{
+			MEMORY_BLOCK_HEADER *pNewBlock = NULL;
+			size_t TotalSize = 0;
+			size_t FreeTotalSize = 0, FreeOffset = 0;
+
+			/* Join with the next chunk(s) */
+			pHeader->Size += pNextBlock->Size;
+
+			TotalSize = MEM_GetBlockSize( pHeader, p_NewSize,
+				p_pBlock->Alignment, p_pBlock->StructAlignment );
+
+			/* Split it if possible */
+			pNewBlock = ( MEMORY_BLOCK_HEADER * )(
+				( ( Uint8 * )pHeader ) + TotalSize );
+
+			FreeTotalSize = pHeader->Size - TotalSize;
+			FreeOffset = MEM_CalculateDataOffset( pNewBlock,
+				p_pBlock->Alignment );
+
+			if( FreeTotalSize > FreeOffset )
+			{
+				MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
+					FreeTotalSize - FreeOffset );
+				pNewBlock->pNext = NULL;
+
+				MEM_CreateMemoryBlock( pHeader, false, TotalSize, p_NewSize );
+				pHeader->pNext = pNewBlock;
+			}
+			else
+			{
+				/* Cannot split it */
+				pHeader->Flags &= ~( MEM_BLOCK_FREE );
+			}
+
+			return MEM_GetPointerFromBlock( pHeader );
+		}
+	}
+	
+	return NULL;
 }
 
 size_t MEM_GetFreeBlockSize( MEMORY_BLOCK *p_pBlock )
