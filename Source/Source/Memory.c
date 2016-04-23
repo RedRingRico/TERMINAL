@@ -150,10 +150,11 @@ MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK *p_pBlock,
 			FreeTotalSize = pHeader->Size - TotalSize;
 			FreeOffset = MEM_CalculateDataOffset( pNewBlock,
 				p_pBlock->Alignment );
+
 			FreeSize = FreeTotalSize - FreeOffset;
 
 			/* Found enough space to split the block into two halves */
-			if( FreeSize > 0 )
+			if( FreeTotalSize > FreeOffset )
 			{
 				MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
 					FreeSize );
@@ -265,9 +266,13 @@ void *MEM_AllocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_Size,
 	if( pNewBlock )
 	{
 #if defined ( DEBUG )
-		/* Copy the previous block's name, first */
-		memcpy( pNewBlock->pNext->Name, pNewBlock->Name,
-			sizeof( pNewBlock->Name ) );
+		/* Copy the previous block's name, if necessary */
+		if( pNewBlock->pNext->Flags & MEM_BLOCK_FREE )
+		{
+			memcpy( pNewBlock->pNext->Name, pNewBlock->Name,
+				sizeof( pNewBlock->Name ) );
+		}
+
 		/* Set the new block's name */
 		memset( pNewBlock->Name, '\0', sizeof( pNewBlock->Name ) );
 		if( strlen( p_pName ) >= sizeof( pNewBlock->Name ) )
