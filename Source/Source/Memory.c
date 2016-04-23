@@ -345,6 +345,8 @@ void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
 
 					break;
 				}
+
+				pNextBlock = pNextBlock->pNext;
 			}
 			else
 			{
@@ -403,7 +405,24 @@ void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
 			{
 				MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
 					FreeTotalSize - FreeOffset );
-				pNewBlock->pNext = NULL;
+				pNewBlock->pNext = pNextBlock->pNext;
+
+#if defined ( DEBUG )
+				if( ( pNewBlock->Name == NULL ) ||
+					( strlen( pNewBlock->Name ) == 0 ) )
+				{
+					if( pNextBlock != NULL )
+					{
+						memcpy( pNewBlock->Name, pNextBlock->Name,
+							sizeof( pNextBlock->pNext->Name ) );
+					}
+					else
+					{
+						memcpy( pNewBlock->Name, pHeader->Name,
+							sizeof( pHeader->Name ) );
+					}
+				}
+#endif
 
 				MEM_CreateMemoryBlock( pHeader, false, TotalSize, p_NewSize );
 				pHeader->pNext = pNewBlock;
