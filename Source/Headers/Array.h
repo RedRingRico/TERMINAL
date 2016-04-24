@@ -26,7 +26,7 @@ int ARY_Prepend( PARRAY p_pArrah, void *p_pItem );
 int ARY_RemoveAt( PARRAY p_pArray, size_t p_Index );
 int ARY_RemoveAtUnordered( PARRAY p_pArray, size_t p_Index );
 
-void *ARY_GetItem( PARRAY p_pArray );
+void *ARY_GetItem( PARRAY p_pArray, size_t p_Index );
 size_t ARY_GetCount( PARRAY p_pArray );
 bool ARY_IsFull( PARRAY p_pArray );
 bool ARY_IsEmpty( PARRAY p_pArray );

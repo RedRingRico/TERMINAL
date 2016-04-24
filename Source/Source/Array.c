@@ -1,6 +1,8 @@
 #include <Array.h>
 #include <Log.h>
 
+static bool ARY_Grow( PARRAY p_pArray );
+
 int ARY_Initialise( PARRAY p_pArray, PMEMORY_BLOCK p_pMemoryBlock,
 	size_t p_Capacity, size_t p_ItemSize, size_t p_GrowableAmount,
 	const char *p_pName )
@@ -42,30 +44,11 @@ int ARY_Append( PARRAY p_pArray, void *p_pItem )
 {
 	size_t ArrayAppend = ( size_t )p_pArray->pArray + p_pArray->Count;
 
-	if( p_pArray->Count == p_pArray->Capacity )
+	if( ARY_Grow( p_pArray ) == false )
 	{
-		if( p_pArray->GrowableAmount > 0 )
-		{
-			void *pTempArray;
+		LOG_Debug( "ARY_Append <ERROR> Grow failed\n" );
 
-			pTempArray = MEM_ReallocateFromBlock( p_pArray->pMemoryBlock,
-				p_pArray->Capacity + p_pArray->GrowableAmount,
-				p_pArray->pArray );
-
-			if( pTempArray == NULL )
-			{
-				LOG_Debug( "ARY_Append <WARN> Unable to allocate more memory "
-					"for array\n" );
-				return 1;
-			}
-
-			p_pArray->pArray = pTempArray;
-		}
-		else
-		{
-			LOG_Debug( "ARY_Append <ERROR> Cannot adjust array size\n" );
-			return 1;
-		}
+		return 1;
 	}
 
 	memcpy( ( void * )ArrayAppend, p_pItem, p_pArray->ItemSize );
@@ -80,33 +63,14 @@ int ARY_Prepend( PARRAY p_pArray, void *p_pItem )
 	
 	if( p_pArray->Count > 0 )
 	{
-		ArrayEnd += ( p_pArray->Count );//- p_pArray->ItemSize );
+		ArrayEnd += ( p_pArray->Count );
 	}
 
-	if( p_pArray->Count == p_pArray->Capacity )
+	if( ARY_Grow( p_pArray ) == false )
 	{
-		if( p_pArray->GrowableAmount > 0 )
-		{
-			void *pTempArray;
+		LOG_Debug( "ARY_Prepend <ERROR> Grow failed\n" );
 
-			pTempArray = MEM_ReallocateFromBlock( p_pArray->pMemoryBlock,
-				p_pArray->Capacity + p_pArray->GrowableAmount,
-				p_pArray->pArray );
-
-			if( pTempArray == NULL )
-			{
-				LOG_Debug( "ARY_Prepend <WARN> Unable to allocate more memory "
-					"for array\n" );
-				return 1;
-			}
-
-			p_pArray->pArray = pTempArray;
-		}
-		else
-		{
-			LOG_Debug( "ARY_Prepend <ERROR> Cannot adjust array size\n" );
-			return 1;
-		}
+		return 1;
 	}
 
 	/* Shift the memory upward */
@@ -143,5 +107,38 @@ bool ARY_IsFull( PARRAY p_pArray )
 bool ARY_IsEmpty( PARRAY p_pArray )
 {
 	return ( p_pArray->Count == 0 ) ? true : false;
+}
+
+static bool ARY_Grow( PARRAY p_pArray )
+{
+	if( p_pArray->Count == p_pArray->Capacity )
+	{
+		if( p_pArray->GrowableAmount > 0 )
+		{
+			void *pTempArray;
+
+			pTempArray = MEM_ReallocateFromBlock( p_pArray->pMemoryBlock,
+				p_pArray->Capacity + p_pArray->GrowableAmount,
+				p_pArray->pArray );
+
+			if( pTempArray == NULL )
+			{
+				LOG_Debug( "ARY_Grow <WARN> Unable to allocate more memory "
+					"for array\n" );
+
+				return false;
+			}
+
+			p_pArray->pArray = pTempArray;
+			p_pArray->Capacity += p_pArray->GrowableAmount;
+		}
+		else
+		{
+			LOG_Debug( "ARY_Grow <ERROR> Cannot adjust array size\n" );
+			return false;
+		}
+	}
+
+	return true;
 }
 
