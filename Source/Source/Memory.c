@@ -159,8 +159,27 @@ MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK *p_pBlock,
 				MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
 					FreeSize );
 				
-				/* Verify the magic number is correct before doing this */
-				pNewBlock->pNext = pHeader->pNext;
+				/* Verify the magic number is correct */
+				pNewBlock->pNext = NULL;
+
+				if( pHeader->pNext != NULL )
+				{
+					/* Count out any extremely bad values */
+					if( pHeader->pNext->DataOffset < 256 )
+					{
+						MEMORY_BLOCK_FOOTER *pFooter;
+
+						pFooter = ( MEMORY_BLOCK_FOOTER * )(
+							( ( Uint8 * )pHeader->pNext +
+								pHeader->pNext->DataOffset ) -
+							sizeof( MEMORY_BLOCK_FOOTER ) );
+
+						if( pFooter->Magic == MEM_MAGIC8 )
+						{
+							pNewBlock->pNext = pHeader->pNext;
+						}
+					}
+				}
 
 #if defined ( DEBUG )
 				if( ( pNewBlock->Name == NULL ) ||
