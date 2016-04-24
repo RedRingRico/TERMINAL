@@ -158,6 +158,7 @@ MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK *p_pBlock,
 			{
 				MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
 					FreeSize );
+
 				pNewBlock->pNext = NULL;
 
 #if defined ( DEBUG )
@@ -311,10 +312,38 @@ void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
 		/* Resize downward, join with the next chunk if possible */
 		if( pHeader->pNext->Flags & MEM_BLOCK_FREE )
 		{
+			MEMORY_BLOCK_HEADER *pNewBlock;
+			size_t NewSize = 0;
+			size_t FreeTotalSize = 0;
+			size_t FreeOffset = 0;
+
+			NewSize = MEM_GetBlockSize( pHeader, p_NewSize,
+				p_pBlock->Alignment, p_pBlock->StructAlignment );
+
+			pNewBlock = ( MEMORY_BLOCK_HEADER * )(
+				( ( Uint8 * )pHeader ) + NewSize );
+
+			FreeTotalSize = ( pHeader->Size + pHeader->pNext->Size ) - NewSize;
+			FreeOffset = MEM_CalculateDataOffset( pNewBlock,
+				p_pBlock->Alignment );
+
+			MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
+				FreeTotalSize - FreeOffset );
+			pNewBlock->pNext = pHeader->pNext->pNext;
+
+#if defined ( DEBUG )
+			memcpy( pNewBlock->Name, pHeader->pNext->Name,
+				sizeof( pHeader->pNext->Name ) );
+#endif /* DEBUG */
+
+			MEM_CreateMemoryBlock( pHeader, false, NewSize, p_NewSize );
+			pHeader->pNext = pNewBlock;
 		}
 		else
 		{
 		}
+
+		return MEM_GetPointerFromBlock( pHeader );
 	}
 	else
 	{
