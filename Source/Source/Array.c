@@ -19,7 +19,7 @@ int ARY_Initialise( PARRAY p_pArray, PMEMORY_BLOCK p_pMemoryBlock,
 	p_pArray->Capacity = p_Capacity * p_ItemSize;
 	p_pArray->Count = 0;
 	p_pArray->ItemSize = p_ItemSize;
-	p_pArray->GrowableAmount = p_GrowableAmount;
+	p_pArray->GrowableAmount = p_GrowableAmount * p_ItemSize;
 	p_pArray->pMemoryBlock = p_pMemoryBlock;
 
 	return 0;
@@ -36,5 +36,102 @@ void ARY_Terminate( PARRAY p_pArray )
 	p_pArray->GrowableAmount = 0;
 	p_pArray->pArray = NULL;
 	p_pArray->pMemoryBlock = NULL;
+}
+
+int ARY_Append( PARRAY p_pArray, void *p_pItem )
+{
+	size_t ArrayAppend = ( size_t )p_pArray->pArray + p_pArray->Count;
+
+	if( p_pArray->Count == p_pArray->Capacity )
+	{
+		if( p_pArray->GrowableAmount > 0 )
+		{
+			void *pTempArray;
+
+			pTempArray = MEM_ReallocateFromBlock( p_pArray->pMemoryBlock,
+				p_pArray->Capacity + p_pArray->GrowableAmount,
+				p_pArray->pArray );
+
+			if( pTempArray == NULL )
+			{
+				LOG_Debug( "ARY_Append <WARN> Unable to allocate more memory "
+					"for array\n" );
+				return 1;
+			}
+
+			p_pArray->pArray = pTempArray;
+		}
+		else
+		{
+			LOG_Debug( "ARY_Append <ERROR> Cannot adjust array size\n" );
+			return 1;
+		}
+	}
+
+	memcpy( ( void * )ArrayAppend, p_pItem, p_pArray->ItemSize );
+	p_pArray->Count += p_pArray->ItemSize;
+
+	return 0;
+}
+
+int ARY_Prepend( PARRAY p_pArray, void *p_pItem )
+{
+	size_t ArrayEnd = ( size_t )p_pArray->pArray;
+	
+	if( p_pArray->Count > 0 )
+	{
+		ArrayEnd += ( p_pArray->Count );//- p_pArray->ItemSize );
+	}
+
+	if( p_pArray->Count == p_pArray->Capacity )
+	{
+		if( p_pArray->GrowableAmount > 0 )
+		{
+			void *pTempArray;
+
+			pTempArray = MEM_ReallocateFromBlock( p_pArray->pMemoryBlock,
+				p_pArray->Capacity + p_pArray->GrowableAmount,
+				p_pArray->pArray );
+
+			if( pTempArray == NULL )
+			{
+				LOG_Debug( "ARY_Prepend <WARN> Unable to allocate more memory "
+					"for array\n" );
+				return 1;
+			}
+
+			p_pArray->pArray = pTempArray;
+		}
+		else
+		{
+			LOG_Debug( "ARY_Prepend <ERROR> Cannot adjust array size\n" );
+			return 1;
+		}
+	}
+
+	/* Shift the memory upward */
+	while( ArrayEnd > ( size_t )p_pArray->pArray )
+	{
+		memcpy( ( void * )( ArrayEnd ),// + p_pArray->ItemSize ),
+			( void * )( ArrayEnd - p_pArray->ItemSize ), p_pArray->ItemSize );
+		ArrayEnd -= p_pArray->ItemSize;
+	}
+
+	memcpy( p_pArray->pArray, p_pItem, p_pArray->ItemSize );
+	p_pArray->Count += p_pArray->ItemSize;
+
+	return 0;
+}
+
+void *ARY_GetItem( PARRAY p_pArray, size_t p_Index )
+{
+	size_t Item = ( size_t )p_pArray->pArray + p_Index * p_pArray->ItemSize;
+
+	return ( void * )Item;
+}
+
+size_t ARY_GetCount( PARRAY p_pArray )
+{
+	return p_pArray->Count / p_pArray->ItemSize;
 }
 
