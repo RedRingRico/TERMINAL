@@ -324,10 +324,13 @@ void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
 {
 	MEMORY_BLOCK_HEADER *pHeader;
 	size_t DesiredSize;
+	size_t PointerSize;
 
 	pHeader = MEM_GetBlockHeader( p_pOriginalPointer );
 
-	if( p_NewSize < pHeader->Size )
+	PointerSize = pHeader->Size - pHeader->DataOffset;
+
+	if( p_NewSize < PointerSize )
 	{
 		/* Resize downward, join with the next chunk if possible */
 		if( pHeader->pNext->Flags & MEM_BLOCK_FREE )
@@ -402,7 +405,7 @@ void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
 		bool MemoryContiguous = false;
 		MEMORY_BLOCK_HEADER *pNextBlock = pHeader->pNext;
 
-		DesiredSize = p_NewSize - pHeader->Size;
+		DesiredSize = p_NewSize - PointerSize;
 		
 		while( pNextBlock != NULL )
 		{
@@ -487,6 +490,12 @@ void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
 
 			if( FreeTotalSize > FreeOffset )
 			{
+#if defined ( DEBUG )
+				/* The name can get overwritten by the new block's information 
+				 *if the next memory block is too close */
+				char Name[ 64 ];
+				memcpy( Name, pNextBlock->Name, sizeof( Name ) );
+#endif /* DEBUG */
 				MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
 					FreeTotalSize - FreeOffset );
 				pNewBlock->pNext = pNextBlock->pNext;
@@ -497,8 +506,7 @@ void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
 				{
 					if( pNextBlock != NULL )
 					{
-						memcpy( pNewBlock->Name, pNextBlock->Name,
-							sizeof( pNextBlock->pNext->Name ) );
+						memcpy( pNewBlock->Name, Name, sizeof( Name ) );
 					}
 					else
 					{
