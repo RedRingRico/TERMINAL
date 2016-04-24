@@ -12,10 +12,10 @@ static const Uint32 MAX_PACKETS_PER_UPDATE = 10;
 
 typedef enum 
 {
-	SERVERLIST_STATE_CONNECT,
+	SERVERLIST_STATE_CONNECTING,
 	SERVERLIST_STATE_GETSERVERLIST,
 	SERVERLIST_STATE_UPDATESERVERLIST,
-	SERVERLIST_STATE_DISCONNECT
+	SERVERLIST_STATE_DISCONNECTING
 }SERVERLIST_STATE;
 
 typedef struct _tagGAMESERVER
@@ -73,7 +73,7 @@ static int GLS_Initialise( void *p_pArgs )
 
 	LOG_Debug( "GLS_Initialise <INFO> Setting server state\n" );
 
-	GameListServerState.ServerListState = SERVERLIST_STATE_CONNECT;
+	GameListServerState.ServerListState = SERVERLIST_STATE_CONNECTING;
 
 	LOG_Debug( "GLS_Initialise <INFO> Initialising packet queue\n" );
 
@@ -95,7 +95,7 @@ static int GLS_Update( void *p_pArgs )
 	{
 		switch( GameListServerState.ServerListState )
 		{
-			case SERVERLIST_STATE_CONNECT:
+			case SERVERLIST_STATE_CONNECTING:
 			{
 				NETWORK_MESSAGE Message;
 
@@ -103,7 +103,7 @@ static int GLS_Update( void *p_pArgs )
 					MessageBufferLength,
 					GameListServerState.Base.pGameStateManager->MemoryBlocks.
 						pSystemMemory );
-				MSG_WriteUInt32( &Message, 256 );
+				MSG_WriteUInt32( &Message, PACKET_TYPE_LISTREQUEST );
 				MSG_WriteByte( &Message, strlen( "Rico" ) + 1 );
 				MSG_WriteString( &Message, "Rico", strlen( "Rico" ) + 1 );
 				NCL_SendMessage( &GameListServerState.NetworkClient,
@@ -115,7 +115,6 @@ static int GLS_Update( void *p_pArgs )
 				 * function */
 				GameListServerState.ServerListState =
 					SERVERLIST_STATE_GETSERVERLIST;
-				LOG_Debug( "CONNECTING TO GAME LIST SERVER..." );
 
 				break;
 			}
@@ -152,13 +151,45 @@ static int GLS_Render( void *p_pArgs )
 
 	if( GameListServerState.Base.Paused == false )
 	{
+		char InfoString[ 128 ] = { '\0' };
+
 		pGlyphSet = GSM_GetGlyphSet(
 			GameListServerState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
 
 		REN_Clear( );
 
+		switch( GameListServerState.ServerListState )
+		{
+			case SERVERLIST_STATE_CONNECTING:
+			{
+				sprintf( InfoString, "CONNECTING" );
+				break;
+			}
+			case SERVERLIST_STATE_GETSERVERLIST:
+			{
+				sprintf( InfoString, "GETTING SERVER LIST" );
+				break;
+			}
+			default:
+			{
+				LOG_Debug( "Unkown server list state\n" );
+				break;
+			}
+		}
+
+#if defined ( DEBUG )
+		{
+			char NetString[ 80 ];
+			sprintf( NetString, "Open interfaces: %d", NET_GetIfaceOpen( ) );
+			TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 0.0f, NetString );
+
+			sprintf( NetString, "Open devices: %d", NET_GetDevOpen( ) );
+			TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 20.0f, NetString );
+		}
+#endif /* DEBUG */
+
 		TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-			"GAME SERVER LIST STATE" );
+			InfoString );
 
 		TXT_MeasureString( pGlyphSet, "[B] back",
 			&TextLength );
@@ -241,7 +272,6 @@ static void GLS_ReadIncomingPackets( void )
 			&GameListServerState.NetworkClient.Socket, PacketMemory,
 			PacketSize, &NetworkPacket.Address );
 
-
 		if( ReadBytes == 0 )
 		{
 			/* Nothing to read */
@@ -249,7 +279,6 @@ static void GLS_ReadIncomingPackets( void )
 		}
 		else if( ReadBytes > 0 )
 		{
-			LOG_Debug( "Got packet!\n" );
 			MSG_CopyNetworkMessage( &NetworkPacket.Message, &NetworkMessage,
 				ReadBytes );
 			++ReceivedPackets;
@@ -301,6 +330,15 @@ static void GLS_ProcessPacket( PNETWORK_MESSAGE p_pMessage,
 
 	switch( PacketType )
 	{
+		case PACKET_TYPE_LISTRESPONSE:
+		{
+			/* Extract the list of servers */
+
+
+			/* Request the next batch */
+
+			break;
+		}
 		default:
 		{
 			LOG_Debug( "Unknown packet type received: 0x%08X\n", PacketType );
