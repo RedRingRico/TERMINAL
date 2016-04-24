@@ -158,8 +158,9 @@ MEMORY_BLOCK_HEADER *MEM_GetFreeBlock( MEMORY_BLOCK *p_pBlock,
 			{
 				MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
 					FreeSize );
-
-				pNewBlock->pNext = NULL;
+				
+				/* Verify the magic number is correct before doing this */
+				pNewBlock->pNext = pHeader->pNext;
 
 #if defined ( DEBUG )
 				if( ( pNewBlock->Name == NULL ) ||
@@ -341,6 +342,36 @@ void *MEM_ReallocateFromBlock( MEMORY_BLOCK *p_pBlock, size_t p_NewSize,
 		}
 		else
 		{
+			/* Reallocate and see if this chunk can be split */
+			MEMORY_BLOCK_HEADER *pNewBlock;
+			size_t NewSize = 0;
+			size_t FreeTotalSize = 0;
+			size_t FreeOffset = 0;
+
+			NewSize = MEM_GetBlockSize( pHeader, p_NewSize,
+				p_pBlock->Alignment, p_pBlock->StructAlignment );
+
+			pNewBlock = ( MEMORY_BLOCK_HEADER * )(
+				( ( Uint8 * )pHeader ) + NewSize );
+
+			FreeTotalSize = pHeader->Size - NewSize;
+			FreeOffset = MEM_CalculateDataOffset( pNewBlock,
+				p_pBlock->Alignment );
+
+			/* Split possible */
+			if( FreeTotalSize > FreeOffset )
+			{
+				MEM_CreateMemoryBlock( pNewBlock, true, FreeTotalSize,
+					FreeTotalSize - FreeOffset );
+				pNewBlock->pNext = pHeader->pNext;
+
+#if defined ( DEBUG )
+				strncpy( pNewBlock->Name, "RESIZED", strlen( "RESIZED" ) );
+#endif /* DEBUG */
+
+				MEM_CreateMemoryBlock( pHeader, false, NewSize, p_NewSize );
+				pHeader->pNext = pNewBlock;
+			}
 		}
 
 		return MEM_GetPointerFromBlock( pHeader );
