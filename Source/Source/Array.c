@@ -135,3 +135,13 @@ size_t ARY_GetCount( PARRAY p_pArray )
 	return p_pArray->Count / p_pArray->ItemSize;
 }
 
+bool ARY_IsFull( PARRAY p_pArray )
+{
+	return ( p_pArray->Count == p_pArray->Capacity ) ? true : false;
+}
+
+bool ARY_IsEmpty( PARRAY p_pArray )
+{
+	return ( p_pArray->Count == 0 ) ? true : false;
+}
+
