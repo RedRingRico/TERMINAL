@@ -76,7 +76,7 @@ int ARY_Prepend( PARRAY p_pArray, void *p_pItem )
 	/* Shift the memory upward */
 	while( ArrayEnd > ( size_t )p_pArray->pArray )
 	{
-		memcpy( ( void * )( ArrayEnd ),// + p_pArray->ItemSize ),
+		memcpy( ( void * )( ArrayEnd ),
 			( void * )( ArrayEnd - p_pArray->ItemSize ), p_pArray->ItemSize );
 		ArrayEnd -= p_pArray->ItemSize;
 	}
@@ -85,6 +85,11 @@ int ARY_Prepend( PARRAY p_pArray, void *p_pItem )
 	p_pArray->Count += p_pArray->ItemSize;
 
 	return 0;
+}
+
+void ARY_Clear( PARRAY p_pArray )
+{
+	p_pArray->Count = 0;
 }
 
 void *ARY_GetItem( PARRAY p_pArray, size_t p_Index )

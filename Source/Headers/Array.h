@@ -25,6 +25,9 @@ int ARY_Append( PARRAY p_pArray, void *p_pItem );
 int ARY_Prepend( PARRAY p_pArrah, void *p_pItem );
 int ARY_RemoveAt( PARRAY p_pArray, size_t p_Index );
 int ARY_RemoveAtUnordered( PARRAY p_pArray, size_t p_Index );
+int ARY_RemoveFirst( PARRAY p_pArray );
+int ARY_RemoveLast( PARRAY p_pArray );
+void ARY_Clear( PARRAY p_pArray );
 
 void *ARY_GetItem( PARRAY p_pArray, size_t p_Index );
 size_t ARY_GetCount( PARRAY p_pArray );
