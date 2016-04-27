@@ -56,6 +56,8 @@ typedef struct _tagGLS_GAMESTATE
 	Uint32				StateTimer;
 	Uint32				StateTimerStart;
 	Uint32				StateMessageTries;
+	size_t				SelectedServer;
+	size_t				ServerCount;
 }GLS_GAMESTATE,*PGLS_GAMESTATE;
 
 static GLS_GAMESTATE GameListServerState;
@@ -107,6 +109,7 @@ static int GLS_Initialise( void *p_pArgs )
 
 	GameListServerState.StateMessageTries = 1UL;
 	GameListServerState.StateTimer = 0UL;
+	GameListServerState.SelectedServer = 0;
 	GameListServerState.StateTimerStart = syTmrGetCount( );
 
 	return 0;
@@ -134,8 +137,8 @@ static int GLS_Update( void *p_pArgs )
 
 					MSG_CreateNetworkMessage( &Message, MessageBuffer,
 						MessageBufferLength,
-						GameListServerState.Base.pGameStateManager->MemoryBlocks.
-							pSystemMemory );
+						GameListServerState.Base.pGameStateManager->
+							MemoryBlocks.pSystemMemory );
 
 					MSG_WriteUInt32( &Message, PACKET_TYPE_LISTREQUEST );
 					MSG_WriteInt32( &Message, 0 );
@@ -145,6 +148,8 @@ static int GLS_Update( void *p_pArgs )
 						&Message );
 
 					MSG_DestroyNetworkMessage( &Message );
+
+					GameListServerState.StateTimerStart = syTmrGetCount( );
 
 					++GameListServerState.StateMessageTries;
 				}
@@ -164,6 +169,57 @@ static int GLS_Update( void *p_pArgs )
 			}
 			case SERVERLIST_STATE_DISPLAYSERVERLIST:
 			{
+				if( g_Peripherals[ 0 ].press & PDD_DGT_KU )
+				{
+					if( GameListServerState.ServerCount > 0 )
+					{
+						if( GameListServerState.SelectedServer == 0 )
+						{
+							GameListServerState.SelectedServer =
+								GameListServerState.ServerCount - 1;
+						}
+						else
+						{
+							--GameListServerState.SelectedServer;
+						}
+					}
+				}
+
+				if( g_Peripherals[ 0 ].press & PDD_DGT_KD )
+				{
+					if( GameListServerState.ServerCount > 0 )
+					{
+						if( GameListServerState.SelectedServer == 
+							( GameListServerState.ServerCount - 1 ) )
+						{
+							GameListServerState.SelectedServer = 0;
+						}
+						else
+						{
+							++GameListServerState.SelectedServer;
+						}
+					}
+				}
+
+				if( g_Peripherals[ 0 ].press & PDD_DGT_TX )
+				{
+					NETWORK_MESSAGE Message;
+
+					MSG_CreateNetworkMessage( &Message, MessageBuffer,
+						MessageBufferLength,
+						GameListServerState.Base.pGameStateManager->
+							MemoryBlocks.pSystemMemory );
+
+					MSG_WriteUInt32( &Message, PACKET_TYPE_LISTREQUEST );
+					MSG_WriteInt32( &Message, 0 );
+					MSG_WriteUInt16( &Message, 0 );
+
+					NCL_SendMessage( &GameListServerState.NetworkClient,
+						&Message );
+
+					MSG_DestroyNetworkMessage( &Message );
+				}
+
 				break;
 			}
 			default:
@@ -206,12 +262,28 @@ static int GLS_Render( void *p_pArgs )
 		{
 			case SERVERLIST_STATE_CONNECTING:
 			{
-				sprintf( InfoString, "CONNECTING" );
+				sprintf( InfoString, "CONNECTING [ATTEMPT #%lu]",
+					GameListServerState.StateMessageTries );
+
+				TXT_MeasureString( pGlyphSet, "[B] back", &TextLength );
+				TXT_RenderString( pGlyphSet, &TextColour,
+					640.0f - 64.0f - TextLength,
+					480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
+					"[B] back" );
+
 				break;
 			}
 			case SERVERLIST_STATE_GETSERVERLIST:
 			{
 				sprintf( InfoString, "GETTING SERVER LIST" );
+
+				TXT_MeasureString( pGlyphSet, "[B] back",
+					&TextLength );
+				TXT_RenderString( pGlyphSet, &TextColour,
+					640.0f - 64.0f - TextLength,
+					480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
+					"[B] back" );
+
 				break;
 			}
 			case SERVERLIST_STATE_DISPLAYSERVERLIST:
@@ -230,6 +302,15 @@ static int GLS_Render( void *p_pArgs )
 					PGAMESERVER GameServer;
 					struct in_addr Address;
 
+					if( GameListServerState.SelectedServer == Index )
+					{
+						TextColour.dwPacked = 0xFF00FF00;
+					}
+					else
+					{
+						TextColour.dwPacked = 0xFFFFFFFF;
+					}
+
 					GameServer = ARY_GetItem( &GameListServerState.Servers,
 						Index );
 
@@ -238,10 +319,20 @@ static int GLS_Render( void *p_pArgs )
 					sprintf( IPPort, "%s:%u", inet_ntoa( Address ),
 						ntohs( GameServer->Port ) );
 
-					TXT_RenderString( pGlyphSet, &TextColour, 64.0f,
+					TXT_RenderString( pGlyphSet, &TextColour, 32.0f,
 						96.0f + ( ( float )pGlyphSet->LineHeight * Index ),
 						IPPort );
 				}
+
+				TextColour.dwPacked = 0xFFFFFFFF;
+
+				TXT_MeasureString( pGlyphSet,
+					"[X] update    [Y] filter    [A] join    [B] back",
+					&TextLength );
+				TXT_RenderString( pGlyphSet, &TextColour,
+					320.0f - ( TextLength * 0.5f ),
+					480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
+					"[X] update    [Y] filter    [A] join    [B] back" );
 
 				break;
 			}
@@ -265,12 +356,6 @@ static int GLS_Render( void *p_pArgs )
 
 		TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
 			InfoString );
-
-		TXT_MeasureString( pGlyphSet, "[B] back",
-			&TextLength );
-		TXT_RenderString( pGlyphSet, &TextColour, 640.0f - 64.0f - TextLength,
-			480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
-			"[B] back" );
 
 		REN_SwapBuffers( );
 	}
@@ -418,6 +503,8 @@ static void GLS_ProcessPacket( PNETWORK_MESSAGE p_pMessage,
 						GameServerPacket.Port == 0xFFFF )
 					{
 						ARY_Clear( &GameListServerState.Servers );
+						GameListServerState.ServerCount = 0;
+
 						continue;
 					}
 
@@ -432,6 +519,9 @@ static void GLS_ProcessPacket( PNETWORK_MESSAGE p_pMessage,
 						SERVERLIST_STATE_DISPLAYSERVERLIST;
 				}
 			}
+
+			GameListServerState.ServerCount =
+				ARY_GetCount( &GameListServerState.Servers );
 
 			break;
 		}
