@@ -11,9 +11,10 @@
 #include <ngeth.h>
 #include <ngmdm.h>
 #include <Nt_utl.h>
+#include <Array.h>
 
 #define NET_MAX_BUFFERS		100			/* Message buffers */
-#define NET_MAX_STACK_MEM	400000	/* 400KiB static memory */
+#define NET_MAX_STACK_MEM	400000		/* 400KiB static memory */
 #define NET_MAX_SOCKETS		10			/* Maximum number of sockets open */
 #define NET_MAX_DEVCBS		2			/* Maximum simultaneous device control
 										 * blocks */
@@ -57,6 +58,10 @@ static char NET_UserInit[ NET_MAX_USER_INIT_STR ];
 static char NET_Dial[ NET_MAX_DIAL_STR ];
 /* DNS server addresses */
 static struct in_addr NET_DNSAddress[ 2 ];
+/* Answer from polling */
+static ngADnsAnswer NET_DNSAnswer;
+/* The array of DNS requests */
+static ARRAY NET_DNSRequests;
 
 static bool NET_Initialised = false;
 
@@ -187,7 +192,7 @@ static NGcfgent NET_EthernetStack[ ] =
 	NG_CFG_END
 };
 
-int NET_Initialise( void )
+int NET_Initialise( PNETWORK_CONFIGURATION p_pNetworkConfiguration )
 {
 	/* For now, just look for the standard modem, later this will also include
 	 * the LAN/BBA */
@@ -309,6 +314,9 @@ int NET_Initialise( void )
 	/* Initialise the asynchronous DNS work area */
 	ngADnsInit( 8, ( void * )&NET_DNSWorkArea );
 
+	ARY_Initialise( &NET_DNSRequests, p_pNetworkConfiguration->pMemoryBlock, 8,
+		sizeof( PDNS_REQUEST ), 0, "DNS Request Array" );
+
 	LOG_Debug( "Initialsed NexGen: %s", ngGetVersionString( ) );
 
 	ngYield( );
@@ -341,6 +349,8 @@ void NET_Terminate( void )
 			ntInfExit( );
 			ngExit( 0 );
 		}
+
+		ARY_Terminate( &NET_DNSRequests );
 	}
 }
 
@@ -454,6 +464,8 @@ void NET_Update( void )
 				NET_DeviceType = NET_DEVICE_TYPE_LAN_UNKNOWN;
 			}
 		}
+
+		NET_DNSPoll( );
 	}
 	else if( NET_DeviceHardware == NET_DEVICE_HARDWARE_MODEM )
 	{
@@ -596,6 +608,7 @@ void NET_Update( void )
 			case NET_STATUS_CONNECTED:
 			{
 				NET_Status = NET_STATUS_CONNECTED;
+
 				if( ngPppGetState( NET_pInterface ) == NG_PIFS_DEAD )
 				{
 					int Error;
@@ -609,7 +622,11 @@ void NET_Update( void )
 					}
 					--NET_IfaceOpen;
 					NET_Status = NET_STATUS_RESET;
+					break;
 				}
+
+				NET_DNSPoll( );
+
 				break;
 			}
 			case NET_STATUS_RESET:
@@ -670,7 +687,7 @@ int NET_ConnectToISP( void )
 
 	if( NET_DeviceHardware == NET_DEVICE_HARDWARE_MODEM )
 	{
-		char DialCmd[ 256 ];
+		char DialCmd[ NET_MAX_DIAL_STR ];
 		char User[ 49 ];
 		char Password[ 17 ];
 		char *pUser, *pPassword;
@@ -932,6 +949,82 @@ int NET_GetDevOpen( void )
 int NET_GetIfaceOpen( void )
 {
 	return NET_IfaceOpen;
+}
+
+int NET_DNSRequest( PDNS_REQUEST p_pQuery, const char *p_pDomain )
+{
+	if( strlen( p_pDomain ) > NG_DNS_NAME_MAX )
+	{
+		LOG_Debug( "NET_DNSRequest <ERROR> Could not add domain name: \"%s\" "
+			"Name is too long\n", p_pDomain );
+
+		return 1;
+	}
+
+	ngADnsGetTicket( &p_pQuery->Ticket, p_pDomain );
+
+	p_pQuery->Status = DNS_REQUEST_POLLING;
+	p_pQuery->IP = 0;
+
+#if defined ( DEBUG )
+	p_pQuery->IPAddress[ 0 ] = '\0';
+	strncpy( p_pQuery->Name, p_pDomain, NG_DNS_NAME_MAX );
+#endif /* DEBUG */
+
+	/* Add the query to the array */
+	ARY_Append( &NET_DNSRequests, &p_pQuery );
+
+	return 0;
+}
+
+void NET_DNSRemoveRequest( PDNS_REQUEST p_pQuery )
+{
+	/* Find the ticket in the array and remove it */
+	size_t Index, ArraySize = ARY_GetCount( &NET_DNSRequests );
+
+	for( Index = 0; Index < ArraySize; ++Index )
+	{
+		PDNS_REQUEST pRequest = ARY_GetItem( &NET_DNSRequests, Index );
+
+		if( pRequest->Ticket == p_pQuery->Ticket )
+		{
+			ARY_RemoveAtUnordered( &NET_DNSRequests, Index );
+			ngADnsReleaseTicket( &pRequest->Ticket );
+
+			break;
+		}
+	}
+}
+
+void NET_DNSPoll( void )
+{
+	int PollStatus = ngADnsPoll( &NET_DNSAnswer );
+
+	if( PollStatus != NG_EWOULDBLOCK )
+	{
+		/* Check which request succeeded */
+		size_t Index, ArraySize = ARY_GetCount( &NET_DNSRequests );
+
+		for( Index = 0; Index < ArraySize; ++Index )
+		{
+			if( PollStatus == NG_EOK )
+			{
+				size_t *pDNSRequestPointer = ARY_GetItem( &NET_DNSRequests,
+					Index );
+				PDNS_REQUEST pRequest =
+					( PDNS_REQUEST )( *pDNSRequestPointer );
+
+				if( NET_DNSAnswer.ticket == pRequest->Ticket )
+				{
+					pRequest->Status = DNS_REQUEST_RESOLVED;
+					ARY_RemoveAtUnordered( &NET_DNSRequests, Index );
+					ngADnsReleaseTicket( &pRequest->Ticket );
+
+					break;
+				}
+			}
+		}
+	}
 }
 
 /* Required for the debug version of NexGen */

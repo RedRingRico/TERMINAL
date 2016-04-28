@@ -2,7 +2,6 @@
 #define __TERMINAL_NETWORKING_H__
 
 #include <shinobi.h>
-
 #include <ngdc.h>
 #include <ngip/ethernet.h>
 #include <ngos.h>
@@ -12,6 +11,7 @@
 #include <ngappp.h>
 #include <ngadns.h>
 #include <ngeth.h>
+#include <Memory.h>
 
 typedef enum
 {
@@ -66,7 +66,12 @@ typedef enum
 	NET_DISCONNECT_STATUS_USER_DISCONNECTED
 }NET_DISCONNECT_STATUS;
 
-int NET_Initialise( void );
+typedef struct _tagNETWORK_CONFIGURATION
+{
+	PMEMORY_BLOCK	pMemoryBlock;
+}NETWORK_CONFIGURATION,*PNETWORK_CONFIGURATION;
+
+int NET_Initialise( PNETWORK_CONFIGURATION p_pNetworkConfiguration );
 void NET_Terminate( void );
 
 void NET_Update( void );
@@ -79,6 +84,29 @@ NET_DEVICE_TYPE NET_GetDeviceType( void );
 
 int NET_GetDevOpen( void );
 int NET_GetIfaceOpen( void );
+
+#define DNS_REQUEST_FAILED -1
+#define DNS_REQUEST_RESOLVED 0
+#define DNS_REQUEST_POLLING 1
+
+/* DNS query and resolution */
+typedef struct _tagDNS_REQUEST
+{
+#if defined ( DEBUG )
+	/* There is a 64-character limit on names */
+	char			Name[ NG_DNS_NAME_MAX + 1 ];
+	char			IPAddress[ 16 ];
+#endif /* DEBUG*/
+	ngADnsTicket	Ticket;
+	Sint32			Status;
+	Uint32			IP;
+}DNS_REQUEST,*PDNS_REQUEST;
+
+/* The DNS is set up with NET_Initialise, shut down with NET_Terminate */
+int NET_DNSRequest( PDNS_REQUEST p_pQuery, const char *p_pDomain );
+/* Remove should be called when the resolution succeeds */
+void NET_DNSRemoveRequest( PDNS_REQUEST p_pQuery );
+void NET_DNSPoll( void );
 
 #endif /* __TERMINAL_NETWORKING_H__ */
 
