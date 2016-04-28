@@ -87,6 +87,48 @@ int ARY_Prepend( PARRAY p_pArray, void *p_pItem )
 	return 0;
 }
 
+int ARY_RemoveAtUnordered( PARRAY p_pArray, size_t p_Index )
+{
+	/* Valid range? */
+	if( p_Index > ( p_pArray->Count / p_pArray->ItemSize ) )
+	{
+		LOG_Debug( "ARY_RemoveAtUnordered <ERROR> Index out of range, there "
+			"are %lu items in the array, requested item %lu\n",
+			p_pArray->Count / p_pArray->ItemSize, p_Index );
+
+		return 1;
+	}
+	/* Only item in the array? */
+	if( p_pArray->Count == p_pArray->ItemSize )
+	{
+		p_pArray->Count = 0;
+
+		return 0;
+	}
+	else
+	{
+		size_t LastItem;
+		size_t IndexExchange;
+
+		/* If it was the last item, decrement the count and move on */
+		if( ( p_Index * p_pArray->ItemSize ) == p_pArray->Count )
+		{
+			p_pArray->Count -= p_pArray->ItemSize;
+		}
+
+		/* Exchange the last element with the index */
+		LastItem = ( size_t )p_pArray->pArray +
+			( p_pArray->Count - p_pArray->ItemSize );
+		IndexExchange = ( size_t )p_pArray->pArray +
+			( p_Index * p_pArray->ItemSize );
+
+		memcpy( ( void * )IndexExchange, ( void * )LastItem,
+			p_pArray->ItemSize );
+	}
+
+	return 0;
+}
+
 void ARY_Clear( PARRAY p_pArray )
 {
 	p_pArray->Count = 0;
