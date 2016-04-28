@@ -20,7 +20,9 @@ static MPISP_GAMESTATE ISPConnectState;
 
 static int MPISP_Load( void *p_pArgs )
 {
-	if( NET_Initialise( ) != 0 )
+	if( NET_Initialise(
+		ISPConnectState.Base.pGameStateManager->MemoryBlocks.pSystemMemory ) !=
+		0 )
 	{
 		return 1;
 	}
