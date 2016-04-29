@@ -20,12 +20,17 @@ static MPISP_GAMESTATE ISPConnectState;
 
 static int MPISP_Load( void *p_pArgs )
 {
-	if( NET_Initialise(
-		ISPConnectState.Base.pGameStateManager->MemoryBlocks.pSystemMemory ) !=
-		0 )
+	NETWORK_CONFIGURATION NetConfig;
+
+	NetConfig.pMemoryBlock = 
+		ISPConnectState.Base.pGameStateManager->MemoryBlocks.pSystemMemory;
+
+	if( NET_Initialise( &NetConfig ) != 0 )
 	{
 		return 1;
 	}
+
+	LOG_Debug( "Load" );
 
 	return 0;
 }
@@ -271,6 +276,7 @@ static int MPISP_Terminate( void *p_pArgs )
 static int MPISP_Unload( void *p_pArgs )
 {
 	LOG_Debug( "MPISP_Unload <INFO> Terminating the network\n" );
+
 	NET_Terminate( );
 
 	return 0;
