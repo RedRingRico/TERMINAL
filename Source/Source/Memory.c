@@ -583,6 +583,21 @@ void MEM_ListMemoryBlocks( MEMORY_BLOCK *p_pBlock )
 
 		pBlock = pBlock->pNext;
 	}
+#elif defined ( DEVELOPMENT )
+	MEMORY_BLOCK_HEADER *pBlock = p_pBlock->pFirstBlock;
+
+	LOG_Debug( "Memory block dump" );
+	LOG_Debug( "\tFree: %ld", MEM_GetFreeBlockSize( p_pBlock ) );
+	LOG_Debug( "\tUsed: %ld", MEM_GetUsedBlockSize( p_pBlock ) );
+
+	while( pBlock )
+	{
+		LOG_Debug( "\t%s: %ld",
+			( pBlock->Flags & MEM_BLOCK_FREE ) ? "FREE" : "USED",
+			pBlock->Size );
+
+		pBlock = pBlock->pNext;
+	}
 #endif /* DEBUG */
 }
 
