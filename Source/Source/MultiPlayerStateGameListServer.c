@@ -14,6 +14,7 @@ static const size_t GAMESERVER_PACKET_SIZE = 6;
 
 typedef enum 
 {
+	SERVERLIST_STATE_RESOLVING_DOMAIN,
 	SERVERLIST_STATE_CONNECTING,
 	SERVERLIST_STATE_GETSERVERLIST,
 	SERVERLIST_STATE_DISPLAYSERVERLIST,
@@ -76,21 +77,19 @@ static int GLS_Load( void *p_pArgs )
 		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
 		100, sizeof( GAMESERVER ), 50, "Game Server Array" );
 
-	NET_DNSRequest( &GameListServerState.DNSRequest, "list.dreamcast.live" );
-
 	return 0;
 }
 
 static int GLS_Initialise( void *p_pArgs )
 {
-	static Uint8 MessageBuffer[ 1400 ];
+	/*static Uint8 MessageBuffer[ 1400 ];
 	static size_t MessageBufferLength = sizeof( MessageBuffer );
-	NETWORK_MESSAGE Message;
+	NETWORK_MESSAGE Message;*/
 
-	NCL_Initialise( &GameListServerState.NetworkClient, "192.168.2.116",
+	GameListServerState.ServerListState = SERVERLIST_STATE_RESOLVING_DOMAIN;
+
+	/*NCL_Initialise( &GameListServerState.NetworkClient, "192.168.2.116",
 		50001 );
-
-	GameListServerState.ServerListState = SERVERLIST_STATE_CONNECTING;
 
 	QUE_Initialise( &GameListServerState.PacketQueue,
 		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
@@ -106,13 +105,16 @@ static int GLS_Initialise( void *p_pArgs )
 	MSG_WriteUInt16( &Message, 0 );
 
 	NCL_SendMessage( &GameListServerState.NetworkClient,
-		&Message );
+		&Message );*/
 
-	MSG_DestroyNetworkMessage( &Message );
+	//MSG_DestroyNetworkMessage( &Message );
 
 	GameListServerState.StateMessageTries = 1UL;
 	GameListServerState.StateTimer = 0UL;
 	GameListServerState.SelectedServer = 0;
+
+	NET_DNSRequest( &GameListServerState.DNSRequest, "list.dreamcast.live" );
+
 	GameListServerState.StateTimerStart = syTmrGetCount( );
 
 	return 0;
@@ -127,6 +129,58 @@ static int GLS_Update( void *p_pArgs )
 	{
 		switch( GameListServerState.ServerListState )
 		{
+			case SERVERLIST_STATE_RESOLVING_DOMAIN:
+			{
+				switch( GameListServerState.DNSRequest.Status )
+				{
+					case DNS_REQUEST_POLLING:
+					{
+						break;
+					}
+					case DNS_REQUEST_RESOLVED:
+					{
+						NETWORK_MESSAGE Message;
+						struct in_addr Address;
+						Address.s_addr = GameListServerState.DNSRequest.IP;
+
+						NCL_Initialise( &GameListServerState.NetworkClient,
+							inet_ntoa( Address ), 50001 );
+
+						QUE_Initialise( &GameListServerState.PacketQueue,
+							GameListServerState.Base.pGameStateManager->
+								MemoryBlocks.pSystemMemory,
+							20, sizeof( PACKET ), 0, "Network Message Queue" );
+
+						MSG_CreateNetworkMessage( &Message, MessageBuffer,
+							MessageBufferLength,
+							GameListServerState.Base.pGameStateManager->
+								MemoryBlocks.pSystemMemory );
+
+						MSG_WriteUInt32( &Message, PACKET_TYPE_LISTREQUEST );
+						MSG_WriteInt32( &Message, 0 );
+						MSG_WriteUInt16( &Message, 0 );
+
+						NCL_SendMessage( &GameListServerState.NetworkClient,
+							&Message );
+
+						GameListServerState.ServerListState =
+							SERVERLIST_STATE_CONNECTING;
+
+						break;
+					}
+					case DNS_REQUEST_FAILED:
+					{
+						/* Could not resolve the domain name, tell the user,
+						 * allow for a retry */
+						break;
+					}
+					default:
+					{
+					}
+				}
+
+				break;
+			}
 			case SERVERLIST_STATE_CONNECTING:
 			{
 				GameListServerState.StateTimer =
@@ -227,7 +281,7 @@ static int GLS_Update( void *p_pArgs )
 			}
 			default:
 			{
-				LOG_Debug( "Unkown server list state\n" );
+				LOG_Debug( "Unknown server list state\n" );
 				break;
 			}
 		}
@@ -263,6 +317,45 @@ static int GLS_Render( void *p_pArgs )
 
 		switch( GameListServerState.ServerListState )
 		{
+			case SERVERLIST_STATE_RESOLVING_DOMAIN:
+			{
+#if defined ( DEBUG )
+				TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
+					240.0f + ( ( float )pGlyphSet->LineHeight ),
+					GameListServerState.DNSRequest.Domain );
+#endif /* ( DEBUG ) */
+
+				if( GameListServerState.DNSRequest.Status ==
+					DNS_REQUEST_POLLING )
+				{
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
+						"POLLING" );
+				}
+				else if( GameListServerState.DNSRequest.Status ==
+					DNS_REQUEST_RESOLVED )
+				{
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
+						"RESOLVED" );
+#if defined ( DEBUG )
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
+						240.0f + ( ( float )pGlyphSet->LineHeight * 2.0f ),
+						GameListServerState.DNSRequest.IPAddress );
+#endif /* DEBUG */
+				}
+				else if( GameListServerState.DNSRequest.Status ==
+					DNS_REQUEST_FAILED )
+				{
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
+						"FAILED" );
+				}
+				else
+				{
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
+						"UNKNONWN" );
+				}
+
+				break;
+			}
 			case SERVERLIST_STATE_CONNECTING:
 			{
 				sprintf( InfoString, "CONNECTING [ATTEMPT #%lu]",
@@ -337,46 +430,11 @@ static int GLS_Render( void *p_pArgs )
 					480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
 					"[X] update    [Y] filter    [A] join    [B] back" );
 
-#if defined ( DEBUG )
-				TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
-					240.0f + ( ( float )pGlyphSet->LineHeight ),
-					GameListServerState.DNSRequest.Domain );
-#endif /* ( DEBUG ) */
-
-				if( GameListServerState.DNSRequest.Status ==
-					DNS_REQUEST_POLLING )
-				{
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-						"POLLING" );
-				}
-				else if( GameListServerState.DNSRequest.Status ==
-					DNS_REQUEST_RESOLVED )
-				{
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-						"RESOLVED" );
-#if defined ( DEBUG )
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
-						240.0f + ( ( float )pGlyphSet->LineHeight * 2.0f ),
-						GameListServerState.DNSRequest.IPAddress );
-#endif /* DEBUG */
-				}
-				else if( GameListServerState.DNSRequest.Status ==
-					DNS_REQUEST_FAILED )
-				{
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-						"FAILED" );
-				}
-				else
-				{
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-						"UNKNONWN" );
-				}
-
 				break;
 			}
 			default:
 			{
-				LOG_Debug( "Unkown server list state\n" );
+				LOG_Debug( "Unknown server list state\n" );
 				break;
 			}
 		}
