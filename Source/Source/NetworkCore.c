@@ -968,7 +968,7 @@ int NET_DNSRequest( PDNS_REQUEST p_pQuery, const char *p_pDomain )
 
 #if defined ( DEBUG )
 	p_pQuery->IPAddress[ 0 ] = '\0';
-	strncpy( p_pQuery->Name, p_pDomain, NG_DNS_NAME_MAX );
+	strncpy( p_pQuery->Domain, p_pDomain, NG_DNS_NAME_MAX );
 #endif /* DEBUG */
 
 	/* Add the query to the array */
@@ -1016,9 +1016,37 @@ void NET_DNSPoll( void )
 
 				if( NET_DNSAnswer.ticket == pRequest->Ticket )
 				{
+					struct in_addr **ppAddrList;
 					pRequest->Status = DNS_REQUEST_RESOLVED;
 					ARY_RemoveAtUnordered( &NET_DNSRequests, Index );
 					ngADnsReleaseTicket( &pRequest->Ticket );
+
+					ppAddrList =
+						( struct in_addr ** )NET_DNSAnswer.addr->h_addr_list;
+
+#if defined ( DEBUG )
+					sprintf( pRequest->IPAddress, "%s",
+						inet_ntoa( *ppAddrList[ 0 ] ) );
+#endif /* DEBUG */
+
+					pRequest->IP = ( *ppAddrList[ 0 ] ).s_addr;
+
+					break;
+				}
+			}
+			else if( PollStatus == NG_ETIMEDOUT )
+			{
+				size_t *pDNSRequestPointer = ARY_GetItem( &NET_DNSRequests,
+					Index );
+				PDNS_REQUEST pRequest =
+					( PDNS_REQUEST )( *pDNSRequestPointer );
+
+				if( NET_DNSAnswer.ticket == pRequest->Ticket )
+				{
+					ARY_RemoveAtUnordered( &NET_DNSRequests, Index );
+					ngADnsReleaseTicket( &pRequest->Ticket );
+
+					pRequest->Status = DNS_REQUEST_FAILED;
 
 					break;
 				}

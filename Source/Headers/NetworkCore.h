@@ -94,12 +94,12 @@ typedef struct _tagDNS_REQUEST
 {
 #if defined ( DEBUG )
 	/* There is a 64-character limit on names */
-	char			Name[ NG_DNS_NAME_MAX + 1 ];
+	char			Domain[ NG_DNS_NAME_MAX + 1 ];
 	char			IPAddress[ 16 ];
 #endif /* DEBUG*/
 	ngADnsTicket	Ticket;
 	Sint32			Status;
-	Uint32			IP;
+	NGuint			IP;
 }DNS_REQUEST,*PDNS_REQUEST;
 
 /* The DNS is set up with NET_Initialise, shut down with NET_Terminate */
