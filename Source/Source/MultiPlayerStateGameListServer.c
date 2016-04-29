@@ -58,6 +58,7 @@ typedef struct _tagGLS_GAMESTATE
 	Uint32				StateMessageTries;
 	size_t				SelectedServer;
 	size_t				ServerCount;
+	DNS_REQUEST			DNSRequest;
 }GLS_GAMESTATE,*PGLS_GAMESTATE;
 
 static GLS_GAMESTATE GameListServerState;
@@ -74,6 +75,8 @@ static int GLS_Load( void *p_pArgs )
 	ARY_Initialise( &GameListServerState.Servers,
 		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
 		100, sizeof( GAMESERVER ), 50, "Game Server Array" );
+
+	NET_DNSRequest( &GameListServerState.DNSRequest, "list.dreamcast.live" );
 
 	return 0;
 }
@@ -333,6 +336,41 @@ static int GLS_Render( void *p_pArgs )
 					320.0f - ( TextLength * 0.5f ),
 					480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
 					"[X] update    [Y] filter    [A] join    [B] back" );
+
+#if defined ( DEBUG )
+				TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
+					240.0f + ( ( float )pGlyphSet->LineHeight ),
+					GameListServerState.DNSRequest.Domain );
+#endif /* ( DEBUG ) */
+
+				if( GameListServerState.DNSRequest.Status ==
+					DNS_REQUEST_POLLING )
+				{
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
+						"POLLING" );
+				}
+				else if( GameListServerState.DNSRequest.Status ==
+					DNS_REQUEST_RESOLVED )
+				{
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
+						"RESOLVED" );
+#if defined ( DEBUG )
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
+						240.0f + ( ( float )pGlyphSet->LineHeight * 2.0f ),
+						GameListServerState.DNSRequest.IPAddress );
+#endif /* DEBUG */
+				}
+				else if( GameListServerState.DNSRequest.Status ==
+					DNS_REQUEST_FAILED )
+				{
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
+						"FAILED" );
+				}
+				else
+				{
+					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
+						"UNKNONWN" );
+				}
 
 				break;
 			}
