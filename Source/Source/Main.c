@@ -28,6 +28,8 @@
 #include <MainMenuState.h>
 #include <MultiPlayerState.h>
 
+#include <Array.h>
+
 #include <FileSystem.h>
 
 #include <ac.h>
@@ -852,7 +854,6 @@ void main( void )
 
 	LOG_Debug( "Rebooting" );
 
-	NET_Terminate( );
 	AUD_Terminate( );
 	REN_Terminate( &Renderer );
 	LOG_Terminate( );
