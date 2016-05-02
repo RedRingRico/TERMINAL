@@ -82,39 +82,12 @@ static int GLS_Load( void *p_pArgs )
 
 static int GLS_Initialise( void *p_pArgs )
 {
-	/*static Uint8 MessageBuffer[ 1400 ];
-	static size_t MessageBufferLength = sizeof( MessageBuffer );
-	NETWORK_MESSAGE Message;*/
+	NET_DNSRequest( &GameListServerState.DNSRequest, "list.dreamcast.live" );
 
 	GameListServerState.ServerListState = SERVERLIST_STATE_RESOLVING_DOMAIN;
-
-	/*NCL_Initialise( &GameListServerState.NetworkClient, "192.168.2.116",
-		50001 );
-
-	QUE_Initialise( &GameListServerState.PacketQueue,
-		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
-		20, sizeof( PACKET ), 0, "Network Message Queue" );
-
-	MSG_CreateNetworkMessage( &Message, MessageBuffer,
-		MessageBufferLength,
-		GameListServerState.Base.pGameStateManager->MemoryBlocks.
-			pSystemMemory );
-
-	MSG_WriteUInt32( &Message, PACKET_TYPE_LISTREQUEST );
-	MSG_WriteInt32( &Message, 0 );
-	MSG_WriteUInt16( &Message, 0 );
-
-	NCL_SendMessage( &GameListServerState.NetworkClient,
-		&Message );*/
-
-	//MSG_DestroyNetworkMessage( &Message );
-
 	GameListServerState.StateMessageTries = 1UL;
 	GameListServerState.StateTimer = 0UL;
 	GameListServerState.SelectedServer = 0;
-
-	NET_DNSRequest( &GameListServerState.DNSRequest, "list.dreamcast.live" );
-
 	GameListServerState.StateTimerStart = syTmrGetCount( );
 
 	return 0;
