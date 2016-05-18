@@ -97,7 +97,7 @@ static int MPG_Render( void *p_pArgs )
 
 				Address.s_addr = MultiPlayerGameState.IP;
 
-				sprintf( IPPort, "Establishing connection to %s:%u ...",
+				sprintf( IPPort, "Establishing connection to %s:%u",
 					inet_ntoa( Address ), MultiPlayerGameState.Port );
 
 				TXT_MeasureString( pGlyphSet, IPPort, &TextLength );

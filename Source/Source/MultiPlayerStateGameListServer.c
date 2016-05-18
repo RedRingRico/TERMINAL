@@ -266,7 +266,7 @@ static int GLS_Update( void *p_pArgs )
 						GameListServerState.SelectedServer );
 
 					StateArgs.IP = pGameServer->IP;
-					StateArgs.Port = pGameServer->Port;
+					StateArgs.Port = ntohs( pGameServer->Port );
 
 					GSM_PushState( GameListServerState.Base.pGameStateManager,
 						GAME_STATE_MULTIPLAYER_GAME, &StateArgs, NULL );
