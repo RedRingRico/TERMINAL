@@ -406,6 +406,7 @@ void main( void )
 	MP_RegisterMainWithGameStateManager( &GameStateManager );
 	MP_RegisterISPConnectWithGameStateManager( &GameStateManager );
 	MP_RegisterGameListServerWithGameStateManager( &GameStateManager );
+	MP_RegisterMultiPlayerGameWithGameStateManager( &GameStateManager );
 
 	if( AVCable == SYE_CBL_PAL )
 	{

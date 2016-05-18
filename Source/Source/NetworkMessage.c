@@ -118,10 +118,11 @@ void MSG_WriteFloat( PNETWORK_MESSAGE p_pMessage, const float p_Float )
 	MSG_CopyToInternalBuffer( p_pMessage, &p_Float, SIZEOF_FLOAT );
 }
 
-void MSG_WriteString( PNETWORK_MESSAGE p_pMessage, const char *p_pString,
-	const Uint8 p_Length )
+void MSG_WriteString( PNETWORK_MESSAGE p_pMessage, const char *p_pString )
 {
-	MSG_Write( p_pMessage, p_pString, p_Length );
+	size_t StringLength = strlen( p_pString );
+	MSG_WriteByte( p_pMessage, StringLength );
+	MSG_Write( p_pMessage, p_pString, StringLength );
 }
 
 void MSG_Read( PNETWORK_MESSAGE p_pMessage, void *p_pBuffer,

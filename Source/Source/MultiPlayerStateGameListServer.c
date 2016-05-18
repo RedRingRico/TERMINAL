@@ -12,6 +12,12 @@ static const Uint32 GLS_MESSAGE_CONNECT = 0x000100;
 static const Uint32 MAX_PACKETS_PER_UPDATE = 10;
 static const size_t GAMESERVER_PACKET_SIZE = 6;
 
+/*#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+#define LIST_SERVER_DOMAIN "dev.list.dreamcast.live"
+#else*/
+#define LIST_SERVER_DOMAIN "list.dreamcast.live"
+/*#endif *//* DEBUG || DEVELOPMENT */
+
 typedef enum 
 {
 	SERVERLIST_STATE_RESOLVING_DOMAIN,
@@ -49,7 +55,7 @@ typedef struct _tagPACKET
 typedef struct _tagGLS_GAMESTATE
 {
 	GAMESTATE			Base;
-	NETWORK_CLIENT		NetworkClient;
+	NETWORK_CLIENT		Client;
 	ARRAY				Servers;
 	SERVERLIST_STATE	ServerListState;
 	QUEUE				PacketQueue;
@@ -82,7 +88,7 @@ static int GLS_Load( void *p_pArgs )
 
 static int GLS_Initialise( void *p_pArgs )
 {
-	NET_DNSRequest( &GameListServerState.DNSRequest, "list.dreamcast.live" );
+	NET_DNSRequest( &GameListServerState.DNSRequest, LIST_SERVER_DOMAIN );
 
 	GameListServerState.ServerListState = SERVERLIST_STATE_RESOLVING_DOMAIN;
 	GameListServerState.StateMessageTries = 1UL;
@@ -116,7 +122,7 @@ static int GLS_Update( void *p_pArgs )
 						struct in_addr Address;
 						Address.s_addr = GameListServerState.DNSRequest.IP;
 
-						NCL_Initialise( &GameListServerState.NetworkClient,
+						NCL_Initialise( &GameListServerState.Client,
 							inet_ntoa( Address ), 50001 );
 
 						QUE_Initialise( &GameListServerState.PacketQueue,
@@ -133,7 +139,7 @@ static int GLS_Update( void *p_pArgs )
 						MSG_WriteInt32( &Message, 0 );
 						MSG_WriteUInt16( &Message, 0 );
 
-						NCL_SendMessage( &GameListServerState.NetworkClient,
+						NCL_SendMessage( &GameListServerState.Client,
 							&Message );
 
 						GameListServerState.ServerListState =
@@ -174,7 +180,7 @@ static int GLS_Update( void *p_pArgs )
 					MSG_WriteInt32( &Message, 0 );
 					MSG_WriteUInt16( &Message, 0 );
 
-					NCL_SendMessage( &GameListServerState.NetworkClient,
+					NCL_SendMessage( &GameListServerState.Client,
 						&Message );
 
 					MSG_DestroyNetworkMessage( &Message );
@@ -244,10 +250,29 @@ static int GLS_Update( void *p_pArgs )
 					MSG_WriteInt32( &Message, 0 );
 					MSG_WriteUInt16( &Message, 0 );
 
-					NCL_SendMessage( &GameListServerState.NetworkClient,
+					NCL_SendMessage( &GameListServerState.Client,
 						&Message );
 
 					MSG_DestroyNetworkMessage( &Message );
+				}
+
+				if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
+				{
+					/* Push the multi player game state onto the stack */
+					MULTIPLAYER_GAME_ARGS StateArgs;
+
+					PGAMESERVER pGameServer = ARY_GetItem(
+						&GameListServerState.Servers,
+						GameListServerState.SelectedServer );
+
+					StateArgs.IP = pGameServer->IP;
+					StateArgs.Port = pGameServer->Port;
+
+					GSM_PushState( GameListServerState.Base.pGameStateManager,
+						GAME_STATE_MULTIPLAYER_GAME, &StateArgs, NULL );
+
+					GameListServerState.ServerListState =
+						SERVERLIST_STATE_CONNECTING;
 				}
 
 				break;
@@ -301,14 +326,12 @@ static int GLS_Render( void *p_pArgs )
 				if( GameListServerState.DNSRequest.Status ==
 					DNS_REQUEST_POLLING )
 				{
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-						"POLLING" );
+					sprintf( InfoString, "RESOLVING %s", LIST_SERVER_DOMAIN );
 				}
 				else if( GameListServerState.DNSRequest.Status ==
 					DNS_REQUEST_RESOLVED )
 				{
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-						"RESOLVED" );
+					sprintf( InfoString, "RESOLVED %s", LIST_SERVER_DOMAIN );
 #if defined ( DEBUG )
 					TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
 						240.0f + ( ( float )pGlyphSet->LineHeight * 2.0f ),
@@ -318,13 +341,13 @@ static int GLS_Render( void *p_pArgs )
 				else if( GameListServerState.DNSRequest.Status ==
 					DNS_REQUEST_FAILED )
 				{
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-						"FAILED" );
+					sprintf( InfoString, "FAILED TO RESOLVE %s",
+						LIST_SERVER_DOMAIN );
 				}
 				else
 				{
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-						"UNKNONWN" );
+					sprintf( InfoString, "UNKNOWN ERROR RESOLVING %s",
+						LIST_SERVER_DOMAIN );
 				}
 
 				break;
@@ -423,8 +446,9 @@ static int GLS_Render( void *p_pArgs )
 		}
 #endif /* DEBUG */
 
-		TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-			InfoString );
+		TXT_MeasureString( pGlyphSet, InfoString, &TextLength );
+		TXT_RenderString( pGlyphSet, &TextColour,
+			320.0f - ( TextLength * 0.5f ), 240.0f, InfoString );
 
 		REN_SwapBuffers( );
 	}
@@ -435,7 +459,7 @@ static int GLS_Render( void *p_pArgs )
 static int GLS_Terminate( void *p_pArgs )
 {
 	QUE_Terminate( &GameListServerState.PacketQueue );
-	NCL_Terminate( &GameListServerState.NetworkClient );
+	NCL_Terminate( &GameListServerState.Client );
 
 	return 0;
 }
@@ -486,7 +510,7 @@ static void GLS_ReadIncomingPackets( void )
 	while( ReceivedPackets < MAX_PACKETS_PER_UPDATE )
 	{
 		int ReadBytes = NET_SocketReceiveFrom(
-			&GameListServerState.NetworkClient.Socket, PacketMemory,
+			&GameListServerState.Client.Socket, PacketMemory,
 			PacketSize, &NetworkPacket.Address );
 
 		if( ReadBytes == 0 )
@@ -591,6 +615,9 @@ static void GLS_ProcessPacket( PNETWORK_MESSAGE p_pMessage,
 
 			GameListServerState.ServerCount =
 				ARY_GetCount( &GameListServerState.Servers );
+
+			/* Reset the connection attempt counter */
+			GameListServerState.StateMessageTries = 0;
 
 			break;
 		}

@@ -6,6 +6,8 @@
 
 #define PACKET_TYPE_LISTREQUEST 0x00000100
 #define PACKET_TYPE_LISTRESPONSE 0x00000101
+#define PACKET_TYPE_CLIENTJOIN 0x00011000
+#define PACKET_TYPE_CLIENTWELCOME 0x00010110;
 
 #define NETWORK_MESSAGE_FLAG_OVERFLOW			1
 #define NETWORK_MESSAGE_FLAG_INTERNAL_BUFFER	2
@@ -44,8 +46,7 @@ void MSG_WriteUInt16( PNETWORK_MESSAGE p_pMessage, const Uint16 p_UInt16 );
 void MSG_WriteInt32( PNETWORK_MESSAGE p_pMessage, const Sint32 p_Int32 );
 void MSG_WriteUInt32( PNETWORK_MESSAGE p_pMessage, const Uint32 p_UInt32 );
 void MSG_WriteFloat( PNETWORK_MESSAGE p_pMessage, const float p_Float );
-void MSG_WriteString( PNETWORK_MESSAGE p_pMessage, const char *p_pString,
-	const Uint8 p_Length );
+void MSG_WriteString( PNETWORK_MESSAGE p_pMessage, const char *p_pString );
 
 void MSG_Read( PNETWORK_MESSAGE p_pMessage, void *p_pBuffer,
 	const size_t p_Length );
