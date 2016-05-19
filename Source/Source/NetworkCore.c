@@ -349,9 +349,9 @@ void NET_Terminate( void )
 			ntInfExit( );
 			ngExit( 0 );
 		}
-
-		ARY_Terminate( &NET_DNSRequests );
 	}
+
+	ARY_Terminate( &NET_DNSRequests );
 }
 
 int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
