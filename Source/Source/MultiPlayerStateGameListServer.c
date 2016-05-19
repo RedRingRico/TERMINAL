@@ -536,29 +536,22 @@ static void GLS_ReadIncomingPackets( void )
 
 static void GLS_ProcessQueuedPackets( void )
 {
-	/* Ugly code ahoy! */
-	PPACKET pOriginalPacket;
-	PPACKET pNextPacket = MEM_AllocateFromBlock(
-		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
-		sizeof( PACKET ), "Temporary packet" );
-	pOriginalPacket = pNextPacket;
-
 	while( QUE_IsEmpty( &GameListServerState.PacketQueue ) == false )
 	{
+		PPACKET pPacket;
+
 		LOG_Debug( "Processing packet\n" );
 		/* This will be used for testing with different latencies, though it's
 		 * not yet enabled, this is a reminder */
 
-		pNextPacket = QUE_GetFront( &GameListServerState.PacketQueue );
-		GLS_ProcessPacket( &pNextPacket->Message, &pNextPacket->Address );
+		pPacket = QUE_GetFront( &GameListServerState.PacketQueue );
+		GLS_ProcessPacket( &pPacket->Message, &pPacket->Address );
+
 		/* Free up the memory used by the packet */
-		MSG_DestroyNetworkMessage( &pNextPacket->Message );
+		MSG_DestroyNetworkMessage( &pPacket->Message );
+
 		QUE_Dequeue( &GameListServerState.PacketQueue, NULL );
 	}
-
-	MEM_FreeFromBlock( 
-		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
-		pOriginalPacket );
 }
 
 static void GLS_UpdateBytesSentLastFrame( void )
