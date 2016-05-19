@@ -135,6 +135,16 @@ int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
 	p_pGameStateManager->pTopGameState = STK_GetTopItem(
 		&p_pGameStateManager->GameStateStack );
 
+	/*MEM_ListMemoryBlocks(
+		p_pGameStateManager->MemoryBlocks.pSystemMemory );*/
+	/* Seems like the best time to do garbage collection */
+	MEM_GarbageCollectMemoryBlock(
+		p_pGameStateManager->MemoryBlocks.pSystemMemory );
+	MEM_GarbageCollectMemoryBlock(
+		p_pGameStateManager->MemoryBlocks.pGraphicsMemory );
+	MEM_GarbageCollectMemoryBlock(
+		p_pGameStateManager->MemoryBlocks.pAudioMemory );
+
 	p_pGameStateManager->pTopGameState->Load( p_pGameStateLoadArguments );
 	p_pGameStateManager->pTopGameState->Initialise(
 		p_pGameStateInitialiseArguments );
