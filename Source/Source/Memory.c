@@ -212,6 +212,13 @@ size_t MEM_GetBlockSize( MEMORY_BLOCK_HEADER *p_pHeader, size_t p_Size,
 	unsigned char p_Alignment, unsigned char p_StructAlign )
 {
 	size_t Start, End;
+
+	if( p_Size > p_pHeader->Size )
+	{
+		/* Unable to align the size requested, return the current block size */
+		return p_pHeader->Size;
+	}
+
 	Start = End = ( size_t )p_pHeader;
 
 	End += MEM_CalculateDataOffset( p_pHeader, p_Alignment );
@@ -586,13 +593,13 @@ void MEM_ListMemoryBlocks( MEMORY_BLOCK *p_pBlock )
 #elif defined ( DEVELOPMENT )
 	MEMORY_BLOCK_HEADER *pBlock = p_pBlock->pFirstBlock;
 
-	LOG_Debug( "Memory block dump" );
-	LOG_Debug( "\tFree: %ld", MEM_GetFreeBlockSize( p_pBlock ) );
-	LOG_Debug( "\tUsed: %ld", MEM_GetUsedBlockSize( p_pBlock ) );
+	LOG_Debug( "Memory block dump\n" );
+	LOG_Debug( "\tFree: %ld\n", MEM_GetFreeBlockSize( p_pBlock ) );
+	LOG_Debug( "\tUsed: %ld\n", MEM_GetUsedBlockSize( p_pBlock ) );
 
 	while( pBlock )
 	{
-		LOG_Debug( "\t%s: %ld",
+		LOG_Debug( "\t%s: %ld\n",
 			( pBlock->Flags & MEM_BLOCK_FREE ) ? "FREE" : "USED",
 			pBlock->Size );
 
