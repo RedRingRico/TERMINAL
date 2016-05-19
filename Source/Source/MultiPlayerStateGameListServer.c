@@ -83,6 +83,10 @@ static int GLS_Load( void *p_pArgs )
 		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
 		100, sizeof( GAMESERVER ), 50, "Game Server Array" );
 
+	QUE_Initialise( &GameListServerState.PacketQueue,
+		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
+		20, sizeof( PACKET ), 0, "Network Message Queue" );
+
 	return 0;
 }
 
@@ -124,11 +128,6 @@ static int GLS_Update( void *p_pArgs )
 
 						NCL_Initialise( &GameListServerState.Client,
 							inet_ntoa( Address ), 50001 );
-
-						QUE_Initialise( &GameListServerState.PacketQueue,
-							GameListServerState.Base.pGameStateManager->
-								MemoryBlocks.pSystemMemory,
-							20, sizeof( PACKET ), 0, "Network Message Queue" );
 
 						MSG_CreateNetworkMessage( &Message, MessageBuffer,
 							MessageBufferLength,
@@ -539,7 +538,9 @@ static void GLS_ProcessQueuedPackets( void )
 {
 	/* Ugly code ahoy! */
 	PPACKET pOriginalPacket;
-	PPACKET pNextPacket = syMalloc( sizeof( PACKET ) );
+	PPACKET pNextPacket = MEM_AllocateFromBlock(
+		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
+		sizeof( PACKET ), "Temporary packet" );
 	pOriginalPacket = pNextPacket;
 
 	while( QUE_IsEmpty( &GameListServerState.PacketQueue ) == false )
@@ -551,11 +552,13 @@ static void GLS_ProcessQueuedPackets( void )
 		pNextPacket = QUE_GetFront( &GameListServerState.PacketQueue );
 		GLS_ProcessPacket( &pNextPacket->Message, &pNextPacket->Address );
 		/* Free up the memory used by the packet */
-		MSG_DestroyNetworkMessage( pNextPacket );
+		MSG_DestroyNetworkMessage( &pNextPacket->Message );
 		QUE_Dequeue( &GameListServerState.PacketQueue, NULL );
 	}
 
-	syFree( pOriginalPacket );
+	MEM_FreeFromBlock( 
+		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
+		pOriginalPacket );
 }
 
 static void GLS_UpdateBytesSentLastFrame( void )
