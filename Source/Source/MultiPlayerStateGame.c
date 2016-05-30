@@ -97,6 +97,29 @@ static int MPG_Update( void *p_pArgs )
 			{
 				break;
 			}
+			case MULTIPLAYER_STATE_CONNECTED:
+			{
+				if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
+				{
+					Uint8 MessageBuffer[ 1400 ];
+					size_t MessageBufferLength = sizeof( MessageBuffer );
+					NETWORK_MESSAGE LeaveMessage;
+
+					MSG_CreateNetworkMessage( &LeaveMessage, MessageBuffer,
+						MessageBufferLength,
+						MultiPlayerGameState.Base.pGameStateManager->
+							MemoryBlocks.pSystemMemory );
+
+					MSG_WriteUInt32( &LeaveMessage, PACKET_TYPE_CLIENTLEAVE );
+					
+					NCL_SendMessage( &MultiPlayerGameState.Client,
+						&LeaveMessage );
+
+					MSG_DestroyNetworkMessage( &LeaveMessage );
+				}
+
+				break;
+			}
 		}
 
 		NET_Update( );
