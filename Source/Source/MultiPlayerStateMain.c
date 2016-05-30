@@ -20,7 +20,7 @@ static int MPM_Load( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	KMPACKEDARGB HighlightColour;
-	MENU_ITEM MenuItems[ 3 ];
+	MENU_ITEM MenuItems[ 4 ];
 	SELECTION_HIGHLIGHT_STRING SelectionHighlight;
 
 	TextColour.dwPacked = 0xFFFFFFFF;
@@ -32,8 +32,11 @@ static int MPM_Load( void *p_pArgs )
 	MenuItems[ 1 ].pName = "SERIAL [COMING 20XX]";
 	MenuItems[ 1 ].Function = NULL;
 
-	MenuItems[ 2 ].pName = "INTERNET";
-	MenuItems[ 2 ].Function = ConnectToISP;
+	MenuItems[ 2 ].pName = "LAN [COMING 20XX]";
+	MenuItems[ 2 ].Function = NULL;
+
+	MenuItems[ 3 ].pName = "INTERNET";
+	MenuItems[ 3 ].Function = ConnectToISP;
 
 	SelectionHighlight.Base.Type = SELECTION_HIGHLIGHT_TYPE_STRING;
 	SelectionHighlight.Base.HighlightColour = HighlightColour;
