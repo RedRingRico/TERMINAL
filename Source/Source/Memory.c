@@ -25,11 +25,10 @@ extern Uint8 *_BSG_END;
 int MEM_Initialise( PMEMORY_FREESTAT p_pMemoryFree )
 {
 	syMallocInit( MEM_HEAP_AREA, MEM_HEAP_SIZE );
+	syMallocStat( &p_pMemoryFree->Free, &p_pMemoryFree->BiggestFree );
 
 #if defined ( DEBUG )
 	{
-		syMallocStat( &p_pMemoryFree->Free, &p_pMemoryFree->BiggestFree );
-
 		LOG_Debug( "Memory initialised with a heap of %ld bytes",
 			p_pMemoryFree->Free );
 	}
