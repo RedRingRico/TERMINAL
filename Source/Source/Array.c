@@ -29,8 +29,11 @@ int ARY_Initialise( PARRAY p_pArray, PMEMORY_BLOCK p_pMemoryBlock,
 
 void ARY_Terminate( PARRAY p_pArray )
 {
-	MEM_FreeFromBlock( p_pArray->pMemoryBlock, p_pArray->pArray );
-	MEM_GarbageCollectMemoryBlock( p_pArray->pMemoryBlock );
+	if( p_pArray->pMemoryBlock != NULL )
+	{
+		MEM_FreeFromBlock( p_pArray->pMemoryBlock, p_pArray->pArray );
+		MEM_GarbageCollectMemoryBlock( p_pArray->pMemoryBlock );
+	}
 
 	p_pArray->Capacity = 0;
 	p_pArray->Count = 0;
