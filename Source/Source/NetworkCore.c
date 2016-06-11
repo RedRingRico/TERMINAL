@@ -24,14 +24,15 @@
 #define NET_MAX_MODEM_FLAGS_STR		13
 #define NET_MAX_USER_INIT_STR		51
 #define NET_MAX_DIAL_STR			137
+#define NET_VAN_JACOBSON_TABLE_SIZE	32
 
-static NGsock NET_SocketTable[ NET_MAX_SOCKETS ];
+static NGsock *NET_pSocketTable = NULL;
 /* Pointer to the device control block */
 NGdevcb *NET_DeviceControlBlock;
 /* Deviced control block strucutre */
-NGdevcb NET_DeviceIOControlBlock[ NET_MAX_DEVCBS ];
-/* TCP control blocks */
-static NET_TCPCB[ NET_MAX_SOCKETS ];
+static NGdevcb *NET_pDeviceIOControlBlock = NULL;
+/* TCP control block */
+static NGtcpcb *NET_pTCPControlBlock = NULL;
 /* This should probably be in some kind of network device struct */
 NGdev NET_Device;
 /* Network interface */
@@ -41,29 +42,31 @@ NGapppifnet NET_PPPIfnet;
 /* Ethernet interface */
 NGethifnet NET_EthernetIfnet;
 /* Device input buffer */
-static NGubyte NET_DeviceInputBuffer[ NET_MAX_DEVIO_SIZE ];
+static NGubyte *NET_pDeviceInputBuffer = NULL;
 /* Device output buffer */
-static NGubyte NET_DeviceOutputBuffer[ NET_MAX_DEVIO_SIZE ];
+static NGubyte *NET_pDeviceOutputBuffer = NULL;
 /* Van Jacobson compression table (must be 32 elements) */
-static NGpppvjent NET_VanJacobsonTable[ 32 ];
+static NGpppvjent *NET_pVanJacobsonTable = NULL;
 /* Adress Resolution Protocol Table */
-static NGarpent NET_ARPTable[ 10 ];
+static NGarpent *NET_pARPTable = NULL;/*[ 10 ];*/
+/* Modem script */
+static NGmdmscript *NET_pModemScript = NULL;
 /* AT command for the country code */
-static char NET_CountryInit[ NET_MAX_COUNTRY_INIT_STR ];
+static char *NET_pCountryInit = NULL;
 /* Modem initialisation AT command */
-static char NET_ModemFlags[ NET_MAX_MODEM_FLAGS_STR ];
+static char *NET_pModemFlags = NULL;
 /* User-defined AT string */
-static char NET_UserInit[ NET_MAX_USER_INIT_STR ];
+static char *NET_pUserInit = NULL;
 /* AT modem dial command string */
-static char NET_Dial[ NET_MAX_DIAL_STR ];
+static char *NET_pDial = NULL;
 /* DNS server addresses */
-static struct in_addr NET_DNSAddress[ 2 ];
+struct in_addr NET_DNSAddress[ 2 ];
 /* Answer from polling */
 static ngADnsAnswer NET_DNSAnswer;
 /* The array of DNS requests */
 static ARRAY NET_DNSRequests;
 /* Memory block for any of NexGen needs */
-static PMEMORY_BLOCK g_pNetMemoryBlock;
+static PMEMORY_BLOCK NET_pNetMemoryBlock = NULL;
 
 static bool NET_Initialised = false;
 
@@ -71,23 +74,6 @@ static int NET_DevOpen = 0;
 static int NET_IfaceOpen = 0;
 
 NGmdmstate NET_ModemState;
-static char NET_ModemSpeed[ 64 ] = "";
-
-static NGmdmscript NET_ModemDialScript[ ] =
-{
-	/* Action			Answer			Output	Goto	Return		Timeout */
-	{ "ATE0",			"OK",			NULL,	1,		NG_EOK,		1 },
-	{ NET_CountryInit,	"OK",			NULL,	2,		NG_EOK,		2 },
-	{ NET_ModemFlags,	"OK",			NULL,	3,		NG_EOK,		1 },
-	{ NET_UserInit,		"OK",			NULL,	4,		NG_EOK,		1 },
-	{ NET_Dial,			"CONNECT",		NULL,	-1,		0x0100,		45 },
-	{ NULL,				"NO CARRIER",	NULL,	-1,		0x000B,		0 },
-	{ NULL,				"NO ANSWER",	NULL,	-1,		0x000C,		0 },
-	{ NULL,				"NO DIALTONE",	NULL,	-1,		0x000D,		0 },
-	{ NULL,				"BUSY",			NULL,	-1,		0x000E,		0 },
-	{ NULL,				"ERROR",		NULL,	-1,		NG_EINVAL,	0 },
-	{ NULL,				NULL,			NULL,	-1,		NG_EOK,		0 }
-};
 
 static NET_STATUS NET_Status = NET_STATUS_NODEVICE;
 static NET_DEVICE_TYPE NET_DeviceType = NET_DEVICE_TYPE_NONE;
@@ -105,81 +91,144 @@ static void *NET_MemoryBufferAlloc( Uint32 p_Size, NGuint *p_pAddress );
 static void NET_MemoryBufferFree( NGuint *p_pAddress );
 void NET_ChangeDeviceParams( int p_Set, int p_Clear );
 
-static NGcfgent NET_InternalModemStack[ ] =
+void NET_SetConfigElement( NGcfgent *p_pConfig, size_t *p_pIndex,
+	u_int p_Option, NGcfgarg p_Arg )
 {
-	NG_BUFO_MAX,				NG_CFG_INT( NET_MAX_BUFFERS ),
-	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_MemoryBufferAlloc ),
-	NG_BUFO_FREE_F,				NG_CFG_FNC( NET_MemoryBufferFree ),
-	NG_BUFO_HEADER_SIZE,		NG_CFG_INT( sizeof( NGetherhdr ) ),
-	NG_BUFO_DATA_SIZE,			NG_CFG_INT( ETHERMTU ),
-	NG_SOCKO_MAX,				NG_CFG_INT( NET_MAX_SOCKETS ),
-	NG_SOCKO_TABLE,				NG_CFG_PTR( &NET_SocketTable ),
-	NG_RTO_CLOCK_FREQ,			NG_CFG_INT( NG_CLOCK_FREQ ),
-	NG_DEVCBO_TABLE,			NG_CFG_PTR( NET_DeviceIOControlBlock ),
-	NG_DEVCBO_MAX,				NG_CFG_INT( NET_MAX_DEVCBS ),
+	p_pConfig[ ( *p_pIndex ) ].cfg_option = p_Option;
+	p_pConfig[ ( *p_pIndex ) ].cfg_arg = p_Arg;
+
+	++( *p_pIndex );
+}
+
+static NGcfgent *NET_InitInternalModemStack( void )
+{
+	NGcfgent *pInternalModemStack = NULL;
+	Uint32 ElementCount =  40UL;
+	size_t Index = 0;
+
+#if defined( DEBUG )
+	ElementCount = 43UL;
+#endif /* DEBUG */
+
+	pInternalModemStack = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+		sizeof( NGcfgent ) * 43, "NET: Internal modem stack" );
+
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_BUFO_MAX, NET_MAX_BUFFERS );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_BUFO_ALLOC_F, NG_CFG_FNC( NET_MemoryBufferAlloc ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_BUFO_FREE_F, NG_CFG_FNC( NET_MemoryBufferFree ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_BUFO_HEADER_SIZE, NG_CFG_INT( sizeof( NGetherhdr ) ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_BUFO_DATA_SIZE, NG_CFG_INT( ETHERMTU ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_SOCKO_MAX, NG_CFG_INT( NET_MAX_SOCKETS ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_SOCKO_TABLE, NG_CFG_PTR( NET_pSocketTable ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_RTO_CLOCK_FREQ, NG_CFG_INT( NG_CLOCK_FREQ ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_DEVCBO_TABLE, NG_CFG_PTR( NET_pDeviceIOControlBlock ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_DEVCBO_MAX, NG_CFG_INT( NET_MAX_DEVCBS ) );
 #if defined ( DEBUG )
-	NG_DEBUGO_LEVEL,			NG_CFG_INT( 1 ),
-	NG_DEBUGO_MODULE,			NG_CFG_INT( NG_DBG_PPP |
-											NG_DBG_DRV |
-											NG_DBG_CORE |
-											NG_DBG_APP ),
+	NET_SetConfigElement( pInternalModemStack, &Index, NG_DEBUGO_LEVEL,
+		NG_CFG_INT( 1 ) );
+	NET_SetConfigElement( pInternalModemStack, &Index, NG_DEBUGO_MODULE,
+		NG_CFG_INT( NG_DBG_PPP | NG_DBG_DRV | NG_DBG_CORE | NG_DBG_APP ) );
 #endif /* DEBUG */
 	/* Protocol */
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_TCP ),
-	NG_TCPO_TCB_MAX,			NG_CFG_INT( NET_MAX_SOCKETS ),
-	NG_TCPO_TCB_TABLE,			NG_CFG_PTR( &NET_TCPCB ),
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_UDP ),
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_RAWIP ),
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_IP ),
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_PPP ),
-	/* Device */
-	NG_CFG_DEVADD,				NG_CFG_PTR( &NET_Device ),
-	NG_CFG_DRIVER,				NG_CFG_PTR( &ngSerDrv_Trisignal ),
-	NG_DEVO_BAUDS,				NG_CFG_LNG( 115200UL ),
-	NG_DEVO_CLKBASE,			NG_CFG_LNG( SH4_PPHI_FREQ ),
-	NG_DEVO_IBUF_PTR,			NG_CFG_PTR( &NET_DeviceInputBuffer ),
-	NG_DEVO_OBUF_PTR,			NG_CFG_PTR( &NET_DeviceOutputBuffer ),
-	NG_DEVO_IBUF_LEN,			NG_CFG_INT( sizeof( NET_DeviceInputBuffer ) ),
-	NG_DEVO_OBUF_LEN,			NG_CFG_INT( sizeof( NET_DeviceOutputBuffer ) ),
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_TCP ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_TCPO_TCB_MAX, NG_CFG_INT( NET_MAX_SOCKETS ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_TCPO_TCB_TABLE, NG_CFG_PTR( NET_pTCPControlBlock ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_UDP ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_RAWIP ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_IP ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_PPP ) );
+	/* Device */ 
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_DEVADD, NG_CFG_PTR( &NET_Device ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_DRIVER, NG_CFG_PTR( &ngSerDrv_Trisignal ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_DEVO_BAUDS, NG_CFG_LNG( 115200UL ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_DEVO_CLKBASE, NG_CFG_LNG( SH4_PPHI_FREQ ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_DEVO_IBUF_PTR, NG_CFG_PTR( NET_pDeviceInputBuffer ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_DEVO_OBUF_PTR, NG_CFG_PTR( NET_pDeviceOutputBuffer ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_DEVO_IBUF_LEN, NG_CFG_INT( NET_MAX_DEVIO_SIZE ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_DEVO_OBUF_LEN, NG_CFG_INT( NET_MAX_DEVIO_SIZE ) );
 	/* Interface */
-	NG_CFG_IFADDWAIT,			NG_CFG_PTR( &NET_PPPIfnet ),
-	NG_CFG_DRIVER,				NG_CFG_PTR( &ngNetDrv_AHDLC ),
-	NG_IFO_NAME,				NG_CFG_PTR( "Internal Modem" ),
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_IFADDWAIT, NG_CFG_PTR( &NET_PPPIfnet ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_DRIVER, NG_CFG_PTR( &ngNetDrv_AHDLC ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_IFO_NAME, NG_CFG_PTR( "Internal Modem" ) );
 #if defined ( DEBUG )
-	NG_IFO_FLAGS,				NG_CFG_INT( NG_IFF_DEBUG ),
+	NET_SetConfigElement( pInternalModemStack, &Index, NG_IFO_FLAGS,
+		NG_CFG_INT( NG_IFF_DEBUG ) );
 #endif /* DEBUG */
 	/* PPP */
-	NG_APPPIFO_DEVICE,			NG_CFG_PTR( &NET_Device ),
-	NG_PPPIFO_DEFAULT_ROUTE,	NG_CFG_TRUE,
-	NG_PPPIFO_LCP_ASYNC,		NG_CFG_FALSE,
-	NG_PPPIFO_LCP_PAP,			NG_CFG_TRUE,
-	NG_PPPIFO_LCP_CHAP,			NG_CFG_TRUE,
-	NG_PPPIFO_IPCP_VJCOMP,		NG_CFG_TRUE,
-	NG_PPPIFO_IPCP_VJTABLE,		NG_CFG_PTR( &NET_VanJacobsonTable ),
-	NG_PPPIFO_IPCP_VJMAX,		NG_CFG_INT( sizeof( NET_VanJacobsonTable ) /
-									sizeof( NET_VanJacobsonTable[ 0 ] ) ),
-	NG_PPPIFO_IPCP_DNS1,		NG_CFG_TRUE,
-	NG_PPPIFO_IPCP_DNS2,		NG_CFG_TRUE,
-	NG_PPPIFO_MODEM,			NG_CFG_TRUE,
-	NG_CFG_END
-};
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_APPPIFO_DEVICE, NG_CFG_PTR( &NET_Device ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_DEFAULT_ROUTE, NG_CFG_TRUE );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_LCP_ASYNC, NG_CFG_FALSE );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_LCP_PAP, NG_CFG_TRUE );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_LCP_CHAP, NG_CFG_TRUE );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_IPCP_VJCOMP, NG_CFG_TRUE );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_IPCP_VJTABLE, NG_CFG_PTR( NET_pVanJacobsonTable ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_IPCP_VJMAX, NG_CFG_INT( NET_VAN_JACOBSON_TABLE_SIZE ) );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_IPCP_DNS1, NG_CFG_TRUE );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_IPCP_DNS2, NG_CFG_TRUE );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_PPPIFO_MODEM, NG_CFG_TRUE );
+	NET_SetConfigElement( pInternalModemStack, &Index,
+		NG_CFG_END, 0 );
+
+	return pInternalModemStack;
+
+}
 
 static NGcfgent NET_EthernetStack[ ] =
 {
 	NG_BUFO_MAX,				NG_CFG_INT( NET_MAX_BUFFERS ),
+};/*
 	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_MemoryBufferAlloc ),
-	NG_BUFO_FREE_F,				NG_CFG_FNC( NET_MemoryBufferFree ),
+	NG_BUFO_FREE_F,				NG_CFG_FNC( NET_MemoryBufferFree ),*/
 	/* Add padding for DMA */
-	NG_BUFO_HEADER_SIZE,		NG_CFG_INT( sizeof( NGetherhdr ) + 30 ),
+	/*NG_BUFO_HEADER_SIZE,		NG_CFG_INT( sizeof( NGetherhdr ) + 30 ),
 	NG_BUFO_DATA_SIZE,			NG_CFG_INT( ETHERMTU + 31 ),
 	NG_BUFO_INPQ_MAX,			NG_CFG_INT( 8 ),
 	NG_SOCKO_MAX,				NG_CFG_INT( NET_MAX_SOCKETS ),
-	NG_SOCKO_TABLE,				NG_CFG_PTR( &NET_SocketTable ),
-	NG_RTO_CLOCK_FREQ,			NG_CFG_INT( NG_CLOCK_FREQ ),
+	NG_SOCKO_TABLE,				NG_CFG_PTR( &NET_pSocketTable ),
+	NG_RTO_CLOCK_FREQ,			NG_CFG_INT( NG_CLOCK_FREQ ),*/
 	/* Protocol */
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_TCP ),
+	/*NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_TCP ),
 	NG_TCPO_TCB_MAX,			NG_CFG_INT( NET_MAX_SOCKETS ),
-	NG_TCPO_TCB_TABLE,			NG_CFG_PTR( &NET_TCPCB ),
+	NG_TCPO_TCB_TABLE,			NG_CFG_PTR( &NET_pTCPControlBlock ),
 	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_UDP ),
 	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_RAWIP ),
 	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_IP ),
@@ -192,10 +241,10 @@ static NGcfgent NET_EthernetStack[ ] =
 	NG_CFG_IFADD,				NG_CFG_PTR( &NET_EthernetIfnet ),
 	NG_CFG_DRIVER,				NG_CFG_PTR( &ngNetDrv_DCLAN ),
 	NG_IFO_NAME,				NG_CFG_PTR( "Ethernet" ),
-	NG_ETHIFO_DEV1,				NG_CFG_INT( DCLAN_AUTO ),
+	NG_ETHIFO_DEV1,				NG_CFG_INT( DCLAN_AUTO ),*/
 	/* Need to add support for DHCP and PPPoE */
-	NG_CFG_END
-};
+	/*NG_CFG_END
+};*/
 
 int NET_Initialise( PNETWORK_CONFIGURATION p_pNetworkConfiguration )
 {
@@ -205,9 +254,78 @@ int NET_Initialise( PNETWORK_CONFIGURATION p_pNetworkConfiguration )
 	 * cable connecting it may not be present (BBA showed this behaviour),
 	 * therfore requiring polling the device rather than initialising it and
 	 * forgetting about it */
-	int ReturnStatus;
+	int ReturnStatus = 0;
+	NGcfgent *pInternalStack = NULL;
 
-	g_pNetMemoryBlock = p_pNetworkConfiguration->pMemoryBlock;
+	/* Make sure that the network is off to a sane start */
+	NET_Terminate( );
+
+	if( p_pNetworkConfiguration->pMemoryBlock == NULL )
+	{
+		LOG_Debug( "[NET_Initialise] <ERROR> Memory block is null\n" );
+
+		return -1;
+	}
+
+	/* Allocate all memory required by NexGen */
+	NET_pNetMemoryBlock = p_pNetworkConfiguration->pMemoryBlock;
+
+	if( ( NET_pSocketTable = MEM_AllocateFromBlock( NET_pNetMemoryBlock, 
+		sizeof( NGsock ) * NET_MAX_SOCKETS, "NET: Socket table" ) ) == NULL )
+	{
+		LOG_Debug( "[NET_Initialise] <ERROR> Failed to allocate memory for "
+			"the socket table\n" );
+
+		return -1;
+	}
+
+	if( ( NET_pDeviceIOControlBlock = MEM_AllocateFromBlock(
+		NET_pNetMemoryBlock, sizeof( NGdevcb ) * NET_MAX_DEVCBS,
+		"NET: Device I/O control block" ) ) == NULL )
+	{
+		LOG_Debug( "[NET_Initialise] <ERROR> Failed to allocate memory for "
+			"the device I/O control block\n" );
+
+		return -1;
+	}
+
+	if( ( NET_pDeviceInputBuffer = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+		NET_MAX_DEVIO_SIZE, "NET: Device input buffer" ) ) == NULL )
+	{
+		LOG_Debug( "[NET_Initialise] <ERROR> Failed to allocate memory for "
+			"the device input buffer\n" );
+
+		return -1;
+	}
+
+	if( ( NET_pDeviceOutputBuffer = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+		NET_MAX_DEVIO_SIZE, "NET: Device output buffer" ) ) == NULL )
+	{
+		LOG_Debug( "[NET_Initialise] <ERROR> Failed to allocate memory for "
+			"the device output buffer\n" );
+
+		return -1;
+	}
+
+	if( ( NET_pTCPControlBlock = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+		sizeof( NGtcpcb ) * NET_MAX_SOCKETS, "NET: TCP control block" ) ) ==
+		NULL )
+	{
+		LOG_Debug( "[NET_Initialise] <ERROR> Failed to allocate memory for "
+			"the TCP control block\n" );
+
+		return -1;
+	}
+
+	if( ( NET_pVanJacobsonTable = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+		sizeof( NGpppvjent ) * NET_VAN_JACOBSON_TABLE_SIZE,
+		"NET: Van Jacobson compression table" ) ) == NULL )
+	{
+		LOG_Debug( "[NET_Initialise] <ERROR> Failed to allocate memory for "
+			"the Van Jacobson compression table\n" );
+
+		return -1;
+	}
 	
 	/* In the future, probe for more devices if NG_EINIT_DEVOPEN is returned
 	 * until there are no more devices left to try, then return a no device
@@ -220,9 +338,14 @@ int NET_Initialise( PNETWORK_CONFIGURATION p_pNetworkConfiguration )
 		return -2;
 	}
 
+	pInternalStack = NET_InitInternalModemStack( );
+
 	/* First, acquire the network device, either an internal modem or BB/LAN
 	 * adapter */
-	ReturnStatus = ngInit( NET_InternalModemStack );
+	ReturnStatus = ngInit( pInternalStack );
+
+	/* Done with the temporary stack */
+	MEM_FreeFromBlock( NET_pNetMemoryBlock, pInternalStack );
 
 	if( ReturnStatus == NG_EINIT_NOERROR )
 	{
@@ -322,7 +445,7 @@ int NET_Initialise( PNETWORK_CONFIGURATION p_pNetworkConfiguration )
 	ngADnsInit( 8, ( void * )&NET_DNSWorkArea );
 
 	ARY_Initialise( &NET_DNSRequests, p_pNetworkConfiguration->pMemoryBlock, 8,
-		sizeof( PDNS_REQUEST ), 0, "DNS Request Array" );
+		sizeof( DNS_REQUEST ), 0, "DNS Request Array" );
 
 	LOG_Debug( "Initialsed NexGen: %s", ngGetVersionString( ) );
 
@@ -358,7 +481,80 @@ void NET_Terminate( void )
 		}
 	}
 
+	if( NET_pSocketTable != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pSocketTable );
+		NET_pSocketTable = NULL;
+	}
+
+	if( NET_pDeviceIOControlBlock != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pDeviceIOControlBlock );
+		NET_pDeviceIOControlBlock = NULL;
+	}
+
+	if( NET_pDeviceInputBuffer != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pDeviceInputBuffer );
+		NET_pDeviceInputBuffer = NULL;
+	}
+
+	if( NET_pDeviceOutputBuffer != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pDeviceOutputBuffer );
+		NET_pDeviceOutputBuffer = NULL;
+	}
+
+	if( NET_pTCPControlBlock != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pTCPControlBlock ); 
+		NET_pTCPControlBlock = NULL;
+	}
+
+	if( NET_pVanJacobsonTable != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pVanJacobsonTable );
+		NET_pVanJacobsonTable = NULL;
+	}
+
+	if( NET_pModemScript != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pModemScript );
+		NET_pModemScript = NULL;
+	}
+
+	if( NET_pCountryInit != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pCountryInit );
+		NET_pCountryInit = NULL;
+	}
+
+	if( NET_pModemFlags != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pModemFlags );
+		NET_pModemFlags = NULL;
+	}
+
+	if( NET_pUserInit != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pUserInit );
+		NET_pUserInit = NULL;
+	}
+
+	if( NET_pDial != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pDial );
+		NET_pDial = NULL;
+	}
+
 	ARY_Terminate( &NET_DNSRequests );
+
+	if( NET_pNetMemoryBlock != NULL)
+	{
+		MEM_GarbageCollectMemoryBlock( NET_pNetMemoryBlock );
+	}
+
+	LOG_Debug( "NET: TERMINATED\n" );
 }
 
 int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
@@ -494,48 +690,8 @@ void NET_Update( void )
 						int i = 1;
 						int Char;
 
-						/*strcpy( NET_ModemSpeed, NET_ModemState.mdst_buf );
-						i = strlen( NET_ModemSpeed );
-						pCharPtr = NET_ModemSpeed + i;
-
-						LOG_Debug( "Modem speed (before): %s",
-							NET_ModemSpeed );
-						LOG_Debug( "strlen: %d", i );
-
-						while( ++i < sizeof( NET_ModemSpeed ) )
-						{
-							Char = ngDevioReadByte( NET_DeviceControlBlock,
-								0 );
-
-							if( Char >= 0 )
-							{
-								if( Char < ' ' )
-								{
-									break;
-								}
-								else
-								{
-									*pCharPtr++ = Char;
-								}
-							}
-							else if( Char != NG_EWOULDBLOCK )
-							{
-								break;
-							}
-						}
-
-						*pCharPtr = '\0';
-						LOG_Debug( "Connection speed: %s",
-							NET_ModemSpeed );*/
-
 						ngDevioClose( NET_DeviceControlBlock );
 						--NET_DevOpen;
-
-						/*if( Char != NG_EWOULDBLOCK )
-						{
-							NET_Status = NET_STATUS_DISCONNECTED;
-							LOG_Debug( "Failed to gather the modem speed" );
-						}*/
 
 						ngIfOpen( NET_pInterface );
 						++NET_IfaceOpen;
@@ -679,6 +835,20 @@ void NET_Update( void )
 	}
 }
 
+void NET_AddModemCommand( NGmdmscript *p_pModemScript, size_t *p_pElement,
+	char *p_pAction, char *p_pAnswer, char *p_pOutput, int p_GoTo,
+	int p_Return, int p_TimeOut )
+{
+	p_pModemScript[ ( *p_pElement ) ].mdm_action = p_pAction;
+	p_pModemScript[ ( *p_pElement ) ].mdm_answer = p_pAnswer;
+	p_pModemScript[ ( *p_pElement ) ].mdm_output = p_pOutput;
+	p_pModemScript[ ( *p_pElement ) ].mdm_goto = p_GoTo;
+	p_pModemScript[ ( *p_pElement ) ].mdm_retval = p_Return;
+	p_pModemScript[ ( *p_pElement ) ].mdm_timeout = p_TimeOut;
+
+	++( *p_pElement );
+}
+
 int NET_ConnectToISP( void )
 {
 	Uint32 Flag;
@@ -700,18 +870,54 @@ int NET_ConnectToISP( void )
 		char *pUser, *pPassword;
 		struct in_addr IPAddress;
 		int OpenReturn;
+		size_t ModemIndex = 0;
+		size_t Index = 0;
+
+		NET_pModemScript = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+			sizeof( NGmdmscript ) * 11, "NET: Modem script" );
+		NET_pCountryInit = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+			NET_MAX_COUNTRY_INIT_STR, "NET: Modem country initialisation" );
+		NET_pModemFlags = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+			NET_MAX_MODEM_FLAGS_STR, "NET: Modem flags" );
+		NET_pUserInit = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+			NET_MAX_USER_INIT_STR, "NET: Modem user initialisation" );
+		NET_pDial = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+			NET_MAX_DIAL_STR, "NET: Modem dial" );
+
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, "ATE0", "OK",
+			NULL, 1, NG_EOK, 1 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NET_pCountryInit,
+			"OK", NULL, 2, NG_EOK, 2 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NET_pModemFlags,
+			"OK", NULL, 3, NG_EOK, 1 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NET_pUserInit,
+			"OK", NULL, 4, NG_EOK, 1 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NET_pDial,
+			"CONNECT", NULL, -1, 0x0100, 45 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NULL, "NO CARRIER",
+			NULL, -1, 0x000B, 0 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NULL, "NO ANSWER",
+			NULL, -1, 0x000C, 0 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NULL,
+			"NO DIALTOME", NULL, -1, 0x000D, 0 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NULL, "BUSY",
+			NULL, -1, 0x000E, 0 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NULL, "ERROR",
+			NULL, -1, NG_EINVAL, 0 );
+		NET_AddModemCommand( NET_pModemScript, &ModemIndex, NULL, NULL, NULL,
+			-1, NG_EOK, 0 );
 
 		LOG_Debug( "Starting the modem ISP connection" );
 
 		/* For now, only try the first number */
 		ntInfGetDialString( 0, 0, DialCmd, sizeof( DialCmd ) );
-		strncpy( NET_CountryInit, "AT", sizeof( NET_CountryInit ) );
-		ntInfBuildFlagString( NET_ModemFlags, sizeof( NET_ModemFlags ) );
+		strncpy( NET_pCountryInit, "AT", NET_MAX_COUNTRY_INIT_STR );
+		ntInfBuildFlagString( NET_pModemFlags, NET_MAX_MODEM_FLAGS_STR );
 #if defined ( DEBUG ) || defined( DEVELOPMENT )
-		strcat( NET_ModemFlags, "M1L3" );
+		strcat( NET_pModemFlags, "M1L3" );
 #endif /* DEBUG || DEVELOPMENT */
-		ntInfGetModemInit( 0, NET_UserInit, sizeof( NET_UserInit ) );
-		strncpy( NET_Dial, DialCmd, sizeof( DialCmd ) );
+		ntInfGetModemInit( 0, NET_pUserInit, NET_MAX_USER_INIT_STR );
+		strncpy( NET_pDial, DialCmd, NET_MAX_DIAL_STR );
 		ntInfGetLoginId( 0, User, sizeof( User ) );
 		ntInfGetLoginPasswd( 0, Password, sizeof( Password ) );
 		pUser = User;
@@ -761,17 +967,17 @@ int NET_ConnectToISP( void )
 			NET_ChangeDeviceParams( DeviceFlags, 0 );
 			
 			LOG_Debug( "Country initialisation" );
-			LOG_Debug( NET_CountryInit );
+			LOG_Debug( NET_pCountryInit );
 			LOG_Debug( "Modem flags" );
-			LOG_Debug( NET_ModemFlags );
+			LOG_Debug( NET_pModemFlags );
 			LOG_Debug( "User initialisation" );
-			LOG_Debug( NET_UserInit );
+			LOG_Debug( NET_pUserInit );
 			LOG_Debug( "Dial" );
-			LOG_Debug( NET_Dial );
+			LOG_Debug( NET_pDial );
 
 			LOG_Debug( "Attempting to start the modem initialisation" );
 			ngModemInit( &NET_ModemState, NET_DeviceControlBlock,
-				NET_ModemDialScript );
+				NET_pModemScript );
 			NET_Status = NET_STATUS_NEGOTIATING;
 			LOG_Debug( "Finished modem initialisation" );
 
@@ -910,8 +1116,8 @@ static void *NET_MemoryBufferAlloc( Uint32 p_Size, NGuint *p_pAddress )
 {
 	void *pMemoryBlock;
 
-	pMemoryBlock = MEM_AllocateFromBlock( g_pNetMemoryBlock, p_Size,
-		"Network: Stack memory" );
+	pMemoryBlock = MEM_AllocateFromBlock( NET_pNetMemoryBlock, p_Size,
+		"NET: Stack memory" );
 
 	if( pMemoryBlock == NULL )
 	{
@@ -931,7 +1137,7 @@ static void *NET_MemoryBufferAlloc( Uint32 p_Size, NGuint *p_pAddress )
 
 static void NET_MemoryBufferFree( NGuint *p_pAddress )
 {
-	MEM_FreeFromBlock( g_pNetMemoryBlock, p_pAddress );
+	MEM_FreeFromBlock( NET_pNetMemoryBlock, p_pAddress );
 }
 
 void NET_ChangeDeviceParams( int p_Set, int p_Clear )
