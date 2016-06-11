@@ -1,4 +1,5 @@
 #include <NetworkCore.h>
+#include <Memory.h>
 #include <Log.h>
 #include <ngdc.h>
 #include <ngip/ethernet.h>
@@ -14,7 +15,6 @@
 #include <Array.h>
 
 #define NET_MAX_BUFFERS		100			/* Message buffers */
-#define NET_MAX_STACK_MEM	400000		/* 400KiB static memory */
 #define NET_MAX_SOCKETS		10			/* Maximum number of sockets open */
 #define NET_MAX_DEVCBS		2			/* Maximum simultaneous device control
 										 * blocks */
@@ -62,6 +62,8 @@ static struct in_addr NET_DNSAddress[ 2 ];
 static ngADnsAnswer NET_DNSAnswer;
 /* The array of DNS requests */
 static ARRAY NET_DNSRequests;
+/* Memory block for any of NexGen needs */
+static PMEMORY_BLOCK g_pNetMemoryBlock;
 
 static bool NET_Initialised = false;
 
@@ -99,13 +101,15 @@ static Uint8 NET_DNSWorkArea[ ADNS_WORKSIZE( 8 ) ];
 static NetworkInfo3 NET_NetworkInfo;
 
 /* Consider making this use the memory manager? */
-static void *NET_StaticBufferAlloc( Uint32 p_Size, NGuint *p_pAddr );
+static void *NET_MemoryBufferAlloc( Uint32 p_Size, NGuint *p_pAddress );
+static void NET_MemoryBufferFree( NGuint *p_pAddress );
 void NET_ChangeDeviceParams( int p_Set, int p_Clear );
 
 static NGcfgent NET_InternalModemStack[ ] =
 {
 	NG_BUFO_MAX,				NG_CFG_INT( NET_MAX_BUFFERS ),
-	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_StaticBufferAlloc ),
+	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_MemoryBufferAlloc ),
+	NG_BUFO_FREE_F,				NG_CFG_FNC( NET_MemoryBufferFree ),
 	NG_BUFO_HEADER_SIZE,		NG_CFG_INT( sizeof( NGetherhdr ) ),
 	NG_BUFO_DATA_SIZE,			NG_CFG_INT( ETHERMTU ),
 	NG_SOCKO_MAX,				NG_CFG_INT( NET_MAX_SOCKETS ),
@@ -163,7 +167,8 @@ static NGcfgent NET_InternalModemStack[ ] =
 static NGcfgent NET_EthernetStack[ ] =
 {
 	NG_BUFO_MAX,				NG_CFG_INT( NET_MAX_BUFFERS ),
-	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_StaticBufferAlloc ),
+	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_MemoryBufferAlloc ),
+	NG_BUFO_FREE_F,				NG_CFG_FNC( NET_MemoryBufferFree ),
 	/* Add padding for DMA */
 	NG_BUFO_HEADER_SIZE,		NG_CFG_INT( sizeof( NGetherhdr ) + 30 ),
 	NG_BUFO_DATA_SIZE,			NG_CFG_INT( ETHERMTU + 31 ),
@@ -201,6 +206,8 @@ int NET_Initialise( PNETWORK_CONFIGURATION p_pNetworkConfiguration )
 	 * therfore requiring polling the device rather than initialising it and
 	 * forgetting about it */
 	int ReturnStatus;
+
+	g_pNetMemoryBlock = p_pNetworkConfiguration->pMemoryBlock;
 	
 	/* In the future, probe for more devices if NG_EINIT_DEVOPEN is returned
 	 * until there are no more devices left to try, then return a no device
@@ -899,20 +906,32 @@ int NET_DisconnectFromISP( void )
 	return 0;
 }
 
-static void *NET_StaticBufferAlloc( Uint32 p_Size, NGuint *p_pAddr )
+static void *NET_MemoryBufferAlloc( Uint32 p_Size, NGuint *p_pAddress )
 {
-	static unsigned char StaticBuffer[ NET_MAX_STACK_MEM ];
+	void *pMemoryBlock;
 
-	if( p_Size > NET_MAX_STACK_MEM )
+	pMemoryBlock = MEM_AllocateFromBlock( g_pNetMemoryBlock, p_Size,
+		"Network: Stack memory" );
+
+	if( pMemoryBlock == NULL )
 	{
-		LOG_Debug( "[NET_StaticBufferAlloc] <ERROR> Too much memory was "
-			"requested, maximum of %d, requested %d", NET_MAX_STACK_MEM,
-			p_Size );
+		LOG_Debug( "[NET_MemoryBufferAlloc] <ERROR> Unable to fulfil memory "
+			"allocation request for %lu bytes of memory\n", p_Size );
 
-		return NULL;
+		return pMemoryBlock;
 	}
 
-	return StaticBuffer;
+#if defined ( DEBUG )
+	LOG_Debug( "[NET_MemoryBufferAlloc] <INFO> Allocated %lu bytes of "
+		"memory\n", p_Size, pMemoryBlock );
+#endif /* DEBUG */
+
+	return pMemoryBlock;
+}
+
+static void NET_MemoryBufferFree( NGuint *p_pAddress )
+{
+	MEM_FreeFromBlock( g_pNetMemoryBlock, p_pAddress );
 }
 
 void NET_ChangeDeviceParams( int p_Set, int p_Clear )
