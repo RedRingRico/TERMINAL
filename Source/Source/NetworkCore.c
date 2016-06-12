@@ -25,6 +25,7 @@
 #define NET_MAX_USER_INIT_STR		51
 #define NET_MAX_DIAL_STR			137
 #define NET_VAN_JACOBSON_TABLE_SIZE	32
+#define NET_MAX_ARP					10
 
 static NGsock *NET_pSocketTable = NULL;
 /* Pointer to the device control block */
@@ -48,7 +49,7 @@ static NGubyte *NET_pDeviceOutputBuffer = NULL;
 /* Van Jacobson compression table (must be 32 elements) */
 static NGpppvjent *NET_pVanJacobsonTable = NULL;
 /* Adress Resolution Protocol Table */
-static NGarpent *NET_pARPTable = NULL;/*[ 10 ];*/
+static NGarpent *NET_pARPTable = NULL;
 /* Modem script */
 static NGmdmscript *NET_pModemScript = NULL;
 /* AT command for the country code */
@@ -78,8 +79,6 @@ NGmdmstate NET_ModemState;
 static NET_STATUS NET_Status = NET_STATUS_NODEVICE;
 static NET_DEVICE_TYPE NET_DeviceType = NET_DEVICE_TYPE_NONE;
 static NET_DEVICE_HARDWARE NET_DeviceHardware = NET_DEVICE_HARDWARE_NONE;
-/*static NET_INTERNAL_MODEM_RESET NET_InternalModemReset =
-	NET_INTERNAL_MODEM_RESET_INIT;*/
 
 static NGuint NET_DNS1 = 0, NET_DNS2 = 0;
 static Uint8 NET_DNSWorkArea[ ADNS_WORKSIZE( 8 ) ];
@@ -209,42 +208,70 @@ static NGcfgent *NET_InitInternalModemStack( void )
 		NG_CFG_END, 0 );
 
 	return pInternalModemStack;
-
 }
 
-static NGcfgent NET_EthernetStack[ ] =
+static NGcfgent *NET_InitEthernetStack( void )
 {
-	NG_BUFO_MAX,				NG_CFG_INT( NET_MAX_BUFFERS ),
-};/*
-	NG_BUFO_ALLOC_F,			NG_CFG_FNC( NET_MemoryBufferAlloc ),
-	NG_BUFO_FREE_F,				NG_CFG_FNC( NET_MemoryBufferFree ),*/
-	/* Add padding for DMA */
-	/*NG_BUFO_HEADER_SIZE,		NG_CFG_INT( sizeof( NGetherhdr ) + 30 ),
-	NG_BUFO_DATA_SIZE,			NG_CFG_INT( ETHERMTU + 31 ),
-	NG_BUFO_INPQ_MAX,			NG_CFG_INT( 8 ),
-	NG_SOCKO_MAX,				NG_CFG_INT( NET_MAX_SOCKETS ),
-	NG_SOCKO_TABLE,				NG_CFG_PTR( &NET_pSocketTable ),
-	NG_RTO_CLOCK_FREQ,			NG_CFG_INT( NG_CLOCK_FREQ ),*/
-	/* Protocol */
-	/*NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_TCP ),
-	NG_TCPO_TCB_MAX,			NG_CFG_INT( NET_MAX_SOCKETS ),
-	NG_TCPO_TCB_TABLE,			NG_CFG_PTR( &NET_pTCPControlBlock ),
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_UDP ),
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_RAWIP ),
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_IP ),
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_PPP ),
-	NG_CFG_PROTOADD,			NG_CFG_PTR( &ngProto_ARP ),
-	NG_ARPO_MAX,				NG_CFG_INT( sizeof( NET_ARPTable ) /
-									sizeof( NET_ARPTable[ 0 ] ) ),
-	NG_ARPO_TABLE,				NG_CFG_PTR( &NET_ARPTable ),
-	NG_ARPO_EXPIRE,				NG_CFG_INT( 600 ),
-	NG_CFG_IFADD,				NG_CFG_PTR( &NET_EthernetIfnet ),
-	NG_CFG_DRIVER,				NG_CFG_PTR( &ngNetDrv_DCLAN ),
-	NG_IFO_NAME,				NG_CFG_PTR( "Ethernet" ),
-	NG_ETHIFO_DEV1,				NG_CFG_INT( DCLAN_AUTO ),*/
-	/* Need to add support for DHCP and PPPoE */
-	/*NG_CFG_END
-};*/
+	NGcfgent *pEthernetStack = NULL;
+	Uint32 ElementCount =  24UL;
+	size_t Index = 0;
+
+	pEthernetStack = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+		sizeof( NGcfgent ) * 43, "NET: Internal modem stack" );
+
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_BUFO_MAX, NG_CFG_INT( NET_MAX_BUFFERS ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_BUFO_ALLOC_F, NG_CFG_FNC( NET_MemoryBufferAlloc ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_BUFO_FREE_F, NG_CFG_FNC( NET_MemoryBufferFree ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_BUFO_HEADER_SIZE, NG_CFG_INT( sizeof( NGetherhdr ) + 30 ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_BUFO_DATA_SIZE, ETHERMTU + 31 );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_BUFO_INPQ_MAX, NG_CFG_INT( 8 ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_SOCKO_MAX, NG_CFG_INT( NET_MAX_SOCKETS ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_SOCKO_TABLE, NG_CFG_PTR( NET_pSocketTable ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_RTO_CLOCK_FREQ, NG_CFG_INT( NG_CLOCK_FREQ ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_TCP ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_TCPO_TCB_MAX, NG_CFG_INT( NET_MAX_SOCKETS ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_TCPO_TCB_TABLE, NG_CFG_PTR( NET_pTCPControlBlock ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_UDP ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_RAWIP ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_IP ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_PPP ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_CFG_PROTOADD, NG_CFG_PTR( &ngProto_ARP ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_ARPO_MAX, NG_CFG_INT( NET_MAX_ARP ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_ARPO_TABLE, NG_CFG_PTR( NET_pARPTable ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_ARPO_EXPIRE, 600 );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_CFG_IFADD, NG_CFG_PTR( &NET_EthernetIfnet ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_CFG_DRIVER, NG_CFG_PTR( &ngNetDrv_DCLAN ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_IFO_NAME, NG_CFG_PTR( "Ethernet" ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_ETHIFO_DEV1, NG_CFG_INT( DCLAN_AUTO ) );
+	NET_SetConfigElement( pEthernetStack, &Index,
+		NG_CFG_END, 0 );
+
+	return pEthernetStack;
+}
 
 int NET_Initialise( PNETWORK_CONFIGURATION p_pNetworkConfiguration )
 {
@@ -372,7 +399,31 @@ int NET_Initialise( PNETWORK_CONFIGURATION p_pNetworkConfiguration )
 	else /* Okay, maybe there's a LAN/BBA? */
 	{
 		ngExit( 0 );
-		ReturnStatus = ngInit( NET_EthernetStack );
+
+		/* Deallocate the modem-specific memory */
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pVanJacobsonTable );
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pDeviceIOControlBlock );
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pDeviceInputBuffer );
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pDeviceOutputBuffer );
+		NET_pVanJacobsonTable = NULL;
+		NET_pDeviceIOControlBlock = NULL;
+		NET_pDeviceInputBuffer = NULL;
+		NET_pDeviceOutputBuffer = NULL;
+
+		MEM_GarbageCollectMemoryBlock( NET_pNetMemoryBlock );
+
+		/* Allocate the Ethernet-specific memory */
+		if( ( NET_pARPTable = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
+			sizeof( NGarpent ) * NET_MAX_ARP, "NET: ARP table" ) ) == NULL )
+		{
+			LOG_Debug( "[NET_Initialise] <ERROR> Failed to allocate memory "
+				"for the TCP ARP table\n" );
+
+			return -1;
+		}
+		pInternalStack = NET_InitEthernetStack( );
+		ReturnStatus = ngInit( pInternalStack );
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, pInternalStack );
 		NET_DeviceHardware = NET_DEVICE_HARDWARE_LAN;
 	}
 
@@ -547,14 +598,18 @@ void NET_Terminate( void )
 		NET_pDial = NULL;
 	}
 
+	if( NET_pARPTable != NULL )
+	{
+		MEM_FreeFromBlock( NET_pNetMemoryBlock, NET_pARPTable );
+		NET_pARPTable = NULL;
+	}
+
 	ARY_Terminate( &NET_DNSRequests );
 
 	if( NET_pNetMemoryBlock != NULL)
 	{
 		MEM_GarbageCollectMemoryBlock( NET_pNetMemoryBlock );
 	}
-
-	LOG_Debug( "NET: TERMINATED\n" );
 }
 
 int NET_ResetInternalModem( int p_DropTime, int p_TimeOut )
