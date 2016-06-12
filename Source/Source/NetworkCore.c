@@ -110,7 +110,7 @@ static NGcfgent *NET_InitInternalModemStack( void )
 #endif /* DEBUG */
 
 	pInternalModemStack = MEM_AllocateFromBlock( NET_pNetMemoryBlock,
-		sizeof( NGcfgent ) * 43, "NET: Internal modem stack" );
+		sizeof( NGcfgent ) * ElementCount, "NET: Internal modem stack" );
 
 	NET_SetConfigElement( pInternalModemStack, &Index,
 		NG_BUFO_MAX, NET_MAX_BUFFERS );
