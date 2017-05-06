@@ -102,6 +102,33 @@ void *STK_GetTopItem( PSTACK p_pStack )
 	return ( void * )ItemPosition;
 }
 
+void *STK_GetItem( PSTACK p_pStack, size_t p_Index )
+{
+	size_t ItemPosition;
+
+	if( p_pStack->Top == 0 )
+	{
+		LOG_Debug( "[STK_GetItem] <INFO> No items left on the stack\n" );
+
+		return NULL;
+	}
+
+	if( ( p_pStack->Top / p_pStack->ItemSize ) < p_Index )
+	{
+		LOG_Debug( "[STK_GetItem] <ERROR> Unable to satisfy the request for "
+			"item number %d\n", p_Index );
+
+		return NULL;
+	}
+
+	ItemPosition = ( ( size_t )p_pStack->pStack +
+		( p_pStack->ItemSize * p_Index ) );
+
+	/*LOG_Debug( "[STK_GetItem] <INFO> Position: 0x%08X\n", ItemPosition );*/
+
+	return ( void * )ItemPosition;
+}
+
 size_t STK_GetCount( PSTACK p_pStack )
 {
 	return p_pStack->Top / p_pStack->ItemSize;
