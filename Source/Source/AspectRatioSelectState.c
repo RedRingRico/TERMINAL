@@ -181,117 +181,114 @@ static int ARSS_Update( void *p_pArgs )
 {
 	static float Alpha = 1.0f, AlphaInc = 0.2f;
 
-	if( AspectRatioSelectState.Base.Paused == false )
+	if( AspectRatioSelectState.SelectAspect == true )
 	{
-		if( AspectRatioSelectState.SelectAspect == true )
+		if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
 		{
-			if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
-			{
-				AspectRatioSelectState.SelectAspect = false;
-			}
-
-			if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
-				( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
-			{
-				MATRIX4X4 ScreenMatrix;
-				MATRIX4X4 ProjectionMatrix;
-				MATRIX4X4 ViewMatrix;
-				VECTOR3 SquareVertsT[ 4 ];
-				int i;
-
-				Alpha = 1.0f;
-
-				AspectRatioSelectState.FourThree =
-					!AspectRatioSelectState.FourThree;
-
-				if( AspectRatioSelectState.FourThree == true )
-				{
-					AspectRatioSelectState.AspectRatio = 4.0f / 3.0f;
-				}
-				else
-				{
-					AspectRatioSelectState.AspectRatio = 16.0f / 9.0f;
-				}
-
-				AspectRatioSelectState.Camera.AspectRatio =
-					AspectRatioSelectState.AspectRatio;
-
-				CAM_CalculateProjectionMatrix( &ProjectionMatrix,
-					&AspectRatioSelectState.Camera );
-				CAM_CalculateScreenMatrix( &ScreenMatrix,
-					&AspectRatioSelectState.Camera );
-				CAM_CalculateViewMatrix( &ViewMatrix,
-					&AspectRatioSelectState.Camera );
-
-				MAT44_Multiply( &AspectRatioSelectState.ViewProjectionMatrix,
-					&AspectRatioSelectState.WorldMatrix, &ViewMatrix );
-				MAT44_Multiply( &AspectRatioSelectState.ViewProjectionMatrix,
-					&AspectRatioSelectState.ViewProjectionMatrix,
-					&ProjectionMatrix );
-				MAT44_Multiply( &AspectRatioSelectState.ViewProjectionMatrix,
-					&AspectRatioSelectState.ViewProjectionMatrix,
-					&ScreenMatrix );
-
-				MAT44_TransformVerticesRHW( ( float * )SquareVertsT,
-					( float * )AspectRatioSelectState.SquareVerts, 4,
-					sizeof( SquareVertsT[ 0 ] ),
-					sizeof( AspectRatioSelectState.SquareVerts[ 0 ] ),
-					&AspectRatioSelectState.ViewProjectionMatrix );
-
-				for( i = 0; i < 4; ++i )
-				{
-					AspectRatioSelectState.Square[ i ].ParamControlWord =
-						KM_VERTEXPARAM_NORMAL;
-					AspectRatioSelectState.Square[ i ].fX =
-						SquareVertsT[ i ].X;
-					AspectRatioSelectState.Square[ i ].fY =
-						SquareVertsT[ i ].Y;
-					AspectRatioSelectState.Square[ i ].u.fInvW =
-						SquareVertsT[ i ].Z;
-					AspectRatioSelectState.Square[ i ].fBaseAlpha = 0.7f;
-					AspectRatioSelectState.Square[ i ].fBaseRed =
-						83.0f / 255.0f;
-					AspectRatioSelectState.Square[ i ].fBaseGreen =
-						254.0f / 255.0f;
-					AspectRatioSelectState.Square[ i ].fBaseBlue = 1.0f;
-				}
-
-				AspectRatioSelectState.Square[ 3 ].ParamControlWord =
-					KM_VERTEXPARAM_ENDOFSTRIP;
-			}
-		}
-		else
-		{
-			MAINMENU MainMenuArgs;
-
-			MainMenuArgs.pGlyphSet = AspectRatioSelectState.pGlyphSet;
-
-			AspectRatioSelectState.Base.pGameStateManager->
-				GameOptions.AspectRatio = AspectRatioSelectState.AspectRatio;
-
-			/* Done, onto the main menu */
-			GSM_ChangeState( AspectRatioSelectState.Base.pGameStateManager,
-				GAME_STATE_MAINMENU, &MainMenuArgs, NULL );
+			AspectRatioSelectState.SelectAspect = false;
 		}
 
-		Alpha += AlphaInc;
+		if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
+			( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
+		{
+			MATRIX4X4 ScreenMatrix;
+			MATRIX4X4 ProjectionMatrix;
+			MATRIX4X4 ViewMatrix;
+			VECTOR3 SquareVertsT[ 4 ];
+			int i;
 
-		if( Alpha <= 0.0f )
-		{
-			AlphaInc = 0.02f;
-			Alpha = 0.0f;
-			AspectRatioSelectState.Alpha = 0;
-		}
-		else if( Alpha >= 1.0f )
-		{
-			AlphaInc = -0.02f;
 			Alpha = 1.0f;
-			AspectRatioSelectState.Alpha = 255;
+
+			AspectRatioSelectState.FourThree =
+				!AspectRatioSelectState.FourThree;
+
+			if( AspectRatioSelectState.FourThree == true )
+			{
+				AspectRatioSelectState.AspectRatio = 4.0f / 3.0f;
+			}
+			else
+			{
+				AspectRatioSelectState.AspectRatio = 16.0f / 9.0f;
+			}
+
+			AspectRatioSelectState.Camera.AspectRatio =
+				AspectRatioSelectState.AspectRatio;
+
+			CAM_CalculateProjectionMatrix( &ProjectionMatrix,
+				&AspectRatioSelectState.Camera );
+			CAM_CalculateScreenMatrix( &ScreenMatrix,
+				&AspectRatioSelectState.Camera );
+			CAM_CalculateViewMatrix( &ViewMatrix,
+				&AspectRatioSelectState.Camera );
+
+			MAT44_Multiply( &AspectRatioSelectState.ViewProjectionMatrix,
+				&AspectRatioSelectState.WorldMatrix, &ViewMatrix );
+			MAT44_Multiply( &AspectRatioSelectState.ViewProjectionMatrix,
+				&AspectRatioSelectState.ViewProjectionMatrix,
+				&ProjectionMatrix );
+			MAT44_Multiply( &AspectRatioSelectState.ViewProjectionMatrix,
+				&AspectRatioSelectState.ViewProjectionMatrix,
+				&ScreenMatrix );
+
+			MAT44_TransformVerticesRHW( ( float * )SquareVertsT,
+				( float * )AspectRatioSelectState.SquareVerts, 4,
+				sizeof( SquareVertsT[ 0 ] ),
+				sizeof( AspectRatioSelectState.SquareVerts[ 0 ] ),
+				&AspectRatioSelectState.ViewProjectionMatrix );
+
+			for( i = 0; i < 4; ++i )
+			{
+				AspectRatioSelectState.Square[ i ].ParamControlWord =
+					KM_VERTEXPARAM_NORMAL;
+				AspectRatioSelectState.Square[ i ].fX =
+					SquareVertsT[ i ].X;
+				AspectRatioSelectState.Square[ i ].fY =
+					SquareVertsT[ i ].Y;
+				AspectRatioSelectState.Square[ i ].u.fInvW =
+					SquareVertsT[ i ].Z;
+				AspectRatioSelectState.Square[ i ].fBaseAlpha = 0.7f;
+				AspectRatioSelectState.Square[ i ].fBaseRed =
+					83.0f / 255.0f;
+				AspectRatioSelectState.Square[ i ].fBaseGreen =
+					254.0f / 255.0f;
+				AspectRatioSelectState.Square[ i ].fBaseBlue = 1.0f;
+			}
+
+			AspectRatioSelectState.Square[ 3 ].ParamControlWord =
+				KM_VERTEXPARAM_ENDOFSTRIP;
 		}
-		else
-		{
-			AspectRatioSelectState.Alpha = ( KMBYTE )( Alpha * 255.0f );
-		}
+	}
+	else
+	{
+		MAINMENU MainMenuArgs;
+
+		MainMenuArgs.pGlyphSet = AspectRatioSelectState.pGlyphSet;
+
+		AspectRatioSelectState.Base.pGameStateManager->
+			GameOptions.AspectRatio = AspectRatioSelectState.AspectRatio;
+
+		/* Done, onto the main menu */
+		GSM_ChangeState( AspectRatioSelectState.Base.pGameStateManager,
+			GAME_STATE_MAINMENU, &MainMenuArgs, NULL );
+	}
+
+	Alpha += AlphaInc;
+
+	if( Alpha <= 0.0f )
+	{
+		AlphaInc = 0.02f;
+		Alpha = 0.0f;
+		AspectRatioSelectState.Alpha = 0;
+	}
+	else if( Alpha >= 1.0f )
+	{
+		AlphaInc = -0.02f;
+		Alpha = 1.0f;
+		AspectRatioSelectState.Alpha = 255;
+	}
+	else
+	{
+		AspectRatioSelectState.Alpha = ( KMBYTE )( Alpha * 255.0f );
 	}
 
 	return 0;
@@ -307,63 +304,56 @@ static int ARSS_Render( void *p_pArgs )
 	TextColour.byte.bBlue = 255;
 	TextColour.byte.bAlpha = 140;
 
-	if( AspectRatioSelectState.Base.Paused == false )
+	TXT_MeasureString( AspectRatioSelectState.pGlyphSet,
+		"Select aspect ratio", &TextLength );
+	TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
+		320.0f - ( TextLength / 2.0f ),
+		( float )AspectRatioSelectState.pGlyphSet->LineHeight * 4.0f,
+		"Select aspect ratio" );
+
+	TXT_MeasureString( AspectRatioSelectState.pGlyphSet,
+		"The square should not be distorted", &TextLength );
+	TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
+		320.0f - ( TextLength / 2.0f ),
+		( float )AspectRatioSelectState.pGlyphSet->LineHeight * 5.5f,
+		"The square should not be distorted" );
+
+	TXT_MeasureString( AspectRatioSelectState.pGlyphSet,
+		"Press 'A' to select", &TextLength );
+	TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
+		320.0f - ( TextLength / 2.0f ),
+		( 480.0f -
+			( float )AspectRatioSelectState.pGlyphSet->LineHeight * 4.0f ),
+		"Press 'A' to select" );
+
+	if( AspectRatioSelectState.FourThree == true )
 	{
-		REN_Clear( );
-
-		TXT_MeasureString( AspectRatioSelectState.pGlyphSet,
-			"Select aspect ratio", &TextLength );
-		TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
-			320.0f - ( TextLength / 2.0f ),
-			( float )AspectRatioSelectState.pGlyphSet->LineHeight * 4.0f,
-			"Select aspect ratio" );
-
-		TXT_MeasureString( AspectRatioSelectState.pGlyphSet,
-			"The square should not be distorted", &TextLength );
-		TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
-			320.0f - ( TextLength / 2.0f ),
-			( float )AspectRatioSelectState.pGlyphSet->LineHeight * 5.5f,
-			"The square should not be distorted" );
-
-		TXT_MeasureString( AspectRatioSelectState.pGlyphSet,
-			"Press 'A' to select", &TextLength );
-		TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
-			320.0f - ( TextLength / 2.0f ),
-			( 480.0f -
-				( float )AspectRatioSelectState.pGlyphSet->LineHeight * 4.0f ),
-			"Press 'A' to select" );
-
-		if( AspectRatioSelectState.FourThree == true )
-		{
-			TextColour.byte.bAlpha = AspectRatioSelectState.Alpha;
-		}
-		else
-		{
-			TextColour.byte.bAlpha = 140;
-		}
-
-		TXT_MeasureString( AspectRatioSelectState.pGlyphSet, "4:3",
-			&TextLength );
-		TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
-			270.0f - TextLength, 360.0f, "4:3" );
-
-		if( AspectRatioSelectState.FourThree == false )
-		{
-			TextColour.byte.bAlpha = AspectRatioSelectState.Alpha;
-		}
-		else
-		{
-			TextColour.byte.bAlpha = 140;
-		}
-
-		TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
-			370.0f, 360.0f, "16:9" );
-
-		REN_DrawPrimitives01( &AspectRatioSelectState.SquareStripHead,
-			AspectRatioSelectState.Square, 4 );
-
-		REN_SwapBuffers( );
+		TextColour.byte.bAlpha = AspectRatioSelectState.Alpha;
 	}
+	else
+	{
+		TextColour.byte.bAlpha = 140;
+	}
+
+	TXT_MeasureString( AspectRatioSelectState.pGlyphSet, "4:3",
+		&TextLength );
+	TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
+		270.0f - TextLength, 360.0f, "4:3" );
+
+	if( AspectRatioSelectState.FourThree == false )
+	{
+		TextColour.byte.bAlpha = AspectRatioSelectState.Alpha;
+	}
+	else
+	{
+		TextColour.byte.bAlpha = 140;
+	}
+
+	TXT_RenderString( AspectRatioSelectState.pGlyphSet, &TextColour,
+		370.0f, 360.0f, "16:9" );
+
+	REN_DrawPrimitives01( &AspectRatioSelectState.SquareStripHead,
+		AspectRatioSelectState.Square, 4 );
 
 	return 0;
 }
@@ -378,6 +368,11 @@ static int ARSS_Unload( void *p_pArgs )
 	return 0;
 }
 
+static int ARSS_VSyncCallback( void *p_pArgs )
+{
+	return 0;
+}
+
 int ARSS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
@@ -387,6 +382,7 @@ int ARSS_RegisterWithGameStateManager(
 	AspectRatioSelectState.Base.Render = &ARSS_Render;
 	AspectRatioSelectState.Base.Terminate = &ARSS_Terminate;
 	AspectRatioSelectState.Base.Unload = &ARSS_Unload;
+	AspectRatioSelectState.Base.VSyncCallback = &ARSS_VSyncCallback;
 	AspectRatioSelectState.Base.pGameStateManager = p_pGameStateManager;
 
 	return GSM_RegisterGameState( p_pGameStateManager,

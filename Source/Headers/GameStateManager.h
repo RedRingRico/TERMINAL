@@ -5,6 +5,7 @@
 #include <GameOptions.h>
 #include <Memory.h>
 #include <Text.h>
+#include <DebugAdapter.h>
 
 #define GSM_GLYPH_SET_DEBUG	0
 #define GSM_GLYPH_SET_GUI_1	1
@@ -28,6 +29,7 @@ typedef struct _tagGAMESTATE_REGISTRY
 
 typedef struct _tagGAMESTATE_MANAGER
 {
+	DEBUG_ADAPTER			DebugAdapter;
 	GAME_OPTIONS			GameOptions;
 	GAMESTATE_REGISTRY		*pRegistry;
 	struct _tagGAMESTATE	*pTopGameState;
@@ -46,7 +48,7 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 	void *p_pGameStateInitialiseArguments );
 int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
 	const char *p_pStateName, void *p_pGameStateLoadArguments,
-	void *p_pGameStateInitialiseArguments );
+	void *p_pGameStateInitialiseArguments, bool p_PauseCurrentState );
 int GSM_PopState( PGAMESTATE_MANAGER p_pGameStateManager );
 
 int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager );
@@ -62,6 +64,8 @@ int GSM_RegisterGameState( PGAMESTATE_MANAGER p_pGameStateManager,
 	const char *p_pGameStateName, struct _tagGAMESTATE *p_pGameState );
 bool GSM_IsStateInRegistry( PGAMESTATE_MANAGER p_pGameStateManager,
 	const char *p_pName, struct _tagGAMESTATE **p_ppGameState );
+
+Sint32 GSM_RunVSync( PGAMESTATE_MANAGER p_pGameStateManager );
 
 #endif /* __TERMINAL_GAMESTATEMANAGER_H__ */
 

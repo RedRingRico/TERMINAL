@@ -50,10 +50,6 @@ static int MPG_Load( void *p_pArgs )
 	struct in_addr Address;
 	Address.s_addr = pArgs->IP;
 
-	/*MEM_GarbageCollectMemoryBlock(
-		MultiPlayerGameState.Base.pGameStateManager->MemoryBlocks.
-			pSystemMemory );*/
-
 	NCL_Initialise( &MultiPlayerGameState.Client, inet_ntoa( Address ),
 		pArgs->Port );
 
@@ -89,37 +85,34 @@ static int MPG_Initialise( void *p_pArgs )
 
 static int MPG_Update( void *p_pArgs )
 {
-	if( MultiPlayerGameState.Base.Paused == false )
+	switch( MultiPlayerGameState.MultiPlayerState )
 	{
-		switch( MultiPlayerGameState.MultiPlayerState )
+		case MULTIPLAYER_STATE_JOIN:
 		{
-			case MULTIPLAYER_STATE_JOIN:
+			break;
+		}
+		case MULTIPLAYER_STATE_CONNECTED:
+		{
+			if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
 			{
-				break;
+				Uint8 MessageBuffer[ 1400 ];
+				size_t MessageBufferLength = sizeof( MessageBuffer );
+				NETWORK_MESSAGE LeaveMessage;
+
+				MSG_CreateNetworkMessage( &LeaveMessage, MessageBuffer,
+					MessageBufferLength,
+					MultiPlayerGameState.Base.pGameStateManager->
+						MemoryBlocks.pSystemMemory );
+
+				MSG_WriteUInt32( &LeaveMessage, PACKET_TYPE_CLIENTLEAVE );
+				
+				NCL_SendMessage( &MultiPlayerGameState.Client,
+					&LeaveMessage );
+
+				MSG_DestroyNetworkMessage( &LeaveMessage );
 			}
-			case MULTIPLAYER_STATE_CONNECTED:
-			{
-				if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
-				{
-					Uint8 MessageBuffer[ 1400 ];
-					size_t MessageBufferLength = sizeof( MessageBuffer );
-					NETWORK_MESSAGE LeaveMessage;
 
-					MSG_CreateNetworkMessage( &LeaveMessage, MessageBuffer,
-						MessageBufferLength,
-						MultiPlayerGameState.Base.pGameStateManager->
-							MemoryBlocks.pSystemMemory );
-
-					MSG_WriteUInt32( &LeaveMessage, PACKET_TYPE_CLIENTLEAVE );
-					
-					NCL_SendMessage( &MultiPlayerGameState.Client,
-						&LeaveMessage );
-
-					MSG_DestroyNetworkMessage( &LeaveMessage );
-				}
-
-				break;
-			}
+			break;
 		}
 
 		NET_Update( );
@@ -139,64 +132,65 @@ static int MPG_Render( void *p_pArgs )
 	KMPACKEDARGB TextColour = 0xFFFFFFFF;
 	float TextLength;
 
-	if( MultiPlayerGameState.Base.Paused == false )
+	pGlyphSet = GSM_GetGlyphSet(
+		MultiPlayerGameState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
+
+	switch( MultiPlayerGameState.MultiPlayerState )
 	{
-		pGlyphSet = GSM_GetGlyphSet(
-			MultiPlayerGameState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
-
-		REN_Clear( );
-
-		switch( MultiPlayerGameState.MultiPlayerState )
+		case MULTIPLAYER_STATE_JOIN:
 		{
-			case MULTIPLAYER_STATE_JOIN:
-			{
-				struct in_addr Address;
-				char IPPort[ 128 ];
+			struct in_addr Address;
+			char IPPort[ 128 ];
 
-				Address.s_addr = MultiPlayerGameState.IP;
+			Address.s_addr = MultiPlayerGameState.IP;
 
-				sprintf( IPPort, "Establishing connection to %s:%u",
-					inet_ntoa( Address ), MultiPlayerGameState.Port );
+			sprintf( IPPort, "Establishing connection to %s:%u",
+				inet_ntoa( Address ), MultiPlayerGameState.Port );
 
-				TXT_MeasureString( pGlyphSet, IPPort, &TextLength );
+			TXT_MeasureString( pGlyphSet, IPPort, &TextLength );
 
-				TXT_RenderString( pGlyphSet, &TextColour,
-					320.0f - ( TextLength * 0.5f ),
-					240.0f + ( ( float )pGlyphSet->LineHeight ),
-					IPPort );
+			TXT_RenderString( pGlyphSet, &TextColour,
+				320.0f - ( TextLength * 0.5f ),
+				240.0f + ( ( float )pGlyphSet->LineHeight ),
+				IPPort );
 
-				break;
-			}
-			case MULTIPLAYER_STATE_CONNECTED:
-			{
-				char PlayerID[ 128 ];
-
-				sprintf( PlayerID, "Connected with an ID of: %lu",
-					MultiPlayerGameState.GameClient.ID );
-
-				TXT_MeasureString( pGlyphSet, PlayerID, &TextLength );
-
-				TXT_RenderString( pGlyphSet, &TextColour,
-					320.0f - ( TextLength * 0.5f ),
-					240.0f + ( ( float )pGlyphSet->LineHeight ),
-					PlayerID );
-
-				break;
-			}
+			break;
 		}
+		case MULTIPLAYER_STATE_CONNECTED:
+		{
+			char PlayerID[ 128 ];
 
-		REN_SwapBuffers( );
+			sprintf( PlayerID, "Connected with an ID of: %lu",
+				MultiPlayerGameState.GameClient.ID );
+
+			TXT_MeasureString( pGlyphSet, PlayerID, &TextLength );
+
+			TXT_RenderString( pGlyphSet, &TextColour,
+				320.0f - ( TextLength * 0.5f ),
+				240.0f + ( ( float )pGlyphSet->LineHeight ),
+				PlayerID );
+
+			break;
+		}
 	}
 }
 
 static int MPG_Terminate( void *p_pArgs )
 {
+	return 0;
 }
 
 static int MPG_Unload( void *p_pArgs )
 {
 	QUE_Terminate( &MultiPlayerGameState.PacketQueue );
 	NCL_Terminate( &MultiPlayerGameState.Client );
+
+	return 0;
+}
+
+static int MPG_VSyncCallback( void *p_pArgs )
+{
+	return 0;
 }
 
 int MP_RegisterMultiPlayerGameWithGameStateManager(
@@ -208,6 +202,7 @@ int MP_RegisterMultiPlayerGameWithGameStateManager(
 	MultiPlayerGameState.Base.Render = &MPG_Render;
 	MultiPlayerGameState.Base.Terminate = &MPG_Terminate;
 	MultiPlayerGameState.Base.Unload = &MPG_Unload;
+	MultiPlayerGameState.Base.VSyncCallback = &MPG_VSyncCallback;
 	MultiPlayerGameState.Base.pGameStateManager = p_pGameStateManager;
 
 	return GSM_RegisterGameState( p_pGameStateManager,

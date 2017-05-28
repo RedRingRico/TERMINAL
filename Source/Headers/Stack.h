@@ -25,6 +25,7 @@ int STK_Push( PSTACK p_pStack, void *p_pItem );
 int STK_Pop( PSTACK p_pStack, void *p_pItem );
 
 void *STK_GetTopItem( PSTACK p_pStack );
+void *STK_GetItem( PSTACK p_pStack, size_t p_Index );
 size_t STK_GetCount( PSTACK p_pStack );
 bool STK_IsFull( PSTACK p_pStack );
 bool STK_IsEmpty( PSTACK p_pStack );

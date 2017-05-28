@@ -14,7 +14,7 @@
 #include <mathf.h>
 #include <Camera.h>
 #include <Model.h>
-#include <DA.h>
+#include <DebugAdapter.h>
 #include <Audio.h>
 #include <NetworkCore.h>
 #include <ngadns.h>
@@ -27,6 +27,7 @@
 #include <AspectRatioSelectState.h>
 #include <MainMenuState.h>
 #include <MultiPlayerState.h>
+#include <TestMenuState.h>
 
 #include <Array.h>
 
@@ -80,6 +81,11 @@ typedef struct _tagSOUND
 	Sint32	Size;
 }SOUND;
 
+typedef struct _tagVSYNC_CALLBACK
+{
+	PGAMESTATE_MANAGER	pGameStateManager;
+}VSYNC_CALLBACK,*PVSYNC_CALLBACK;
+
 void DrawOverlayText( GLYPHSET *p_pGlyphSet );
 void DrawDebugOverlay_Int( GLYPHSET *p_pGlyphSet, PPERF_INFO p_pPerfInfo );
 
@@ -97,6 +103,8 @@ static ngADnsAnswer DNSAnswer;
 ngADnsTicket DNSTicket;
 Uint32 DNSResolveTime;
 
+static void VSyncCallback( PKMVOID p_pArgs );
+
 void main( void )
 {
 	int Run = 1;
@@ -105,7 +113,8 @@ void main( void )
 	KMSURFACEDESC FrontBuffer, BackBuffer;
 	PKMDWORD pVertexBuffer;
 	KMVERTEXBUFFDESC VertexBufferDesc;
-	void *pGSMSystem, *pGSMGraphics, *pGSMAudio;
+	void *pGSMSystemMemory = NULL, *pGSMGraphicsMemory = NULL,
+		*pGSMAudioMemory = NULL;/* *pTVMMemory = NULL;*/
 	GLYPHSET GlyphSet;
 	Uint32 StartTime, EndTime;
 	SYE_CBL AVCable;
@@ -122,7 +131,9 @@ void main( void )
 	GAMESTATE_MANAGER GameStateManager;
 	GAMESTATE_MEMORY_BLOCKS GameStateMemoryBlocks;
 	MEMORY_BLOCK SystemMemoryBlock, GraphicsMemoryBlock, AudioMemoryBlock;
+	/*MEMORY_BLOCK TVMMemoryBlock;*/
 	MEMORY_FREESTAT MemoryFree;
+	VSYNC_CALLBACK VSyncCallbackArgs;
 
 	CAMERA TestCamera;
 	MATRIX4X4 Projection, Screen;
@@ -130,70 +141,78 @@ void main( void )
 
 	if( HW_Initialise( KM_DSPBPP_RGB888, &AVCable, &MemoryFree ) != 0 )
 	{
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
 	LOG_Initialise( NULL );
 	LOG_Debug( "TERMINAL" );
 	LOG_Debug( "Version: %s", GIT_VERSION );
 
-	if( ( pGSMSystem = syMalloc( MEM_MIB( 6 ) ) ) == NULL )
+	/*syCacheAllocCacheRAM( &pTVMMemory, 7 );
+
+	if( pTVMMemory == NULL )
+	{
+		LOG_Debug( "Could not allocate memory for the Virtual Machine" );
+
+		goto MainCleanup;
+	}*/
+
+	if( ( pGSMSystemMemory = syMalloc( MEM_MIB( 6 ) ) ) == NULL )
 	{
 		LOG_Debug( "Could not use syMalloc to allocate %ld bytes of memory "
 			"for the system", MEM_MIB( 6 ) );
 
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
-	if( ( pGSMGraphics = syMalloc( MEM_MIB( 2 ) ) ) == NULL )
+	if( ( pGSMGraphicsMemory = syMalloc( MEM_MIB( 2 ) ) ) == NULL )
 	{
 		LOG_Debug( "Could not use syMalloc to allocate %ld bytes of memory "
 			"for the graphics", MEM_MIB( 2 ) );
 
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
-	if( ( pGSMAudio = syMalloc( MEM_MIB( 1 ) ) ) == NULL )
+	if( ( pGSMAudioMemory = syMalloc( MEM_MIB( 1 ) ) ) == NULL )
 	{
 		LOG_Debug( "Could not use syMalloc to allocate %ld bytes of memory "
 			"for the audio", MEM_MIB( 2 ) );
 
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
+	/*if( MEM_InitialiseMemoryBlock( &TVMMemoryBlock,
+		pTVMMemory, MEM_KIB( 7 ), 32, "Virtual Machine" ) != 0 )
+	{
+		LOG_Debug( "Could not allocate %ld bytes of memory for the Virtual "
+			"Machine", MEM_KIB( 7 ) );
+
+		goto MainCleanup;
+	}*/
+
 	if( MEM_InitialiseMemoryBlock( &SystemMemoryBlock,
-		pGSMSystem, MEM_MIB( 6 ), 32, "GSM: System" ) != 0 )
+		pGSMSystemMemory, MEM_MIB( 6 ), 32, "GSM: System" ) != 0 )
 	{
 		LOG_Debug( "Could not allocate %ld bytes of memory for the system",
 			MEM_MIB( 6 ) );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+
+		goto MainCleanup;
 	}
 
 	if( MEM_InitialiseMemoryBlock( &GraphicsMemoryBlock,
-		pGSMGraphics, 1024*1024*2, 32, "GSM: Graphics" ) != 0 )
+		pGSMGraphicsMemory, 1024*1024*2, 32, "GSM: Graphics" ) != 0 )
 	{
 		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*2 );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+
+		goto MainCleanup;
 	}
 
 	if( MEM_InitialiseMemoryBlock( &AudioMemoryBlock,
-		pGSMAudio, 1024*1024*1, 32, "GSM: Audio" ) != 0 )
+		pGSMAudioMemory, 1024*1024*1, 32, "GSM: Audio" ) != 0 )
 	{
 		LOG_Debug( "Could not allocate %ld bytes of memory", 1024*1024*1 );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+
+		goto MainCleanup;
 	}
 
 	memset( g_VersionString, '\0', sizeof( g_VersionString ) );
@@ -261,7 +280,7 @@ void main( void )
 
 	REN_Initialise( &Renderer, &RendererConfiguration );
 
-	//kmSetWaitVsyncCallback((void *)NET_Update, NULL);
+	kmSetWaitVsyncCallback(&VSyncCallback, &VSyncCallbackArgs);
 
 	scif_close( );
 
@@ -273,10 +292,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to set up the Audio64 interface" );
 
-		REN_Terminate( &Renderer );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
 	acSetTransferMode( AC_TRANSFER_DMA );
@@ -290,11 +306,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the audio sample: /AUDIO/SELECT.WAV" );
 
-		AUD_Terminate( );
-		REN_Terminate( &Renderer );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
 	g_Accept.pMemoryLocation = acSystemGetFirstFreeSoundMemory( );
@@ -305,22 +317,14 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the audio sample: /AUDIO/ACCEPT.WAV" );
 
-		AUD_Terminate( );
-		REN_Terminate( &Renderer );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
 	if( TXT_Initialise( ) != 0 )
 	{
 		LOG_Debug( "Failed to initialise the text system" );
 
-		AUD_Terminate( );
-		REN_Terminate( &Renderer );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
 	if( TXT_CreateGlyphSetFromFile( "/FONTS/WHITERABBIT.FNT",
@@ -328,11 +332,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the glyph descriptions" );
 
-		AUD_Terminate( );
-		REN_Terminate( &Renderer );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
 	if( TXT_SetTextureForGlyphSet( "/FONTS/WHITERABBIT.PVR", &GlyphSet,
@@ -340,11 +340,7 @@ void main( void )
 	{
 		LOG_Debug( "Failed to load the glyph texture" );
 
-		AUD_Terminate( );
-		REN_Terminate( &Renderer );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+		goto MainCleanup;
 	}
 
 	memset( g_ConsoleIDPrint, '\0', sizeof( g_ConsoleIDPrint ) );
@@ -392,10 +388,11 @@ void main( void )
 	if( GSM_Initialise( &GameStateManager, &GameStateMemoryBlocks ) != 0 )
 	{
 		LOG_Debug( "Failed to initialise the game state manager\n" );
-		LOG_Terminate( );
-		HW_Terminate( );
-		HW_Reboot( );
+
+		goto MainCleanup;
 	}
+
+	VSyncCallbackArgs.pGameStateManager = &GameStateManager;
 
 	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_DEBUG, &GlyphSet );
 	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_GUI_1, &GlyphSet );
@@ -407,6 +404,10 @@ void main( void )
 	MP_RegisterISPConnectWithGameStateManager( &GameStateManager );
 	MP_RegisterGameListServerWithGameStateManager( &GameStateManager );
 	MP_RegisterMultiPlayerGameWithGameStateManager( &GameStateManager );
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	TMU_RegisterWithGameStateManager( &GameStateManager );
+	MDLV_RegisterWithGameStateManager( &GameStateManager );
+#endif /* DEBUG || DEVELOPMENT */
 
 	if( AVCable == SYE_CBL_PAL )
 	{
@@ -430,23 +431,41 @@ void main( void )
 		GSM_Run( &GameStateManager );
 	}
 
+MainCleanup:
 	LOG_Debug( "Rebooting" );
 
 	GSM_Terminate( &GameStateManager );
 	AUD_Terminate( );
 	REN_Terminate( &Renderer );
 
-	MEM_GarbageCollectMemoryBlock( &AudioMemoryBlock );
-	MEM_GarbageCollectMemoryBlock( &GraphicsMemoryBlock );
-	MEM_GarbageCollectMemoryBlock( &SystemMemoryBlock );
+	/*if( pTVMMemory != NULL )
+	{
+		MEM_GarbageCollectMemoryBlock( &TVMMemoryBlock );
+		MEM_ListMemoryBlocks( &TVMMemoryBlock );
+		syCacheFreeCacheRAM( pTVMMemory );
+	}*/
 
-	MEM_ListMemoryBlocks( &AudioMemoryBlock );
-	MEM_ListMemoryBlocks( &GraphicsMemoryBlock );
-	MEM_ListMemoryBlocks( &SystemMemoryBlock );
+	if( pGSMAudioMemory != NULL )
+	{
+		MEM_GarbageCollectMemoryBlock( &AudioMemoryBlock );
+		MEM_ListMemoryBlocks( &AudioMemoryBlock );
+		syFree( pGSMAudioMemory );
+	}
 
-	syFree( pGSMAudio );
-	syFree( pGSMGraphics );
-	syFree( pGSMSystem );
+	if( pGSMGraphicsMemory != NULL )
+	{
+		MEM_GarbageCollectMemoryBlock( &GraphicsMemoryBlock );
+		MEM_ListMemoryBlocks( &GraphicsMemoryBlock );
+		syFree( pGSMGraphicsMemory );
+	}
+
+	if( pGSMSystemMemory != NULL )
+	{
+		MEM_GarbageCollectMemoryBlock( &SystemMemoryBlock );
+		MEM_ListMemoryBlocks( &SystemMemoryBlock );
+		syFree( pGSMSystemMemory );
+	}
+
 	syFree( pVertexBuffer );
 
 #if defined ( DEBUG )
@@ -796,13 +815,13 @@ void main( void )
 			320.0f -( TextLength / 2.0f ),
 			32.0f, "PRESS START TO REBOOT" );
 
-		if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
+		/*if( DA_IPRDY & DA_GetChannelStatus( 3 ) )
 		{
 			if( DA_GetData( PrintBuffer, 80, 3 ) )
 			{
 				g_ConnectedToDA = true;
 			}
-		}
+		}*/
 
 		RenderEndTime = syTmrGetCount( );
 
@@ -1139,5 +1158,16 @@ bool LoadSoundBank( Uint32 *p_pAICA, char *p_pName, Sint32 *p_pSize )
 	syFree( pImage );
 
 	return true;
+}
+
+static void VSyncCallback( PKMVOID p_pArgs )
+{
+	PVSYNC_CALLBACK pArgs = ( PVSYNC_CALLBACK )( p_pArgs );
+
+	NET_Update( );
+
+	if( GSM_RunVSync( pArgs->pGameStateManager ) != 0 )
+	{
+	}
 }
 

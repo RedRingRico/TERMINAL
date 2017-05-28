@@ -1,4 +1,5 @@
 #include <GameState.h>
+#include <Log.h>
 
 void GS_Copy( PGAMESTATE p_pCopy, PGAMESTATE p_pOriginal )
 {

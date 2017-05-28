@@ -108,67 +108,24 @@ static int GLS_Update( void *p_pArgs )
 	static Uint8 MessageBuffer[ 1400 ];
 	static size_t MessageBufferLength = sizeof( MessageBuffer );
 
-	if( GameListServerState.Base.Paused == false )
+	switch( GameListServerState.ServerListState )
 	{
-		switch( GameListServerState.ServerListState )
+		case SERVERLIST_STATE_RESOLVING_DOMAIN:
 		{
-			case SERVERLIST_STATE_RESOLVING_DOMAIN:
+			switch( GameListServerState.DNSRequest.Status )
 			{
-				switch( GameListServerState.DNSRequest.Status )
+				case DNS_REQUEST_POLLING:
 				{
-					case DNS_REQUEST_POLLING:
-					{
-						break;
-					}
-					case DNS_REQUEST_RESOLVED:
-					{
-						NETWORK_MESSAGE Message;
-						struct in_addr Address;
-						Address.s_addr = GameListServerState.DNSRequest.IP;
-
-						NCL_Initialise( &GameListServerState.Client,
-							inet_ntoa( Address ), 50001 );
-
-						MSG_CreateNetworkMessage( &Message, MessageBuffer,
-							MessageBufferLength,
-							GameListServerState.Base.pGameStateManager->
-								MemoryBlocks.pSystemMemory );
-
-						MSG_WriteUInt32( &Message, PACKET_TYPE_LISTREQUEST );
-						MSG_WriteInt32( &Message, 0 );
-						MSG_WriteUInt16( &Message, 0 );
-
-						NCL_SendMessage( &GameListServerState.Client,
-							&Message );
-
-						GameListServerState.ServerListState =
-							SERVERLIST_STATE_CONNECTING;
-
-						break;
-					}
-					case DNS_REQUEST_FAILED:
-					{
-						/* Could not resolve the domain name, tell the user,
-						 * allow for a retry */
-						break;
-					}
-					default:
-					{
-					}
+					break;
 				}
-
-				break;
-			}
-			case SERVERLIST_STATE_CONNECTING:
-			{
-				GameListServerState.StateTimer =
-					syTmrCountToMicro( syTmrDiffCount(
-						GameListServerState.StateTimerStart,
-						syTmrGetCount( ) ) );
-
-				if( GameListServerState.StateTimer >= 2000000UL )
+				case DNS_REQUEST_RESOLVED:
 				{
 					NETWORK_MESSAGE Message;
+					struct in_addr Address;
+					Address.s_addr = GameListServerState.DNSRequest.IP;
+
+					NCL_Initialise( &GameListServerState.Client,
+						inet_ntoa( Address ), 50001 );
 
 					MSG_CreateNetworkMessage( &Message, MessageBuffer,
 						MessageBufferLength,
@@ -181,117 +138,157 @@ static int GLS_Update( void *p_pArgs )
 
 					NCL_SendMessage( &GameListServerState.Client,
 						&Message );
-
-					MSG_DestroyNetworkMessage( &Message );
-
-					GameListServerState.StateTimerStart = syTmrGetCount( );
-
-					++GameListServerState.StateMessageTries;
-				}
-
-				if( GameListServerState.StateMessageTries > 10 )
-				{
-					LOG_Debug( "Unable to connect to game server\n" );
-					LOG_Debug( "Popping GLS state\n" );
-					GSM_PopState( GameListServerState.Base.pGameStateManager );
-				}
-
-				break;
-			}
-			case SERVERLIST_STATE_GETSERVERLIST:
-			{
-				break;
-			}
-			case SERVERLIST_STATE_DISPLAYSERVERLIST:
-			{
-				if( g_Peripherals[ 0 ].press & PDD_DGT_KU )
-				{
-					if( GameListServerState.ServerCount > 0 )
-					{
-						if( GameListServerState.SelectedServer == 0 )
-						{
-							GameListServerState.SelectedServer =
-								GameListServerState.ServerCount - 1;
-						}
-						else
-						{
-							--GameListServerState.SelectedServer;
-						}
-					}
-				}
-
-				if( g_Peripherals[ 0 ].press & PDD_DGT_KD )
-				{
-					if( GameListServerState.ServerCount > 0 )
-					{
-						if( GameListServerState.SelectedServer == 
-							( GameListServerState.ServerCount - 1 ) )
-						{
-							GameListServerState.SelectedServer = 0;
-						}
-						else
-						{
-							++GameListServerState.SelectedServer;
-						}
-					}
-				}
-
-				if( g_Peripherals[ 0 ].press & PDD_DGT_TX )
-				{
-					NETWORK_MESSAGE Message;
-
-					MSG_CreateNetworkMessage( &Message, MessageBuffer,
-						MessageBufferLength,
-						GameListServerState.Base.pGameStateManager->
-							MemoryBlocks.pSystemMemory );
-
-					MSG_WriteUInt32( &Message, PACKET_TYPE_LISTREQUEST );
-					MSG_WriteInt32( &Message, 0 );
-					MSG_WriteUInt16( &Message, 0 );
-
-					NCL_SendMessage( &GameListServerState.Client,
-						&Message );
-
-					MSG_DestroyNetworkMessage( &Message );
-				}
-
-				if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
-				{
-					/* Push the multi player game state onto the stack */
-					MULTIPLAYER_GAME_ARGS StateArgs;
-
-					PGAMESERVER pGameServer = ARY_GetItem(
-						&GameListServerState.Servers,
-						GameListServerState.SelectedServer );
-
-					StateArgs.IP = pGameServer->IP;
-					StateArgs.Port = ntohs( pGameServer->Port );
-
-					GSM_PushState( GameListServerState.Base.pGameStateManager,
-						GAME_STATE_MULTIPLAYER_GAME, &StateArgs, NULL );
 
 					GameListServerState.ServerListState =
 						SERVERLIST_STATE_CONNECTING;
+
+					break;
 				}
+				case DNS_REQUEST_FAILED:
+				{
+					/* Could not resolve the domain name, tell the user,
+					 * allow for a retry */
+					break;
+				}
+				default:
+				{
+				}
+			}
 
-				break;
-			}
-			default:
-			{
-				LOG_Debug( "Unknown server list state\n" );
-				break;
-			}
+			break;
 		}
-
-		GLS_ProcessIncomingPackets( );
-
-		NET_Update( );
-
-		if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
+		case SERVERLIST_STATE_CONNECTING:
 		{
-			LOG_Debug( "Popping GLS state\n" );
-			GSM_PopState( GameListServerState.Base.pGameStateManager );
+			GameListServerState.StateTimer =
+				syTmrCountToMicro( syTmrDiffCount(
+					GameListServerState.StateTimerStart,
+					syTmrGetCount( ) ) );
+
+			if( GameListServerState.StateTimer >= 2000000UL )
+			{
+				NETWORK_MESSAGE Message;
+
+				MSG_CreateNetworkMessage( &Message, MessageBuffer,
+					MessageBufferLength,
+					GameListServerState.Base.pGameStateManager->
+						MemoryBlocks.pSystemMemory );
+
+				MSG_WriteUInt32( &Message, PACKET_TYPE_LISTREQUEST );
+				MSG_WriteInt32( &Message, 0 );
+				MSG_WriteUInt16( &Message, 0 );
+
+				NCL_SendMessage( &GameListServerState.Client,
+					&Message );
+
+				MSG_DestroyNetworkMessage( &Message );
+
+				GameListServerState.StateTimerStart = syTmrGetCount( );
+
+				++GameListServerState.StateMessageTries;
+			}
+
+			if( GameListServerState.StateMessageTries > 10 )
+			{
+				LOG_Debug( "Unable to connect to game server\n" );
+				LOG_Debug( "Popping GLS state\n" );
+				GSM_PopState( GameListServerState.Base.pGameStateManager );
+			}
+
+			break;
 		}
+		case SERVERLIST_STATE_GETSERVERLIST:
+		{
+			break;
+		}
+		case SERVERLIST_STATE_DISPLAYSERVERLIST:
+		{
+			if( g_Peripherals[ 0 ].press & PDD_DGT_KU )
+			{
+				if( GameListServerState.ServerCount > 0 )
+				{
+					if( GameListServerState.SelectedServer == 0 )
+					{
+						GameListServerState.SelectedServer =
+							GameListServerState.ServerCount - 1;
+					}
+					else
+					{
+						--GameListServerState.SelectedServer;
+					}
+				}
+			}
+
+			if( g_Peripherals[ 0 ].press & PDD_DGT_KD )
+			{
+				if( GameListServerState.ServerCount > 0 )
+				{
+					if( GameListServerState.SelectedServer == 
+						( GameListServerState.ServerCount - 1 ) )
+					{
+						GameListServerState.SelectedServer = 0;
+					}
+					else
+					{
+						++GameListServerState.SelectedServer;
+					}
+				}
+			}
+
+			if( g_Peripherals[ 0 ].press & PDD_DGT_TX )
+			{
+				NETWORK_MESSAGE Message;
+
+				MSG_CreateNetworkMessage( &Message, MessageBuffer,
+					MessageBufferLength,
+					GameListServerState.Base.pGameStateManager->
+						MemoryBlocks.pSystemMemory );
+
+				MSG_WriteUInt32( &Message, PACKET_TYPE_LISTREQUEST );
+				MSG_WriteInt32( &Message, 0 );
+				MSG_WriteUInt16( &Message, 0 );
+
+				NCL_SendMessage( &GameListServerState.Client,
+					&Message );
+
+				MSG_DestroyNetworkMessage( &Message );
+			}
+
+			if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
+			{
+				/* Push the multi player game state onto the stack */
+				MULTIPLAYER_GAME_ARGS StateArgs;
+
+				PGAMESERVER pGameServer = ARY_GetItem(
+					&GameListServerState.Servers,
+					GameListServerState.SelectedServer );
+
+				StateArgs.IP = pGameServer->IP;
+				StateArgs.Port = ntohs( pGameServer->Port );
+
+				GSM_PushState( GameListServerState.Base.pGameStateManager,
+					GAME_STATE_MULTIPLAYER_GAME, &StateArgs, NULL, true );
+
+				GameListServerState.ServerListState =
+					SERVERLIST_STATE_CONNECTING;
+			}
+
+			break;
+		}
+		default:
+		{
+			LOG_Debug( "Unknown server list state\n" );
+			break;
+		}
+	}
+
+	GLS_ProcessIncomingPackets( );
+
+	NET_Update( );
+
+	if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
+	{
+		LOG_Debug( "Popping GLS state\n" );
+		GSM_PopState( GameListServerState.Base.pGameStateManager );
 	}
 
 	return 0;
@@ -303,154 +300,147 @@ static int GLS_Render( void *p_pArgs )
 	float TextLength;
 	PGLYPHSET pGlyphSet;
 
-	if( GameListServerState.Base.Paused == false )
+	char InfoString[ 128 ] = { '\0' };
+
+	pGlyphSet = GSM_GetGlyphSet(
+		GameListServerState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
+
+	switch( GameListServerState.ServerListState )
 	{
-		char InfoString[ 128 ] = { '\0' };
-
-		pGlyphSet = GSM_GetGlyphSet(
-			GameListServerState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
-
-		REN_Clear( );
-
-		switch( GameListServerState.ServerListState )
+		case SERVERLIST_STATE_RESOLVING_DOMAIN:
 		{
-			case SERVERLIST_STATE_RESOLVING_DOMAIN:
-			{
 #if defined ( DEBUG )
-				TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
-					240.0f + ( ( float )pGlyphSet->LineHeight ),
-					GameListServerState.DNSRequest.Domain );
+			TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
+				240.0f + ( ( float )pGlyphSet->LineHeight ),
+				GameListServerState.DNSRequest.Domain );
 #endif /* ( DEBUG ) */
 
-				if( GameListServerState.DNSRequest.Status ==
-					DNS_REQUEST_POLLING )
-				{
-					sprintf( InfoString, "RESOLVING %s", LIST_SERVER_DOMAIN );
-				}
-				else if( GameListServerState.DNSRequest.Status ==
-					DNS_REQUEST_RESOLVED )
-				{
-					sprintf( InfoString, "RESOLVED %s", LIST_SERVER_DOMAIN );
+			if( GameListServerState.DNSRequest.Status ==
+				DNS_REQUEST_POLLING )
+			{
+				sprintf( InfoString, "RESOLVING %s", LIST_SERVER_DOMAIN );
+			}
+			else if( GameListServerState.DNSRequest.Status ==
+				DNS_REQUEST_RESOLVED )
+			{
+				sprintf( InfoString, "RESOLVED %s", LIST_SERVER_DOMAIN );
 #if defined ( DEBUG )
-					TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
-						240.0f + ( ( float )pGlyphSet->LineHeight * 2.0f ),
-						GameListServerState.DNSRequest.IPAddress );
+				TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
+					240.0f + ( ( float )pGlyphSet->LineHeight * 2.0f ),
+					GameListServerState.DNSRequest.IPAddress );
 #endif /* DEBUG */
-				}
-				else if( GameListServerState.DNSRequest.Status ==
-					DNS_REQUEST_FAILED )
+			}
+			else if( GameListServerState.DNSRequest.Status ==
+				DNS_REQUEST_FAILED )
+			{
+				sprintf( InfoString, "FAILED TO RESOLVE %s",
+					LIST_SERVER_DOMAIN );
+			}
+			else
+			{
+				sprintf( InfoString, "UNKNOWN ERROR RESOLVING %s",
+					LIST_SERVER_DOMAIN );
+			}
+
+			break;
+		}
+		case SERVERLIST_STATE_CONNECTING:
+		{
+			sprintf( InfoString, "CONNECTING [ATTEMPT #%lu]",
+				GameListServerState.StateMessageTries );
+
+			TXT_MeasureString( pGlyphSet, "[B] back", &TextLength );
+			TXT_RenderString( pGlyphSet, &TextColour,
+				640.0f - 64.0f - TextLength,
+				480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
+				"[B] back" );
+
+			break;
+		}
+		case SERVERLIST_STATE_GETSERVERLIST:
+		{
+			sprintf( InfoString, "GETTING SERVER LIST" );
+
+			TXT_MeasureString( pGlyphSet, "[B] back",
+				&TextLength );
+			TXT_RenderString( pGlyphSet, &TextColour,
+				640.0f - 64.0f - TextLength,
+				480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
+				"[B] back" );
+
+			break;
+		}
+		case SERVERLIST_STATE_DISPLAYSERVERLIST:
+		{
+			size_t Servers, Index;
+			char IPPort[ 32 ];
+
+			TXT_MeasureString( pGlyphSet, "SERVER LIST", &TextLength );
+			TXT_RenderString( pGlyphSet, &TextColour,
+				320.0f - ( TextLength * 0.5f ), 32.0f, "SERVER LIST" );
+
+			Servers = ARY_GetCount( &GameListServerState.Servers );
+
+			for( Index = 0; Index < Servers; ++Index )
+			{
+				PGAMESERVER GameServer;
+				struct in_addr Address;
+
+				if( GameListServerState.SelectedServer == Index )
 				{
-					sprintf( InfoString, "FAILED TO RESOLVE %s",
-						LIST_SERVER_DOMAIN );
+					TextColour.dwPacked = 0xFF00FF00;
 				}
 				else
 				{
-					sprintf( InfoString, "UNKNOWN ERROR RESOLVING %s",
-						LIST_SERVER_DOMAIN );
+					TextColour.dwPacked = 0xFFFFFFFF;
 				}
 
-				break;
+				GameServer = ARY_GetItem( &GameListServerState.Servers,
+					Index );
+
+				Address.s_addr = GameServer->IP;
+
+				sprintf( IPPort, "%s:%u", inet_ntoa( Address ),
+					ntohs( GameServer->Port ) );
+
+				TXT_RenderString( pGlyphSet, &TextColour, 32.0f,
+					96.0f + ( ( float )pGlyphSet->LineHeight * Index ),
+					IPPort );
 			}
-			case SERVERLIST_STATE_CONNECTING:
-			{
-				sprintf( InfoString, "CONNECTING [ATTEMPT #%lu]",
-					GameListServerState.StateMessageTries );
 
-				TXT_MeasureString( pGlyphSet, "[B] back", &TextLength );
-				TXT_RenderString( pGlyphSet, &TextColour,
-					640.0f - 64.0f - TextLength,
-					480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
-					"[B] back" );
+			TextColour.dwPacked = 0xFFFFFFFF;
 
-				break;
-			}
-			case SERVERLIST_STATE_GETSERVERLIST:
-			{
-				sprintf( InfoString, "GETTING SERVER LIST" );
+			TXT_MeasureString( pGlyphSet,
+				"[X] update    [Y] filter    [A] join    [B] back",
+				&TextLength );
+			TXT_RenderString( pGlyphSet, &TextColour,
+				320.0f - ( TextLength * 0.5f ),
+				480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
+				"[X] update    [Y] filter    [A] join    [B] back" );
 
-				TXT_MeasureString( pGlyphSet, "[B] back",
-					&TextLength );
-				TXT_RenderString( pGlyphSet, &TextColour,
-					640.0f - 64.0f - TextLength,
-					480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
-					"[B] back" );
-
-				break;
-			}
-			case SERVERLIST_STATE_DISPLAYSERVERLIST:
-			{
-				size_t Servers, Index;
-				char IPPort[ 32 ];
-
-				TXT_MeasureString( pGlyphSet, "SERVER LIST", &TextLength );
-				TXT_RenderString( pGlyphSet, &TextColour,
-					320.0f - ( TextLength * 0.5f ), 32.0f, "SERVER LIST" );
-
-				Servers = ARY_GetCount( &GameListServerState.Servers );
-
-				for( Index = 0; Index < Servers; ++Index )
-				{
-					PGAMESERVER GameServer;
-					struct in_addr Address;
-
-					if( GameListServerState.SelectedServer == Index )
-					{
-						TextColour.dwPacked = 0xFF00FF00;
-					}
-					else
-					{
-						TextColour.dwPacked = 0xFFFFFFFF;
-					}
-
-					GameServer = ARY_GetItem( &GameListServerState.Servers,
-						Index );
-
-					Address.s_addr = GameServer->IP;
-
-					sprintf( IPPort, "%s:%u", inet_ntoa( Address ),
-						ntohs( GameServer->Port ) );
-
-					TXT_RenderString( pGlyphSet, &TextColour, 32.0f,
-						96.0f + ( ( float )pGlyphSet->LineHeight * Index ),
-						IPPort );
-				}
-
-				TextColour.dwPacked = 0xFFFFFFFF;
-
-				TXT_MeasureString( pGlyphSet,
-					"[X] update    [Y] filter    [A] join    [B] back",
-					&TextLength );
-				TXT_RenderString( pGlyphSet, &TextColour,
-					320.0f - ( TextLength * 0.5f ),
-					480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
-					"[X] update    [Y] filter    [A] join    [B] back" );
-
-				break;
-			}
-			default:
-			{
-				LOG_Debug( "Unknown server list state\n" );
-				break;
-			}
+			break;
 		}
+		default:
+		{
+			LOG_Debug( "Unknown server list state\n" );
+			break;
+		}
+	}
 
 #if defined ( DEBUG )
-		{
-			char NetString[ 80 ];
-			sprintf( NetString, "Open interfaces: %d", NET_GetIfaceOpen( ) );
-			TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 0.0f, NetString );
+	{
+		char NetString[ 80 ];
+		sprintf( NetString, "Open interfaces: %d", NET_GetIfaceOpen( ) );
+		TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 0.0f, NetString );
 
-			sprintf( NetString, "Open devices: %d", NET_GetDevOpen( ) );
-			TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 20.0f, NetString );
-		}
+		sprintf( NetString, "Open devices: %d", NET_GetDevOpen( ) );
+		TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 20.0f, NetString );
+	}
 #endif /* DEBUG */
 
-		TXT_MeasureString( pGlyphSet, InfoString, &TextLength );
-		TXT_RenderString( pGlyphSet, &TextColour,
-			320.0f - ( TextLength * 0.5f ), 240.0f, InfoString );
-
-		REN_SwapBuffers( );
-	}
+	TXT_MeasureString( pGlyphSet, InfoString, &TextLength );
+	TXT_RenderString( pGlyphSet, &TextColour,
+		320.0f - ( TextLength * 0.5f ), 240.0f, InfoString );
 
 	return 0;
 }
@@ -470,6 +460,11 @@ static int GLS_Unload( void *p_pArgs )
 	return 0;
 }
 
+static int GLS_VSyncCallback( void *p_pArgs )
+{
+	return 0;
+}
+
 int MP_RegisterGameListServerWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
@@ -479,6 +474,7 @@ int MP_RegisterGameListServerWithGameStateManager(
 	GameListServerState.Base.Render = &GLS_Render;
 	GameListServerState.Base.Terminate = &GLS_Terminate;
 	GameListServerState.Base.Unload = &GLS_Unload;
+	GameListServerState.Base.VSyncCallback = &GLS_VSyncCallback;
 	GameListServerState.Base.pGameStateManager = p_pGameStateManager;
 
 	return GSM_RegisterGameState( p_pGameStateManager,

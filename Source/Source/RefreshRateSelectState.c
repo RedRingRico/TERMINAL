@@ -48,119 +48,116 @@ static int RRSS_Update( void *p_pArgs )
 {
 	static float Alpha = 1.0f, AlphaInc = 0.2f;
 
-	if( RefreshRateSelectState.Base.Paused == false )
+	RefreshRateSelectState.StartTime = syTmrGetCount( );
+
+	if( RefreshRateSelectState.CableSelect == true )
 	{
-		RefreshRateSelectState.StartTime = syTmrGetCount( );
-
-		if( RefreshRateSelectState.CableSelect == true )
+		if( ( g_Peripherals[ 0 ].press & PDD_DGT_TA ) &&
+			( RefreshRateSelectState.ModeTest == false ) )
 		{
-			if( ( g_Peripherals[ 0 ].press & PDD_DGT_TA ) &&
-				( RefreshRateSelectState.ModeTest == false ) )
-			{
-				RefreshRateSelectState.ModeTest = true;
-				RefreshRateSelectState.TestStage = 0;
-			}
+			RefreshRateSelectState.ModeTest = true;
+			RefreshRateSelectState.TestStage = 0;
+		}
 
-			if( RefreshRateSelectState.ModeTest == true )
+		if( RefreshRateSelectState.ModeTest == true )
+		{
+			if( RefreshRateSelectState.SixtyHz == true )
 			{
-				if( RefreshRateSelectState.SixtyHz == true )
+				if( RefreshRateSelectState.TestStage == 0 )
 				{
-					if( RefreshRateSelectState.TestStage == 0 )
+					if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
 					{
-						if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
-						{
-							RefreshRateSelectState.ElapsedTime = 0UL;
-							RefreshRateSelectState.TestStage = 1;
+						RefreshRateSelectState.ElapsedTime = 0UL;
+						RefreshRateSelectState.TestStage = 1;
 
-							kmSetDisplayMode( KM_DSPMODE_NTSCNI640x480,
-								KM_DSPBPP_RGB888, TRUE, FALSE );
-						}
-					}
-					else if( RefreshRateSelectState.TestStage == 1 )
-					{
-						if( RefreshRateSelectState.ElapsedTime >= 5000000UL )
-						{
-							RefreshRateSelectState.TestStage = 2;
-							kmSetDisplayMode( KM_DSPMODE_PALNI640x480EXT,
-								KM_DSPBPP_RGB888, TRUE, FALSE );
-						}
-					}
-					else if( RefreshRateSelectState.TestStage == 2 )
-					{
-						if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
-						{
-							RefreshRateSelectState.ModeTest = false;
-							RefreshRateSelectState.ModeSelected = true;
-						}
-
-						if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
-							( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
-						{
-							Alpha = 1.0f;
-							RefreshRateSelectState.TestPass =
-								!RefreshRateSelectState.TestPass;
-						}
+						kmSetDisplayMode( KM_DSPMODE_NTSCNI640x480,
+							KM_DSPBPP_RGB888, TRUE, FALSE );
 					}
 				}
-				else
+				else if( RefreshRateSelectState.TestStage == 1 )
 				{
-					RefreshRateSelectState.ModeSelected = true;
+					if( RefreshRateSelectState.ElapsedTime >= 5000000UL )
+					{
+						RefreshRateSelectState.TestStage = 2;
+						kmSetDisplayMode( KM_DSPMODE_PALNI640x480EXT,
+							KM_DSPBPP_RGB888, TRUE, FALSE );
+					}
+				}
+				else if( RefreshRateSelectState.TestStage == 2 )
+				{
+					if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
+					{
+						RefreshRateSelectState.ModeTest = false;
+						RefreshRateSelectState.ModeSelected = true;
+					}
+
+					if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
+						( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
+					{
+						Alpha = 1.0f;
+						RefreshRateSelectState.TestPass =
+							!RefreshRateSelectState.TestPass;
+					}
 				}
 			}
-			/* Not currently testing the display mode, present the player with
-			 * an option to select the display mode */
 			else
 			{
-				if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
-					( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
-				{
-					RefreshRateSelectState.SixtyHz =
-						!RefreshRateSelectState.SixtyHz;
-					Alpha = 1.0f;
-				}
-			}
-
-			if( RefreshRateSelectState.ModeSelected )
-			{
-				RefreshRateSelectState.CableSelect = false;
+				RefreshRateSelectState.ModeSelected = true;
 			}
 		}
+		/* Not currently testing the display mode, present the player with
+		 * an option to select the display mode */
 		else
 		{
-			ASPECTRATIOSELECT AspectRatioArgs;
-
-			AspectRatioArgs.pGlyphSet = RefreshRateSelectState.pGlyphSet;
-
-			/* Done, change state */
-			if( ( RefreshRateSelectState.TestPass == true ) &&
-				( RefreshRateSelectState.SixtyHz == true ) )
+			if( ( g_Peripherals[ 0 ].press & PDD_DGT_KL ) ||
+				( g_Peripherals[ 0 ].press & PDD_DGT_KR ) )
 			{
-				kmSetDisplayMode( KM_DSPMODE_NTSCNI640x480,
-					KM_DSPBPP_RGB888, TRUE, FALSE );
+				RefreshRateSelectState.SixtyHz =
+					!RefreshRateSelectState.SixtyHz;
+				Alpha = 1.0f;
 			}
-
-			GSM_ChangeState( RefreshRateSelectState.Base.pGameStateManager,
-				GAME_STATE_ASPECTRATIOSELECT, &AspectRatioArgs, NULL );
 		}
 
-		Alpha += AlphaInc;
+		if( RefreshRateSelectState.ModeSelected )
+		{
+			RefreshRateSelectState.CableSelect = false;
+		}
+	}
+	else
+	{
+		ASPECTRATIOSELECT AspectRatioArgs;
 
-		if( Alpha <= 0.0f )
+		AspectRatioArgs.pGlyphSet = RefreshRateSelectState.pGlyphSet;
+
+		/* Done, change state */
+		if( ( RefreshRateSelectState.TestPass == true ) &&
+			( RefreshRateSelectState.SixtyHz == true ) )
 		{
-			AlphaInc = 0.02f;
-			Alpha = 0.0f;
-			RefreshRateSelectState.Alpha = 0;
+			kmSetDisplayMode( KM_DSPMODE_NTSCNI640x480,
+				KM_DSPBPP_RGB888, TRUE, FALSE );
 		}
-		else if( Alpha >= 1.0f )
-		{
-			AlphaInc = -0.02f;
-			Alpha = 1.0f;
-			RefreshRateSelectState.Alpha = 255;
-		}
-		else
-		{
-			RefreshRateSelectState.Alpha = ( KMBYTE )( Alpha * 255.0f );
-		}
+
+		GSM_ChangeState( RefreshRateSelectState.Base.pGameStateManager,
+			GAME_STATE_ASPECTRATIOSELECT, &AspectRatioArgs, NULL );
+	}
+
+	Alpha += AlphaInc;
+
+	if( Alpha <= 0.0f )
+	{
+		AlphaInc = 0.02f;
+		Alpha = 0.0f;
+		RefreshRateSelectState.Alpha = 0;
+	}
+	else if( Alpha >= 1.0f )
+	{
+		AlphaInc = -0.02f;
+		Alpha = 1.0f;
+		RefreshRateSelectState.Alpha = 255;
+	}
+	else
+	{
+		RefreshRateSelectState.Alpha = ( KMBYTE )( Alpha * 255.0f );
 	}
 
 	return 0;
@@ -172,8 +169,6 @@ static int RRSS_Render( void *p_pArgs )
 	float TextLength;
 
 	TextColour.dwPacked = 0xFFFFFFFF;
-
-	REN_Clear( );
 
 	if( RefreshRateSelectState.CableSelect == true )
 	{
@@ -329,8 +324,6 @@ static int RRSS_Render( void *p_pArgs )
 		}
 	}
 
-	REN_SwapBuffers( );
-
 	/* Must sample time outside the frame update, otherwise it's incorrect */
 	RefreshRateSelectState.ElapsedTime +=
 		syTmrCountToMicro( syTmrDiffCount(
@@ -349,6 +342,11 @@ static int RRSS_Unload( void *p_pArgs )
 	return 0;
 }
 
+static int RRSS_VSyncCallback( void *p_pArgs )
+{
+	return 0;
+}
+
 int RRSS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
@@ -358,6 +356,7 @@ int RRSS_RegisterWithGameStateManager(
 	RefreshRateSelectState.Base.Render = &RRSS_Render;
 	RefreshRateSelectState.Base.Terminate = &RRSS_Terminate;
 	RefreshRateSelectState.Base.Unload = &RRSS_Unload;
+	RefreshRateSelectState.Base.VSyncCallback = &RRSS_VSyncCallback;
 	RefreshRateSelectState.Base.pGameStateManager = p_pGameStateManager;
 
 	return GSM_RegisterGameState( p_pGameStateManager,
