@@ -41,7 +41,7 @@ LINK_FILES = $(addprefix xlnk.,$(basename $(DEFAULT_OBJS))) $(addprefix lnk.,$(O
 
 BUILD = Debug
 
-SOURCEDIR = Source
+SOURCEDIR = Source Source/TestMenus
 
 MAKE	:= make.exe
 ELFCONV	:= elfcnv.exe
@@ -172,7 +172,7 @@ CFILES	:= $(foreach dir,$(SOURCEDIR),$(notdir $(wildcard $(dir)/*.c)))
 ASMFILES := $(foreach dir,$(SOURCEDIR),$(notdir $(wildcard $(dir)/*.src)))
 ICFILES := $(foreach dir,$(SOURCEDIR),$(notdir $(wildcard $(dir)/*.ic)))
 export VPATH := $(foreach dir,$(SOURCEDIR),$(CURDIR)/$(dir))
-export OBJS := $(CFILES:.c=.obj) $(ASMFILES:.src=.obj) $(ICFILES:.ic=.obj)
+export OBJS := $(CFILES:.c=.obj) $(ASMFILES:.src=.obj) $(ICFILES:.ic=_ic.obj)
 
 # Target re-direction to make in the OBJSDIR directory
 $(TARGET): CLEAR OBJSDIR TARGETDIR VERSIONINFO
@@ -224,7 +224,7 @@ endif
 
 
 # Inline C compilation (files with inline assembly)
-%.obj: %.ic
+%_ic.obj: %.ic
 	echo Compliing $< ...
 	echo $(CFLAGS) -code=asmcode > "$(OBJSDIR)\shc.sub"
 	for %%x in ($(OPTIMISE_TYPE)) do echo -%%x >> "$(OBJSDIR)\shc.sub"
