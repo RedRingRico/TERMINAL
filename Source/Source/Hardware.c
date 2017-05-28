@@ -42,6 +42,13 @@ int HW_Initialise( KMBPPMODE p_BPP, SYE_CBL *p_pCableType,
 	set_imask( 15 );
 
 	syHwInit( );
+	LOG_Debug( "Setting operand cache to RAM mode" );
+	syCacheInit( SYD_CACHE_FORM_IC_ENABLE |
+		SYD_CACHE_FORM_OC_ENABLE |
+		SYD_CACHE_FORM_P1_CB |
+		SYD_CACHE_FORM_OC_RAM |
+		SYD_CACHE_FORM_OC_INDEX );
+
 	MEM_Initialise( p_pMemoryFree );
     syStartGlobalConstructor( );
 	kmInitDevice( KM_DREAMCAST );

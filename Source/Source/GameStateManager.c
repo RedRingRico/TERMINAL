@@ -1,6 +1,10 @@
 #include <GameStateManager.h>
 #include <GameState.h>
+#include <MainMenuState.h>
+#include <Peripheral.h>
+#include <Renderer.h>
 #include <Log.h>
+#include <DebugAdapter.h>
 #include <string.h>
 
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
@@ -8,7 +12,6 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 {
 	p_pGameStateManager->pRegistry = NULL;
 	p_pGameStateManager->pRegistry->pNext = NULL;
-
 
 	p_pGameStateManager->pTopGameState = NULL;
 	p_pGameStateManager->Running = false;
@@ -90,7 +93,8 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 	}
 
 	if( GSM_PushState( p_pGameStateManager, p_pStateName,
-		p_pGameStateLoadArguments, p_pGameStateInitialiseArguments ) != 0 )
+		p_pGameStateLoadArguments, p_pGameStateInitialiseArguments, false ) !=
+		0 )
 	{
 		LOG_Debug( "GSM_ChangeState <ERROR> Something went wrong pushing the "
 			"state onto the stack\n" );
@@ -106,7 +110,7 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 
 int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
 	const char *p_pStateName, void *p_pGameStateLoadArguments,
-	void *p_pGameStateInitialiseArguments )
+	void *p_pGameStateInitialiseArguments, bool p_PauseCurrentState )
 {
 	PGAMESTATE pGameState;
 
@@ -119,9 +123,12 @@ int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
-	if( p_pGameStateManager->pTopGameState != NULL )
+	if( p_PauseCurrentState == true )
 	{
-		GS_Pause( p_pGameStateManager->pTopGameState );
+		if( p_pGameStateManager->pTopGameState != NULL )
+		{
+			GS_Pause( p_pGameStateManager->pTopGameState );
+		}
 	}
 
 	if( STK_Push( &p_pGameStateManager->GameStateStack, pGameState ) != 0 )
@@ -135,6 +142,8 @@ int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
 	p_pGameStateManager->pTopGameState = STK_GetTopItem(
 		&p_pGameStateManager->GameStateStack );
 
+	GS_Resume( p_pGameStateManager->pTopGameState );
+
 	/*MEM_ListMemoryBlocks(
 		p_pGameStateManager->MemoryBlocks.pSystemMemory );*/
 	/* Seems like the best time to do garbage collection */
@@ -145,9 +154,27 @@ int GSM_PushState( PGAMESTATE_MANAGER p_pGameStateManager,
 	MEM_GarbageCollectMemoryBlock(
 		p_pGameStateManager->MemoryBlocks.pAudioMemory );
 
-	p_pGameStateManager->pTopGameState->Load( p_pGameStateLoadArguments );
-	p_pGameStateManager->pTopGameState->Initialise(
-		p_pGameStateInitialiseArguments );
+	if( p_pGameStateManager->pTopGameState->Load(
+			p_pGameStateLoadArguments ) != 0 )
+	{
+		LOG_Debug( "GSM_PushState <ERROR> Something went wrong loading the "
+			"state \"%s\"", p_pStateName );
+
+		GSM_PopState( p_pGameStateManager );
+
+		return 1;
+	}
+
+	if( p_pGameStateManager->pTopGameState->Initialise(
+		p_pGameStateInitialiseArguments ) != 0 )
+	{
+		LOG_Debug( "GSM_PushState <ERROR> Something went wrong initialising "
+			"the state \"%s\"", p_pStateName );
+
+		GSM_PopState( p_pGameStateManager );
+
+		return 1;
+	}
 
 	return 0;
 }
@@ -181,9 +208,36 @@ int GSM_PopState( PGAMESTATE_MANAGER p_pGameStateManager )
 int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	Uint32 StartTime = syTmrGetCount( );
+	PGAMESTATE pGameState = STK_GetItem( &p_pGameStateManager->GameStateStack,
+		0 );
+	size_t StackItem = 0;
+	size_t StackCount = STK_GetCount( &p_pGameStateManager->GameStateStack );
 
-	p_pGameStateManager->pTopGameState->Update( p_pGameStateManager );
-	p_pGameStateManager->pTopGameState->Render( NULL );
+	/* Walk the stack */
+	for( StackItem = 0; StackItem < StackCount; ++StackItem )
+	{
+		pGameState = STK_GetItem( &p_pGameStateManager->GameStateStack,
+			StackItem );
+		if( pGameState->Paused == false )
+		{
+			pGameState->Update( p_pGameStateManager );
+		}
+	}
+
+	pGameState = STK_GetItem( &p_pGameStateManager->GameStateStack, 0 );
+
+	REN_Clear( );
+	/* Walk the stack */
+	for( StackItem = 0; StackItem < StackCount; ++StackItem )
+	{
+		pGameState = STK_GetItem( &p_pGameStateManager->GameStateStack,
+			StackItem );
+		if( pGameState->Paused == false )
+		{
+			pGameState->Render( NULL );
+		}
+	}
+	REN_SwapBuffers( );
 
 	p_pGameStateManager->pTopGameState->ElapsedGameTime +=
 		syTmrCountToMicro( syTmrDiffCount( StartTime, syTmrGetCount( ) ) );
@@ -346,5 +400,32 @@ bool GSM_IsStateInRegistry( PGAMESTATE_MANAGER p_pGameStateManager,
 	}
 
 	return StatePresent;
+}
+
+Sint32 GSM_RunVSync( PGAMESTATE_MANAGER p_pGameStateManager )
+{
+	PGAMESTATE pGameState;
+	size_t StackItem =
+		STK_GetCount( &p_pGameStateManager->GameStateStack ) - 1;
+
+	/* Get the Debug Adapter information */
+	DA_GetData( p_pGameStateManager->DebugAdapter.pData,
+		p_pGameStateManager->DebugAdapter.DataSize, 3,
+		&p_pGameStateManager->DebugAdapter.DataRead );
+
+	/* Walk the stack */
+	for( ; StackItem > 0; --StackItem )
+	{
+		pGameState = STK_GetItem( &p_pGameStateManager->GameStateStack,
+			StackItem );
+
+		/* The message was handled, don't keep going */
+		if( pGameState->VSyncCallback( p_pGameStateManager ) == 0 )
+		{
+			break;
+		}
+	}
+
+	return 0;
 }
 

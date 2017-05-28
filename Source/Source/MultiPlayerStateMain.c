@@ -65,7 +65,7 @@ static int MPM_Initialise( void *p_pArgs )
 
 static int MPM_Update( void *p_pArgs )
 {
-	if( MultiPlayerMainState.Base.Paused == false )
+	/*if( MultiPlayerMainState.Base.Paused == false )*/
 	{
 		if( g_Peripherals[ 0 ].press & PDD_DGT_KU )
 		{
@@ -97,6 +97,7 @@ static int MPM_Update( void *p_pArgs )
 			GSM_PopState( MultiPlayerMainState.Base.pGameStateManager );
 		}
 	}
+
 	return 0;
 }
 
@@ -105,7 +106,7 @@ static int MPM_Render( void *p_pArgs )
 	KMPACKEDARGB TextColour;
 	float TextLength;
 
-	if( MultiPlayerMainState.Base.Paused == false )
+	/*if( MultiPlayerMainState.Base.Paused == false )*/
 	{
 		PGLYPHSET pGlyphSet = GSM_GetGlyphSet(
 			MultiPlayerMainState.Base.pGameStateManager,
@@ -113,7 +114,7 @@ static int MPM_Render( void *p_pArgs )
 
 		TextColour.dwPacked = 0xFFFFFFFF;
 
-		REN_Clear( );
+		//REN_Clear( );
 
 		TXT_MeasureString( pGlyphSet, "[TERMINAL] //MULTI PLAYER",
 			&TextLength );
@@ -129,7 +130,7 @@ static int MPM_Render( void *p_pArgs )
 
 		MNU_Render( &MultiPlayerMainState.Menu, 2.0f, 320.0f, 240.0f );
 
-		REN_SwapBuffers( );
+		//REN_SwapBuffers( );
 	}
 
 	return 0;
@@ -147,6 +148,11 @@ static int MPM_Unload( void *p_pArgs )
 	return 0;
 }
 
+static int MPM_VSyncCallback( void *p_pArgs )
+{
+	return 0;
+}
+
 int MP_RegisterMainWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
@@ -156,6 +162,7 @@ int MP_RegisterMainWithGameStateManager(
 	MultiPlayerMainState.Base.Render = &MPM_Render;
 	MultiPlayerMainState.Base.Terminate = &MPM_Terminate;
 	MultiPlayerMainState.Base.Unload = &MPM_Unload;
+	MultiPlayerMainState.Base.VSyncCallback = &MPM_VSyncCallback;
 	MultiPlayerMainState.Base.pGameStateManager = p_pGameStateManager;
 
 	return GSM_RegisterGameState( p_pGameStateManager,

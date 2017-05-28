@@ -54,106 +54,103 @@ static int MPISP_Initialise( void *p_pArgs )
 
 static int MPISP_Update( void *p_pArgs )
 {
-	if( ISPConnectState.Base.Paused == false )
+	Uint32 StartTime = syTmrGetCount( );
+	ISPConnectState.NetStatus = NET_GetStatus( );
+
+	if( ISPConnectState.UserDisconnect == true )
 	{
-		Uint32 StartTime = syTmrGetCount( );
-		ISPConnectState.NetStatus = NET_GetStatus( );
+		NET_DisconnectFromISP( );
+		ISPConnectState.WaitForDisconnect = true;
+		ISPConnectState.UserDisconnect = false;
+	}
 
-		if( ISPConnectState.UserDisconnect == true )
+	switch( ISPConnectState.NetStatus )
+	{
+		case NET_STATUS_DISCONNECTED:
+		case NET_STATUS_NODEVICE:
 		{
-			NET_DisconnectFromISP( );
-			ISPConnectState.WaitForDisconnect = true;
 			ISPConnectState.UserDisconnect = false;
+			GSM_ChangeState( ISPConnectState.Base.pGameStateManager,
+				GAME_STATE_MAINMENU, NULL, NULL );
+
+			break;
 		}
-
-		switch( ISPConnectState.NetStatus )
+		case NET_STATUS_CONNECTED:
 		{
-			case NET_STATUS_DISCONNECTED:
-			case NET_STATUS_NODEVICE:
+			if( ISPConnectState.WaitForDisconnect == false )
 			{
-				ISPConnectState.UserDisconnect = false;
-				GSM_ChangeState( ISPConnectState.Base.pGameStateManager,
-					GAME_STATE_MAINMENU, NULL, NULL );
+				GSM_PushState( ISPConnectState.Base.pGameStateManager,
+					GAME_STATE_MULTIPLAYER_GAMELISTSERVER, NULL, NULL, true );
 
-				break;
-			}
-			case NET_STATUS_CONNECTED:
-			{
-				if( ISPConnectState.WaitForDisconnect == false )
-				{
-					GSM_PushState( ISPConnectState.Base.pGameStateManager,
-						GAME_STATE_MULTIPLAYER_GAMELISTSERVER, NULL, NULL );
-
-					/* When the next state is popped off, we should
-					 * disconnect */
-					ISPConnectState.UserDisconnect = true;
-				}
-
-				break;
-			}
-			default:
-			{
-				break;
-			}
-		}
-
-		switch( ISPConnectState.NetStatus )
-		{
-			case NET_STATUS_NEGOTIATING:
-			case NET_STATUS_PPP_POLL:
-			case NET_STATUS_RESET:
-			{
-				Uint32 CurrentTime = syTmrGetCount( );
-
-				if( syTmrCountToMicro( syTmrDiffCount(
-					ISPConnectState.ElapsedDotDrawTime,
-						CurrentTime ) ) >= 200000UL )
-				{
-					ISPConnectState.ElapsedDotDrawTime = CurrentTime;
-
-					/* Reset the dots if the state has changed */
-					if( ISPConnectState.PreviousNetStatus !=
-						ISPConnectState.NetStatus )
-					{
-						ISPConnectState.PreviousNetStatus =
-							ISPConnectState.NetStatus;
-						ISPConnectState.DotsToDraw = 0;
-					}
-					else
-					{
-						++ISPConnectState.DotsToDraw;
-
-						if( ISPConnectState.DotsToDraw > 5 )
-						{
-							ISPConnectState.DotsToDraw = 0;
-						}
-					}
-				}
-				break;
-			}
-			case NET_STATUS_CONNECTED:
-			case NET_STATUS_DISCONNECTED:
-			case NET_STATUS_NODEVICE:
-			{
-				ISPConnectState.DotsToDraw = 0;
-				break;
-			}
-			default:
-			{
-				break;
-			}
-		}
-
-		if( ISPConnectState.WaitForDisconnect == false )
-		{
-			if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
-			{
+				/* When the next state is popped off, we should
+				 * disconnect */
 				ISPConnectState.UserDisconnect = true;
 			}
-		}
 
-		NET_Update( );
+			break;
+		}
+		default:
+		{
+			break;
+		}
 	}
+
+	switch( ISPConnectState.NetStatus )
+	{
+		case NET_STATUS_NEGOTIATING:
+		case NET_STATUS_PPP_POLL:
+		case NET_STATUS_RESET:
+		{
+			Uint32 CurrentTime = syTmrGetCount( );
+
+			if( syTmrCountToMicro( syTmrDiffCount(
+				ISPConnectState.ElapsedDotDrawTime,
+					CurrentTime ) ) >= 200000UL )
+			{
+				ISPConnectState.ElapsedDotDrawTime = CurrentTime;
+
+				/* Reset the dots if the state has changed */
+				if( ISPConnectState.PreviousNetStatus !=
+					ISPConnectState.NetStatus )
+				{
+					ISPConnectState.PreviousNetStatus =
+						ISPConnectState.NetStatus;
+					ISPConnectState.DotsToDraw = 0;
+				}
+				else
+				{
+					++ISPConnectState.DotsToDraw;
+
+					if( ISPConnectState.DotsToDraw > 5 )
+					{
+						ISPConnectState.DotsToDraw = 0;
+					}
+				}
+			}
+			break;
+		}
+		case NET_STATUS_CONNECTED:
+		case NET_STATUS_DISCONNECTED:
+		case NET_STATUS_NODEVICE:
+		{
+			ISPConnectState.DotsToDraw = 0;
+			break;
+		}
+		default:
+		{
+			break;
+		}
+	}
+
+	if( ISPConnectState.WaitForDisconnect == false )
+	{
+		if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
+		{
+			ISPConnectState.UserDisconnect = true;
+		}
+	}
+
+	NET_Update( );
 
 	return 0;
 }
@@ -164,92 +161,85 @@ static int MPISP_Render( void *p_pArgs )
 	float TextLength;
 	static bool ConnectionAlreadyAttempted = false;
 
-	if( ISPConnectState.Base.Paused == false )
+	PGLYPHSET pGlyphSet = GSM_GetGlyphSet(
+		ISPConnectState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
+	char *pStopString = "[B] cancel";
+	char InfoString[ 128 ] = { '\0' };
+	char NetString[ 80 ];
+
+	TextColour.dwPacked = 0xFFFFFFFF;
+
+	switch( ISPConnectState.NetStatus )
 	{
-		PGLYPHSET pGlyphSet = GSM_GetGlyphSet(
-			ISPConnectState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
-		char *pStopString = "[B] cancel";
-		char InfoString[ 128 ] = { '\0' };
-		char NetString[ 80 ];
-
-		TextColour.dwPacked = 0xFFFFFFFF;
-
-		REN_Clear( );
-
-		switch( ISPConnectState.NetStatus )
+		case NET_STATUS_NEGOTIATING:
 		{
-			case NET_STATUS_NEGOTIATING:
-			{
-				sprintf( InfoString, "NEGOTIATING" );
-				break;
-			}
-			case NET_STATUS_PPP_POLL:
-			{
-				sprintf( InfoString, "POLLING PPP" );
-				break;
-			}
-			case NET_STATUS_CONNECTED:
-			{
-				sprintf( InfoString, "CONNECTED" );
-				pStopString = "[B] back";
-				break;
-			}
-			case NET_STATUS_DISCONNECTED:
-			{
-				sprintf( InfoString, "DISCONNECTED" );
-				pStopString = "[B] back";
-				break;
-			}
-			case NET_STATUS_NODEVICE:
-			{
-				sprintf( InfoString, "DEVICE NOT FOUND" );
-				pStopString = "[B] back";
-				break;
-			}
-			case NET_STATUS_RESET:
-			{
-				sprintf( InfoString, "RESETTING" );
-				break;
-			}
-			default:
-			{
-				break;
-			}
+			sprintf( InfoString, "NEGOTIATING" );
+			break;
 		}
-
-		if( ISPConnectState.WaitForDisconnect == false )
+		case NET_STATUS_PPP_POLL:
 		{
-			TXT_MeasureString( pGlyphSet, pStopString, &TextLength );
-			TXT_RenderString( pGlyphSet, &TextColour, 640.0f - 64.0f -
-				TextLength, 480.0f - ( float )pGlyphSet->LineHeight * 4.0f,
-				pStopString );
+			sprintf( InfoString, "POLLING PPP" );
+			break;
 		}
+		case NET_STATUS_CONNECTED:
+		{
+			sprintf( InfoString, "CONNECTED" );
+			pStopString = "[B] back";
+			break;
+		}
+		case NET_STATUS_DISCONNECTED:
+		{
+			sprintf( InfoString, "DISCONNECTED" );
+			pStopString = "[B] back";
+			break;
+		}
+		case NET_STATUS_NODEVICE:
+		{
+			sprintf( InfoString, "DEVICE NOT FOUND" );
+			pStopString = "[B] back";
+			break;
+		}
+		case NET_STATUS_RESET:
+		{
+			sprintf( InfoString, "RESETTING" );
+			break;
+		}
+		default:
+		{
+			break;
+		}
+	}
+
+	if( ISPConnectState.WaitForDisconnect == false )
+	{
+		TXT_MeasureString( pGlyphSet, pStopString, &TextLength );
+		TXT_RenderString( pGlyphSet, &TextColour, 640.0f - 64.0f -
+			TextLength, 480.0f - ( float )pGlyphSet->LineHeight * 4.0f,
+			pStopString );
+	}
 
 #if defined ( DEBUG )
-		sprintf( NetString, "Open interfaces: %d", NET_GetIfaceOpen( ) );
-		TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 0.0f, NetString );
+	sprintf( NetString, "Open interfaces: %d", NET_GetIfaceOpen( ) );
+	TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 0.0f, NetString );
 
-		sprintf( NetString, "Open devices: %d", NET_GetDevOpen( ) );
-		TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 20.0f, NetString );
+	sprintf( NetString, "Open devices: %d", NET_GetDevOpen( ) );
+	TXT_RenderString( pGlyphSet, &TextColour, 0.0f, 20.0f, NetString );
 #endif /* DEBUG */
 
-		if( ISPConnectState.DotsToDraw > 0 )
+	if( ISPConnectState.DotsToDraw > 0 )
+	{
+		size_t Dot;
+
+		strcat( InfoString, " " );
+
+		for( Dot = 0; Dot < ISPConnectState.DotsToDraw; ++Dot )
 		{
-			size_t Dot;
-
-			strcat( InfoString, " " );
-
-			for( Dot = 0; Dot < ISPConnectState.DotsToDraw; ++Dot )
-			{
-				strcat( InfoString, "." );
-			}
+			strcat( InfoString, "." );
 		}
-
-		TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
-			InfoString );
-
-		REN_SwapBuffers( );
 	}
+
+	TXT_RenderString( pGlyphSet, &TextColour, 320.0f, 240.0f,
+		InfoString );
 
 	return 0;
 }
@@ -282,6 +272,11 @@ static int MPISP_Unload( void *p_pArgs )
 	return 0;
 }
 
+static int MPISP_VSyncCallback( void *p_pArgs )
+{
+	return 0;
+}
+
 int MP_RegisterISPConnectWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
@@ -291,6 +286,7 @@ int MP_RegisterISPConnectWithGameStateManager(
 	ISPConnectState.Base.Render = &MPISP_Render;
 	ISPConnectState.Base.Terminate = &MPISP_Terminate;
 	ISPConnectState.Base.Unload = &MPISP_Unload;
+	ISPConnectState.Base.VSyncCallback = &MPISP_VSyncCallback;
 	ISPConnectState.Base.pGameStateManager = p_pGameStateManager;
 
 	return GSM_RegisterGameState( p_pGameStateManager,
