@@ -80,11 +80,14 @@ static int MDLV_Update( void *p_pArgs )
 		}
 	}*/
 
-	if( ( DAData = DA_GetData( ModelViewerState.pDAData,
+	/*if( ( DAData = DA_GetData( ModelViewerState.pDAData,
 		ModelViewerState.DADataSize, 3, &DataSize ) ) == 0 )
 	{
 		HandleDebugAdapterData( DataSize );
-	}
+	}*/
+
+	//if( QUE_IsEmpty( &p_pGameStateManager->DebugAdapter.Queue ) == false )
+	HandleDebugAdapterData( 0 );
 
 	return 0;
 }
@@ -107,7 +110,7 @@ static int MDLV_Render( void *p_pArgs )
 		480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
 		"[B] back" );
 
-	if( ModelViewerState.DAConnected )
+	if( ModelViewerState.Base.pGameStateManager->DebugAdapter.Connected )
 	{
 		TextColour.dwPacked = 0xFF00FF00;
 
@@ -182,7 +185,7 @@ static void HandleDebugAdapterData( int p_BytesToRead )
 	 * Payload
 	 */
 	/* First, get the ID */
-	Uint8 ID;
+	/*Uint8 ID;
 	int BytesRead = 0;
 
 	while( BytesRead < p_BytesToRead )
@@ -224,6 +227,6 @@ static void HandleDebugAdapterData( int p_BytesToRead )
 			{
 			}
 		}
-	}
+	}*/
 }
 

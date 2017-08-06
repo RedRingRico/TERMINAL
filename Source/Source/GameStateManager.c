@@ -27,6 +27,18 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 		p_pGameStateManager->MemoryBlocks.pSystemMemory,
 		sizeof( PGLYPHSET ) * 2, "GSM: Glyph set" );
 
+	p_pGameStateManager->DebugAdapter.pData = MEM_AllocateFromBlock(
+		p_pGameStateManager->MemoryBlocks.pSystemMemory,
+		64 * 1024, "Debug Adapter Memory" );
+
+	p_pGameStateManager->DebugAdapter.DataSize = 64 * 1024;
+	p_pGameStateManager->DebugAdapter.DataRead = 0;
+	p_pGameStateManager->DebugAdapter.Connected = false;
+
+	QUE_Initialise( &p_pGameStateManager->DebugAdapter.Queue,
+		p_pGameStateManager->MemoryBlocks.pSystemMemory, 64,
+		sizeof( DEBUG_ADAPTER_MESSAGE ), 20, "Debug Adapter Queue" );
+
 	if( STK_Initialise( &p_pGameStateManager->GameStateStack,
 		p_pGameStateManager->MemoryBlocks.pSystemMemory, 10,
 		sizeof( GAMESTATE ), 0,	"GSM: Game State Stack" )  != 0 )
@@ -36,6 +48,9 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 
 		return 1;
 	}
+
+	MEM_ListMemoryBlocks(
+		p_pGameStateManager->MemoryBlocks.pSystemMemory );
 
 	return 0;
 }
@@ -212,6 +227,63 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 		0 );
 	size_t StackItem = 0;
 	size_t StackCount = STK_GetCount( &p_pGameStateManager->GameStateStack );
+	Uint8 ID;
+	int BytesRead = 0;
+	Uint8 ChannelStatus = 0;
+	Uint32 AllChannelStatus = 0;
+
+	if( DA_GetChannelStatus( 3, &ChannelStatus ) == 0 )
+	{
+		if( ChannelStatus & DA_IPRDY )
+		{
+			/* Get the Debug Adapter information */
+			DA_GetData( p_pGameStateManager->DebugAdapter.pData,
+				p_pGameStateManager->DebugAdapter.DataSize, 3,
+				&p_pGameStateManager->DebugAdapter.DataRead );
+
+			/* Put all the pending messages into the queue */
+			while( BytesRead < p_pGameStateManager->DebugAdapter.DataRead )
+			{
+				DEBUG_ADAPTER_MESSAGE NewMessage;
+				NewMessage.ID =
+					( Uint16 )p_pGameStateManager->DebugAdapter.pData[ BytesRead ];
+				BytesRead += 2;
+				NewMessage.Length = 
+					( Uint16 )p_pGameStateManager->DebugAdapter.pData[ BytesRead ];
+				BytesRead += 2;
+				if( NewMessage.Length > 0 )
+				{
+					memcpy( NewMessage.Data,
+						&p_pGameStateManager->DebugAdapter.pData[ BytesRead ],
+						NewMessage.Length );
+				}
+				BytesRead += NewMessage.Length;
+
+				QUE_Enqueue( &p_pGameStateManager->DebugAdapter.Queue, &NewMessage );
+			}
+
+			/* Handle non-specific messages */
+			if( QUE_IsEmpty( &p_pGameStateManager->DebugAdapter.Queue ) == false )
+			{
+				PDEBUG_ADAPTER_MESSAGE pGenericMessage;
+
+				pGenericMessage = QUE_GetFront(
+					&p_pGameStateManager->DebugAdapter.Queue );
+
+				if( pGenericMessage->ID == DA_CONNECT )
+				{
+					p_pGameStateManager->DebugAdapter.Connected = true;
+					QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue, NULL );
+				}
+
+				if( pGenericMessage->ID == DA_DISCONNECT )
+				{
+					p_pGameStateManager->DebugAdapter.Connected = false;
+					QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue, NULL );
+				}
+			}
+		}
+	}
 
 	/* Walk the stack */
 	for( StackItem = 0; StackItem < StackCount; ++StackItem )
@@ -405,13 +477,11 @@ bool GSM_IsStateInRegistry( PGAMESTATE_MANAGER p_pGameStateManager,
 Sint32 GSM_RunVSync( PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	PGAMESTATE pGameState;
+	Uint8 ID;
+	int BytesRead = 0;
+	Uint8 ChannelStatus;
 	size_t StackItem =
 		STK_GetCount( &p_pGameStateManager->GameStateStack ) - 1;
-
-	/* Get the Debug Adapter information */
-	DA_GetData( p_pGameStateManager->DebugAdapter.pData,
-		p_pGameStateManager->DebugAdapter.DataSize, 3,
-		&p_pGameStateManager->DebugAdapter.DataRead );
 
 	/* Walk the stack */
 	for( ; StackItem > 0; --StackItem )
