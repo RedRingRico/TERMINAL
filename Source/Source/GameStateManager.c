@@ -227,10 +227,9 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 		0 );
 	size_t StackItem = 0;
 	size_t StackCount = STK_GetCount( &p_pGameStateManager->GameStateStack );
-	Uint8 ID;
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 	int BytesRead = 0;
 	Uint8 ChannelStatus = 0;
-	Uint32 AllChannelStatus = 0;
 
 	if( DA_GetChannelStatus( 3, &ChannelStatus ) == 0 )
 	{
@@ -246,10 +245,12 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 			{
 				DEBUG_ADAPTER_MESSAGE NewMessage;
 				NewMessage.ID =
-					( Uint16 )p_pGameStateManager->DebugAdapter.pData[ BytesRead ];
+					( Uint16 )p_pGameStateManager->DebugAdapter.pData[
+						BytesRead ];
 				BytesRead += 2;
 				NewMessage.Length = 
-					( Uint16 )p_pGameStateManager->DebugAdapter.pData[ BytesRead ];
+					( Uint16 )p_pGameStateManager->DebugAdapter.pData[
+						BytesRead ];
 				BytesRead += 2;
 				if( NewMessage.Length > 0 )
 				{
@@ -259,11 +260,13 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 				}
 				BytesRead += NewMessage.Length;
 
-				QUE_Enqueue( &p_pGameStateManager->DebugAdapter.Queue, &NewMessage );
+				QUE_Enqueue( &p_pGameStateManager->DebugAdapter.Queue,
+					&NewMessage );
 			}
 
 			/* Handle non-specific messages */
-			if( QUE_IsEmpty( &p_pGameStateManager->DebugAdapter.Queue ) == false )
+			if( QUE_IsEmpty( &p_pGameStateManager->DebugAdapter.Queue ) ==
+				false )
 			{
 				PDEBUG_ADAPTER_MESSAGE pGenericMessage;
 
@@ -273,17 +276,24 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 				if( pGenericMessage->ID == DA_CONNECT )
 				{
 					p_pGameStateManager->DebugAdapter.Connected = true;
-					QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue, NULL );
+					QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue,
+						NULL );
+
+					LOG_Debug( "Debug Adapter Connected" );
 				}
 
 				if( pGenericMessage->ID == DA_DISCONNECT )
 				{
 					p_pGameStateManager->DebugAdapter.Connected = false;
-					QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue, NULL );
+					QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue,
+						NULL );
+
+					LOG_Debug( "Debug Adapter Disconnected" );
 				}
 			}
 		}
 	}
+#endif /* DEBUG || DEVELOPMENT */
 
 	/* Walk the stack */
 	for( StackItem = 0; StackItem < StackCount; ++StackItem )
