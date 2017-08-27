@@ -408,6 +408,34 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 			pGameState->Render( NULL );
 		}
 	}
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	{
+		KMPACKEDARGB TextColour;
+		Uint8 ChannelStatus;
+		Sint32 Channel = 0;
+		char DataTemp[ 64 ];
+
+		PGLYPHSET pGlyphSet = GSM_GetGlyphSet( p_pGameStateManager,
+			GSM_GLYPH_SET_GUI_1 );
+
+		TextColour.dwPacked = 0xFFFFFFFF;
+
+		if( p_pGameStateManager->DebugAdapter.Connected )
+		{
+			TextColour.dwPacked = 0xFF00FF00;
+
+			TXT_RenderString( pGlyphSet, &TextColour, 32.0f, 32.0f,
+				"Connected" );
+		}
+		else
+		{
+			TextColour.dwPacked = 0xFFFF0000;
+
+			TXT_RenderString( pGlyphSet, &TextColour, 32.0f, 32.0f,
+				"Disconnected" );
+		}
+	}
+#endif /* DEBUG || DEVELOPMENT */
 	REN_SwapBuffers( );
 
 	p_pGameStateManager->pTopGameState->ElapsedGameTime +=
