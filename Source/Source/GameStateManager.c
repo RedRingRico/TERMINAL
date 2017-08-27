@@ -233,6 +233,7 @@ int GSM_PopState( PGAMESTATE_MANAGER p_pGameStateManager )
 int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	Uint32 StartTime = syTmrGetCount( );
+	Uint32 EndTime, TimeDifference;
 	PGAMESTATE pGameState = STK_GetItem( &p_pGameStateManager->GameStateStack,
 		0 );
 	size_t StackItem = 0;
@@ -240,6 +241,8 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 #if defined ( DEBUG ) || defined ( DEVELOPMENT )
 	int BytesRead = 0;
 	Uint8 ChannelStatus = 0;
+	Uint32 RenderStartTime, RenderEndTime;
+	static Uint32 FPS = 0L, FPSTimer = 0L, FPSCounter = 0L, RenderTime = 0L;
 
 	if( DA_GetChannelStatus( 3, &ChannelStatus ) == 0 )
 	{
@@ -398,6 +401,9 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 	pGameState = STK_GetItem( &p_pGameStateManager->GameStateStack, 0 );
 
 	REN_Clear( );
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	RenderStartTime = syTmrGetCount( );
+#endif /* DEBUG || DEVELOPMENT */
 	/* Walk the stack */
 	for( StackItem = 0; StackItem < StackCount; ++StackItem )
 	{
@@ -413,10 +419,13 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 		KMPACKEDARGB TextColour;
 		Uint8 ChannelStatus;
 		Sint32 Channel = 0;
-		char DataTemp[ 64 ];
-
+		static char FPSString[ 6 ];
+		float FPSXOffset;
 		PGLYPHSET pGlyphSet = GSM_GetGlyphSet( p_pGameStateManager,
 			GSM_GLYPH_SET_GUI_1 );
+
+		sprintf( FPSString, "%d", FPS );
+		TXT_MeasureString( pGlyphSet, FPSString, &FPSXOffset );
 
 		TextColour.dwPacked = 0xFFFFFFFF;
 
@@ -424,22 +433,65 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 		{
 			TextColour.dwPacked = 0xFF00FF00;
 
-			TXT_RenderString( pGlyphSet, &TextColour, 32.0f, 32.0f,
-				"Connected" );
+			TXT_RenderString( pGlyphSet, &TextColour, 20.0f,
+				( float )pGlyphSet->LineHeight * 1.5f, "Connected" );
 		}
 		else
 		{
 			TextColour.dwPacked = 0xFFFF0000;
 
-			TXT_RenderString( pGlyphSet, &TextColour, 32.0f, 32.0f,
-				"Disconnected" );
+			TXT_RenderString( pGlyphSet, &TextColour, 20.0f,
+				( float )pGlyphSet->LineHeight * 1.5f, "Disconnected" );
 		}
+
+		if( FPS >= 60 )
+		{
+			TextColour.dwPacked = 0xFF00DD00;
+		}
+		else if( FPS >= 30 )
+		{
+			TextColour.dwPacked = 0xFFCCCC00;
+		}
+		else if( FPS >= 15 )
+		{
+			TextColour.dwPacked = 0xFFFFA500;
+		}
+		else
+		{
+			TextColour.dwPacked = 0xFFFF0000;
+		}
+
+		TXT_RenderString( pGlyphSet, &TextColour, 620.0f - FPSXOffset,
+			( float )pGlyphSet->LineHeight * 1.5f, FPSString );
 	}
 #endif /* DEBUG || DEVELOPMENT */
 	REN_SwapBuffers( );
 
-	p_pGameStateManager->pTopGameState->ElapsedGameTime +=
-		syTmrCountToMicro( syTmrDiffCount( StartTime, syTmrGetCount( ) ) );
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	RenderEndTime = syTmrGetCount( );
+
+	RenderTime = syTmrCountToMicro( syTmrDiffCount( RenderStartTime,
+		RenderEndTime ) );
+
+	++FPSCounter;
+#endif /* DEBUG || DEVELOPMENT */
+
+	EndTime = syTmrGetCount( );
+
+	TimeDifference = syTmrCountToMicro( syTmrDiffCount( StartTime, EndTime ) );
+
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	FPSTimer += TimeDifference;
+
+	if( FPSTimer > 1000000UL )
+	{
+		FPSTimer = 0UL;
+		FPS = FPSCounter;
+		FPSCounter = 0L;
+	}
+#endif /* DEBUG || DEVELOPMENT */
+
+	p_pGameStateManager->pTopGameState->ElapsedGameTime += TimeDifference;
 
 	return 0;
 }

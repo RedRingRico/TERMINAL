@@ -4,30 +4,45 @@
 #include <Log.h>
 #include <Text.h>
 #include <DebugAdapter.h>
+#include <Model.h>
 
-#define DA_MDL_CONNECT		1
-#define DA_MDL_DISCONNECT	2
-#define DA_MDL_MODELINFO	3
-#define DA_MDL_MODELDATA	4
+#define DA_MDL_MODELINFO	100
+#define DA_MDL_MODELDATA	101
 
 #if defined ( DEBUG ) || defined ( DEVELOPMENT )
 
 typedef struct
 {
 	GAMESTATE	Base;
+	Uint32		ModelSize;
+	Uint32		ModelSizePopulated;
 	Uint8		*pDAData;
+	Uint8		*pModelData;
 	Sint32		DADataSize;
 	bool		DAConnected;
-	char		Name[ 64 ];
+	MODEL		Model;
 }MODELVIEWER_GAMESTATE,*PMODELVIEWER_GAMESTATE;
 
-static MODELVIEWER_GAMESTATE ModelViewerState;
+typedef struct
+{
+	Uint16	Sequence;
+	Uint16	Size;
+}MODEL_CHUNK,*PMODEL_CHUNK;
 
-static void HandleDebugAdapterData( int p_BytesToRead );
+static MODELVIEWER_GAMESTATE ModelViewerState;
 
 static int MDLV_Load( void *p_pArgs )
 {
 	ModelViewerState.pDAData = NULL;
+
+	memset( ModelViewerState.Model.Name, '\0',
+		sizeof( ModelViewerState.Model.Name ) );
+	ModelViewerState.Model.PolygonCount = 0;
+	ModelViewerState.Model.MeshCount = 0;
+	ModelViewerState.Model.pMeshes = NULL;
+	ModelViewerState.Model.pMemoryBlock = NULL;
+
+	ModelViewerState.pModelData = NULL;
 
 	return 0;
 }
@@ -58,38 +73,75 @@ static int MDLV_Update( void *p_pArgs )
 	Uint8 ChannelStatus;
 	char DataTemp[ 64 ];
 	int DataSize;
+	PQUEUE pDAQueue =
+		&ModelViewerState.Base.pGameStateManager->DebugAdapter.Queue;
 
 	if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
 	{
 		GSM_PopState( ModelViewerState.Base.pGameStateManager );
 	}
 
-	if( g_Peripherals[ 0 ].press & PDD_DGT_TY )
+	if( QUE_GetCount(
+		&ModelViewerState.Base.pGameStateManager->DebugAdapter.Queue ) != 0 )
 	{
-		LOG_Debug( "TEST" );
-	}
+		PDEBUG_ADAPTER_MESSAGE pMessage;
 
-	/*if( DA_GetChannelStatus( 3, &ChannelStatus ) == 0 )
-	{
-		* Handle the debug adapter interface *
-		DAData =  DA_GetData( ModelViewerState.pDAData,
-			ModelViewerState.DADataSize, 3 );
+		pMessage = QUE_GetFront(
+			&ModelViewerState.Base.pGameStateManager->DebugAdapter.Queue );
 
-		if( DAData > 0 )
+		switch( pMessage->ID )
 		{
-			LOG_Debug( "Got some data!" );
-			HandleDebugAdapterData( DAData );
+			case DA_MDL_MODELINFO:
+			{
+				MDL_DeleteModel( &ModelViewerState.Model );
+
+				if( ModelViewerState.pModelData != NULL )
+				{
+					MEM_FreeFromBlock( ModelViewerState.Base.
+						pGameStateManager->MemoryBlocks.pGraphicsMemory,
+						ModelViewerState.pModelData );
+					ModelViewerState.pModelData = NULL;
+				}
+
+				ModelViewerState.ModelSize = ( Uint32 )( *pMessage->Data );
+
+				ModelViewerState.pModelData = MEM_AllocateFromBlock(
+					ModelViewerState.Base.pGameStateManager->MemoryBlocks.
+					pGraphicsMemory, ModelViewerState.ModelSize,
+					"Model Viewer: Temporary mesh data" );
+
+				QUE_Dequeue( pDAQueue, NULL );
+
+				break;
+			}
+			case DA_MDL_MODELDATA:
+			{
+				MODEL_CHUNK ModelChunk;
+
+				memcpy( &ModelChunk, pMessage->Data, sizeof( ModelChunk ) );
+
+				memcpy( &ModelViewerState.pModelData[
+					ModelChunk.Sequence * MAX_DEBUG_ADAPTER_MESSAGE_SIZE ],
+					&pMessage->Data[ sizeof( ModelChunk ) ], ModelChunk.Size );
+
+				ModelViewerState.ModelSizePopulated += ModelChunk.Size;
+
+				if( ModelViewerState.ModelSizePopulated ==
+					ModelViewerState.ModelSize )
+				{
+					MDL_LoadModelFromMemory( &ModelViewerState.Model,
+						ModelViewerState.pModelData,
+						ModelViewerState.ModelSize,
+						ModelViewerState.Base.pGameStateManager->MemoryBlocks.
+						pGraphicsMemory );
+				}
+
+				QUE_Dequeue( pDAQueue, NULL );
+
+				break;
+			}
 		}
-	}*/
-
-	/*if( ( DAData = DA_GetData( ModelViewerState.pDAData,
-		ModelViewerState.DADataSize, 3, &DataSize ) ) == 0 )
-	{
-		HandleDebugAdapterData( DataSize );
-	}*/
-
-	//if( QUE_IsEmpty( &p_pGameStateManager->DebugAdapter.Queue ) == false )
-	HandleDebugAdapterData( 0 );
+	}
 
 	return 0;
 }
@@ -100,7 +152,7 @@ static int MDLV_Render( void *p_pArgs )
 	float TextLength;
 	Uint8 ChannelStatus;
 	Sint32 Channel = 0;
-	char DataTemp[ 64 ];
+	char PrintString[ 64 ];
 
 	PGLYPHSET pGlyphSet = GSM_GetGlyphSet(
 		ModelViewerState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
@@ -112,30 +164,21 @@ static int MDLV_Render( void *p_pArgs )
 		480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
 		"[B] back" );
 
-	if( ModelViewerState.Base.pGameStateManager->DebugAdapter.Connected )
-	{
-		TextColour.dwPacked = 0xFF00FF00;
+	sprintf( PrintString, "Mesh count: %d", ModelViewerState.Model.MeshCount );
 
-		TXT_RenderString( pGlyphSet, &TextColour, 32.0f, 32.0f,
-			"Connected" );
-	}
-	else
-	{
-		TextColour.dwPacked = 0xFFFF0000;
+	TXT_RenderString( pGlyphSet, &TextColour, 20.0f,
+		480.0f - ( float )pGlyphSet->LineHeight * 1.5f, PrintString );
 
-		TXT_RenderString( pGlyphSet, &TextColour, 32.0f, 32.0f,
-			"Disconnected" );
-	}
-
-	if( strlen( ModelViewerState.Name ) > 0 )
+	if( strlen( ModelViewerState.Model.Name ) > 0 )
 	{
 		TextColour.dwPacked = 0xFFCCAA00;
 
-		TXT_MeasureString( pGlyphSet, ModelViewerState.Name, &TextLength );
+		TXT_MeasureString( pGlyphSet, ModelViewerState.Model.Name,
+			&TextLength );
 		TXT_RenderString( pGlyphSet, &TextColour,
 			320.0f - TextLength * 0.5f,
 			480.0f - ( float )pGlyphSet->LineHeight * 1.5f,
-			ModelViewerState.Name );
+			ModelViewerState.Model.Name );
 	}
 
 	return 0;
@@ -181,58 +224,6 @@ int MDLV_RegisterWithGameStateManager(
 
 	return GSM_RegisterGameState( p_pGameStateManager, GAME_STATE_MODELVIEWER,
 		( GAMESTATE * )&ModelViewerState );
-}
-
-static void HandleDebugAdapterData( int p_BytesToRead )
-{
-	/* Format:
-	 * 8-bit ID (Connect/Disconnect/Model Info/Model Data)
-	 * Payload
-	 */
-	/* First, get the ID */
-	/*Uint8 ID;
-	int BytesRead = 0;
-
-	while( BytesRead < p_BytesToRead )
-	{
-		ID = ModelViewerState.pDAData[ BytesRead ];
-
-		switch( ID )
-		{
-			case DA_MDL_CONNECT:
-			{
-				ModelViewerState.DAConnected = true;
-				++BytesRead;
-
-				break;
-			}
-			case DA_MDL_DISCONNECT:
-			{
-				ModelViewerState.DAConnected = false;
-				++BytesRead;
-
-				break;
-			}
-			case DA_MDL_MODELINFO:
-			{
-				++BytesRead;
-
-				memcpy( ModelViewerState.Name,
-					&ModelViewerState.pDAData[ BytesRead ], 32 );
-
-				BytesRead += 32;
-
-				break;
-			}
-			case DA_MDL_MODELDATA:
-			{
-				break;
-			}
-			default:
-			{
-			}
-		}
-	}*/
 }
 
 #endif /* DEBUG || DEVELOPMENT */
