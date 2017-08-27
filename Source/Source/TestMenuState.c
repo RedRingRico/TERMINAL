@@ -47,7 +47,7 @@ static int TMU_Load( void *p_pArgs )
 
 	++MenuItemCount;
 
-	MenuItems[ MenuItemCount ].pName = "SHadow Mapping [Coming 20XX]";
+	MenuItems[ MenuItemCount ].pName = "Shadow Mapping [Coming 20XX]";
 	MenuItems[ MenuItemCount ].Function = NULL;
 
 	++MenuItemCount;
