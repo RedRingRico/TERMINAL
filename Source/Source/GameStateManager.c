@@ -27,6 +27,7 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 		p_pGameStateManager->MemoryBlocks.pSystemMemory,
 		sizeof( PGLYPHSET ) * 2, "GSM: Glyph set" );
 
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 	p_pGameStateManager->DebugAdapter.pData = MEM_AllocateFromBlock(
 		p_pGameStateManager->MemoryBlocks.pSystemMemory,
 		64 * 1024, "Debug Adapter Memory" );
@@ -38,6 +39,7 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	QUE_Initialise( &p_pGameStateManager->DebugAdapter.Queue,
 		p_pGameStateManager->MemoryBlocks.pSystemMemory, 64,
 		sizeof( DEBUG_ADAPTER_MESSAGE ), 20, "Debug Adapter Queue" );
+#endif /* DEBUG || DEVELOPMENT */
 
 	if( STK_Initialise( &p_pGameStateManager->GameStateStack,
 		p_pGameStateManager->MemoryBlocks.pSystemMemory, 10,
@@ -64,6 +66,12 @@ void GSM_Terminate( PGAMESTATE_MANAGER p_pGameStateManager )
 	{
 		GSM_PopState( p_pGameStateManager );
 	}
+
+#if defined ( DEBUG ) || defined( DEVELOPMENT )
+	MEM_FreeFromBlock( p_pGameStateManager->MemoryBlocks.pSystemMemory,
+		p_pGameStateManager->DebugAdapter.pData );
+	QUE_Terminate( &p_pGameStateManager->DebugAdapter.Queue );
+#endif /* DEBUG || DEVELOPMENT */
 
 	while( pRegistryItr != NULL )
 	{
@@ -113,6 +121,8 @@ int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,
 	{
 		LOG_Debug( "GSM_ChangeState <ERROR> Something went wrong pushing the "
 			"state onto the stack\n" );
+
+		p_pGameStateManager->Running = false;
 
 		return 1;
 	}
@@ -265,30 +275,109 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 			}
 
 			/* Handle non-specific messages */
-			if( QUE_IsEmpty( &p_pGameStateManager->DebugAdapter.Queue ) ==
+			while( QUE_IsEmpty( &p_pGameStateManager->DebugAdapter.Queue ) ==
 				false )
 			{
+				bool DebugMessageHandled = false;
 				PDEBUG_ADAPTER_MESSAGE pGenericMessage;
 
 				pGenericMessage = QUE_GetFront(
 					&p_pGameStateManager->DebugAdapter.Queue );
 
-				if( pGenericMessage->ID == DA_CONNECT )
+				switch( pGenericMessage->ID )
 				{
-					p_pGameStateManager->DebugAdapter.Connected = true;
-					QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue,
-						NULL );
+					case DA_CONNECT:
+					{
+						PGAMESTATE_REGISTRY pRegistryItr =
+							p_pGameStateManager->pRegistry;
 
-					LOG_Debug( "Debug Adapter Connected" );
+						struct REGISTRY_ENTRIES
+						{
+							Uint16		ID;
+							Uint16		Length;
+							Uint16		NameCount;
+							char		Names[ 1022 ];
+						};
+
+						struct REGISTRY_ENTRIES RegistryEntries;
+						Sint32 TotalStateNameSize = 0;
+						Sint32 StateNameCount = 0;
+						Sint32 BytesWritten;
+
+						p_pGameStateManager->DebugAdapter.Connected = true;
+						QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue,
+							NULL );
+
+						LOG_Debug( "Debug Adapter Connected" );
+
+						while( pRegistryItr != NULL )
+						{
+							PGAMESTATE_REGISTRY pNext = pRegistryItr->pNext;
+
+							if( pRegistryItr->pGameState->VisibleToDebugAdapter )
+							{
+								memcpy( &RegistryEntries.Names[ TotalStateNameSize ],
+									pRegistryItr->pName,
+									strlen( pRegistryItr->pName ) + 1 );
+
+								TotalStateNameSize +=
+									strlen( pRegistryItr->pName ) + 1;
+
+								++StateNameCount;
+							}
+
+							pRegistryItr = pNext;
+						}
+
+						RegistryEntries.ID = 0x0003;
+						RegistryEntries.Length = sizeof( Uint16 ) * 2 +
+							TotalStateNameSize;
+						RegistryEntries.NameCount = StateNameCount;
+
+						if( DA_SendData( 3, sizeof( RegistryEntries ),
+							&RegistryEntries, &BytesWritten ) != 0 )
+						{
+							LOG_Debug( "Error sending registered game states" );
+						}
+
+						DebugMessageHandled = true;
+						break;
+					}
+					case DA_DISCONNECT:
+					{
+						p_pGameStateManager->DebugAdapter.Connected = false;
+						QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue,
+							NULL );
+
+						LOG_Debug( "Debug Adapter Disconnected" );
+						DebugMessageHandled = true;
+						break;
+					}
+					case DA_SWITCHGAMESTATE:
+					{
+						DEBUG_ADAPTER_MESSAGE SwitchMessageConfirm;
+
+						if( GSM_ChangeState( p_pGameStateManager,
+							( char * )pGenericMessage->Data, NULL,
+							NULL ) != 0 )
+						{
+						}
+
+						QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue,
+							NULL );
+
+						DebugMessageHandled = true;
+						break;
+					}
+					default:
+					{
+					}
 				}
 
-				if( pGenericMessage->ID == DA_DISCONNECT )
+				// Nothing more can be done with the current item in the queue
+				if( DebugMessageHandled == false )
 				{
-					p_pGameStateManager->DebugAdapter.Connected = false;
-					QUE_Dequeue( &p_pGameStateManager->DebugAdapter.Queue,
-						NULL );
-
-					LOG_Debug( "Debug Adapter Disconnected" );
+					break;
 				}
 			}
 		}

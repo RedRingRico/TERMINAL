@@ -3,6 +3,7 @@
 #include <Peripheral.h>
 #include <Log.h>
 #include <Text.h>
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 
 #define TEST_MENU_ITEMS 7
 
@@ -172,6 +173,9 @@ int TMU_RegisterWithGameStateManager(
 	TestMenuState.Base.Unload = &TMU_Unload;
 	TestMenuState.Base.VSyncCallback = &TMU_VSyncCallback;
 	TestMenuState.Base.pGameStateManager = p_pGameStateManager;
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	TestMenuState.Base.VisibleToDebugAdapter  = true;
+#endif /* DEBUG || DEVELOPMENT */
 
 	return GSM_RegisterGameState( p_pGameStateManager, GAME_STATE_TESTMENU,
 		( GAMESTATE * )&TestMenuState );
@@ -182,4 +186,6 @@ static int LaunchModelViewer( void *p_pArgs )
 	return GSM_PushState( TestMenuState.Base.pGameStateManager,
 		GAME_STATE_MODELVIEWER, NULL, NULL, true );
 }
+
+#endif /* DEBUG || DEVELOPMENT */
 

@@ -20,6 +20,9 @@ typedef struct _tagGAMESTATE
 	struct _tagGAMESTATE_MANAGER	*pGameStateManager;
 	bool							Paused;
 	Uint32							ElapsedGameTime;
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	bool							VisibleToDebugAdapter;
+#endif /* DEBUG || DEVELOPMENT */
 }GAMESTATE,*PGAMESTATE;
 
 void GS_Copy( PGAMESTATE p_pCopy, PGAMESTATE p_pOriginal );

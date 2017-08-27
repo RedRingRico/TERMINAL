@@ -10,6 +10,8 @@
 #define DA_MDL_MODELINFO	3
 #define DA_MDL_MODELDATA	4
 
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+
 typedef struct
 {
 	GAMESTATE	Base;
@@ -173,6 +175,9 @@ int MDLV_RegisterWithGameStateManager(
 	ModelViewerState.Base.Unload = &MDLV_Unload;
 	ModelViewerState.Base.VSyncCallback = &MDLV_VSyncCallback;
 	ModelViewerState.Base.pGameStateManager = p_pGameStateManager;
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	ModelViewerState.Base.VisibleToDebugAdapter  = true;
+#endif /* DEBUG || DEVELOPMENT */
 
 	return GSM_RegisterGameState( p_pGameStateManager, GAME_STATE_MODELVIEWER,
 		( GAMESTATE * )&ModelViewerState );
@@ -229,4 +234,6 @@ static void HandleDebugAdapterData( int p_BytesToRead )
 		}
 	}*/
 }
+
+#endif /* DEBUG || DEVELOPMENT */
 

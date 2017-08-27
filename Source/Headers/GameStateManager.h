@@ -29,7 +29,9 @@ typedef struct _tagGAMESTATE_REGISTRY
 
 typedef struct _tagGAMESTATE_MANAGER
 {
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 	DEBUG_ADAPTER			DebugAdapter;
+#endif /* DEBUG || DEVELOPMENT */
 	GAME_OPTIONS			GameOptions;
 	GAMESTATE_REGISTRY		*pRegistry;
 	struct _tagGAMESTATE	*pTopGameState;

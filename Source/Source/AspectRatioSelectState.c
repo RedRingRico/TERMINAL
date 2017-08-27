@@ -6,6 +6,7 @@
 #include <Matrix4x4.h>
 #include <Peripheral.h>
 #include <Renderer.h>
+#include <Log.h>
 #include <kamui2.h>
 
 typedef struct _tagASPECTRATIOSELECT_GAMESTATE
@@ -32,6 +33,13 @@ static int ARSS_Load( void *p_pArgs )
 	KMPACKEDARGB BaseColour;
 	VECTOR3 Translate = { 0.0f, 0.0f, 100.0f };
 	PASPECTRATIOSELECT pArguments = p_pArgs;
+
+	if( pArguments == NULL )
+	{
+		LOG_Debug( "[ARSS_Load] <ERROR> Arguments pointer is null" );
+
+		return 1;
+	}
 
 	AspectRatioSelectState.pGlyphSet = pArguments->pGlyphSet;
 
@@ -384,6 +392,9 @@ int ARSS_RegisterWithGameStateManager(
 	AspectRatioSelectState.Base.Unload = &ARSS_Unload;
 	AspectRatioSelectState.Base.VSyncCallback = &ARSS_VSyncCallback;
 	AspectRatioSelectState.Base.pGameStateManager = p_pGameStateManager;
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	AspectRatioSelectState.Base.VisibleToDebugAdapter = false;
+#endif /* DEBUG || DEVELOPMENT */
 
 	return GSM_RegisterGameState( p_pGameStateManager,
 		GAME_STATE_ASPECTRATIOSELECT, ( GAMESTATE * )&AspectRatioSelectState );

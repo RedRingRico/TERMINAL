@@ -2,6 +2,7 @@
 #include <Renderer.h>
 #include <Peripheral.h>
 #include <AspectRatioSelectState.h>
+#include <Log.h>
 
 typedef struct _tagREFRESHRATESELECT_GAMESTATE
 {
@@ -23,6 +24,13 @@ static REFRESHRATESELECT_GAMESTATE RefreshRateSelectState;
 static int RRSS_Load( void *p_pArgs )
 {
 	PREFRESHRATESELECT pArguments = p_pArgs;
+
+	if( pArguments == NULL )
+	{
+		LOG_Debug( "[RRSS_Load] <ERROR> Arguments pointer is null" );
+
+		return 1;
+	}
 
 	RefreshRateSelectState.pGlyphSet = pArguments->pGlyphSet;
 
@@ -358,6 +366,9 @@ int RRSS_RegisterWithGameStateManager(
 	RefreshRateSelectState.Base.Unload = &RRSS_Unload;
 	RefreshRateSelectState.Base.VSyncCallback = &RRSS_VSyncCallback;
 	RefreshRateSelectState.Base.pGameStateManager = p_pGameStateManager;
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	RefreshRateSelectState.Base.VisibleToDebugAdapter = false;
+#endif /* DEBUG || DEVELOPMENT */
 
 	return GSM_RegisterGameState( p_pGameStateManager,
 		GAME_STATE_REFRESHRATESELECT, ( GAMESTATE * )&RefreshRateSelectState );

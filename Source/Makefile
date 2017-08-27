@@ -41,7 +41,7 @@ LINK_FILES = $(addprefix xlnk.,$(basename $(DEFAULT_OBJS))) $(addprefix lnk.,$(O
 
 BUILD = Debug
 
-SOURCEDIR = Source Source/TestMenus
+SOURCEDIR := Source Source/TestMenus
 
 MAKE	:= make.exe
 ELFCONV	:= elfcnv.exe

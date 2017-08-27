@@ -22,7 +22,7 @@
 #define DA_OPMIE	0x40
 #define DA_OPACK	0x80
 
-#define MAX_DEBUG_ADAPTER_MESSAGE_SIZE	1024
+#define MAX_DEBUG_ADAPTER_MESSAGE_SIZE	1020
 
 /* This is mainly for the game state manager's use  */
 typedef struct _tagDEBUG_ADAPTER
@@ -41,8 +41,9 @@ typedef struct _tagDEBUG_ADAPTER_MESSAGE
 	Uint8		Data[ MAX_DEBUG_ADAPTER_MESSAGE_SIZE ];
 }DEBUG_ADAPTER_MESSAGE, *PDEBUG_ADAPTER_MESSAGE;
 
-#define DA_CONNECT		1
-#define DA_DISCONNECT	2
+#define DA_CONNECT			1
+#define DA_DISCONNECT		2
+#define DA_SWITCHGAMESTATE	3
 
 /* Get the complete status */
 Sint32 DA_Poll( Uint32 *p_pStatus );
@@ -53,6 +54,10 @@ Sint32 DA_GetChannelStatus( Uint32 p_Channel, Uint8 *p_pStatus );
 /* Returns the amount of data read, up to p_Size in p_pBytesRead */
 Sint32 DA_GetData( void *p_pData, int p_Size, int p_Channel,
 	Sint32 *p_pBytesRead );
+
+/* Returns the amount of data written, up to p_Size in p_pBytesRead */
+Sint32 DA_SendData( int p_Channel, int p_Size, const void *p_pData,
+	Sint32 *p_pBytesWritten );
 
 bool DA_GetConnectionStatus( void );
 

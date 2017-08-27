@@ -141,7 +141,8 @@ void main( void )
 
 	if( HW_Initialise( KM_DSPBPP_RGB888, &AVCable, &MemoryFree ) != 0 )
 	{
-		goto MainCleanup;
+		HW_Terminate( );
+		HW_Reboot( );
 	}
 
 	LOG_Initialise( NULL );

@@ -65,37 +65,34 @@ static int MPM_Initialise( void *p_pArgs )
 
 static int MPM_Update( void *p_pArgs )
 {
-	/*if( MultiPlayerMainState.Base.Paused == false )*/
+	if( g_Peripherals[ 0 ].press & PDD_DGT_KU )
 	{
-		if( g_Peripherals[ 0 ].press & PDD_DGT_KU )
+		MNU_SelectPreviousMenuItem( &MultiPlayerMainState.Menu );
+	}
+
+	if( g_Peripherals[ 0 ].press & PDD_DGT_KD )
+	{
+		MNU_SelectNextMenuItem( &MultiPlayerMainState.Menu );
+	}
+
+	if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
+	{
+		PMENU_ITEM pMenuItem;
+
+		pMenuItem = MNU_GetSelectedMenuItem( &MultiPlayerMainState.Menu );
+
+		if( pMenuItem )
 		{
-			MNU_SelectPreviousMenuItem( &MultiPlayerMainState.Menu );
-		}
-
-		if( g_Peripherals[ 0 ].press & PDD_DGT_KD )
-		{
-			MNU_SelectNextMenuItem( &MultiPlayerMainState.Menu );
-		}
-
-		if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
-		{
-			PMENU_ITEM pMenuItem;
-
-			pMenuItem = MNU_GetSelectedMenuItem( &MultiPlayerMainState.Menu );
-
-			if( pMenuItem )
+			if( pMenuItem->Function )
 			{
-				if( pMenuItem->Function )
-				{
-					pMenuItem->Function( NULL );
-				}
+				pMenuItem->Function( NULL );
 			}
 		}
+	}
 
-		if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
-		{
-			GSM_PopState( MultiPlayerMainState.Base.pGameStateManager );
-		}
+	if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
+	{
+		GSM_PopState( MultiPlayerMainState.Base.pGameStateManager );
 	}
 
 	return 0;
@@ -106,32 +103,25 @@ static int MPM_Render( void *p_pArgs )
 	KMPACKEDARGB TextColour;
 	float TextLength;
 
-	/*if( MultiPlayerMainState.Base.Paused == false )*/
-	{
-		PGLYPHSET pGlyphSet = GSM_GetGlyphSet(
-			MultiPlayerMainState.Base.pGameStateManager,
-			GSM_GLYPH_SET_GUI_1 );
+	PGLYPHSET pGlyphSet = GSM_GetGlyphSet(
+		MultiPlayerMainState.Base.pGameStateManager,
+		GSM_GLYPH_SET_GUI_1 );
 
-		TextColour.dwPacked = 0xFFFFFFFF;
+	TextColour.dwPacked = 0xFFFFFFFF;
 
-		//REN_Clear( );
+	TXT_MeasureString( pGlyphSet, "[TERMINAL] //MULTI PLAYER",
+		&TextLength );
+	TXT_RenderString( pGlyphSet, &TextColour,
+		320.0f - ( TextLength * 0.5f ), 32.0f,
+		"[TERMINAL] //MULTI PLAYER" );
 
-		TXT_MeasureString( pGlyphSet, "[TERMINAL] //MULTI PLAYER",
-			&TextLength );
-		TXT_RenderString( pGlyphSet, &TextColour,
-			320.0f - ( TextLength * 0.5f ), 32.0f,
-			"[TERMINAL] //MULTI PLAYER" );
+	TXT_MeasureString( pGlyphSet, "[A] select | [B] back",
+		&TextLength );
+	TXT_RenderString( pGlyphSet, &TextColour, 640.0f - 64.0f - TextLength,
+		480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
+		"[A] select | [B] back" );
 
-		TXT_MeasureString( pGlyphSet, "[A] select | [B] back",
-			&TextLength );
-		TXT_RenderString( pGlyphSet, &TextColour, 640.0f - 64.0f - TextLength,
-			480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
-			"[A] select | [B] back" );
-
-		MNU_Render( &MultiPlayerMainState.Menu, 2.0f, 320.0f, 240.0f );
-
-		//REN_SwapBuffers( );
-	}
+	MNU_Render( &MultiPlayerMainState.Menu, 2.0f, 320.0f, 240.0f );
 
 	return 0;
 }
@@ -164,6 +154,9 @@ int MP_RegisterMainWithGameStateManager(
 	MultiPlayerMainState.Base.Unload = &MPM_Unload;
 	MultiPlayerMainState.Base.VSyncCallback = &MPM_VSyncCallback;
 	MultiPlayerMainState.Base.pGameStateManager = p_pGameStateManager;
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	MultiPlayerMainState.Base.VisibleToDebugAdapter = true;
+#endif /* DEBUG || DEVELOPMENT */
 
 	return GSM_RegisterGameState( p_pGameStateManager,
 		GAME_STATE_MULTIPLAYER_MAIN, ( GAMESTATE * )&MultiPlayerMainState );

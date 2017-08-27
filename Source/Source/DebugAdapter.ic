@@ -2,6 +2,7 @@
 #pragma inline_asm( DA_Poll )
 #pragma inline_asm( DA_GetChannelStatus )
 #pragma inline_asm( DA_GetData )
+#pragma inline_asm( DA_SendData )
 
 Sint32 DA_Poll( Uint32 *p_pStatus )
 {
@@ -73,5 +74,14 @@ Sint32 DA_GetData( void *p_pData, int p_Size, int p_Channel,
 	nop
 GetDataReturn:
 	add		#H'C, r15
+}
+
+Sint32 DA_SendData( int p_Channel, int p_Size, const void *p_pData,
+	Sint32 *p_pBytesWritten )
+{
+	mov.l	#H'B08, r8
+	add		r8, r4
+	trapa	#02
+	nop
 }
 
