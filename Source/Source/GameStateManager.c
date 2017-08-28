@@ -257,13 +257,13 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 			while( BytesRead < p_pGameStateManager->DebugAdapter.DataRead )
 			{
 				DEBUG_ADAPTER_MESSAGE NewMessage;
-				NewMessage.ID =
-					( Uint16 )p_pGameStateManager->DebugAdapter.pData[
-						BytesRead ];
+				memcpy( &NewMessage.ID,
+					&p_pGameStateManager->DebugAdapter.pData[ BytesRead ],
+					sizeof( Uint16 ) );
 				BytesRead += 2;
-				NewMessage.Length = 
-					( Uint16 )p_pGameStateManager->DebugAdapter.pData[
-						BytesRead ];
+				memcpy( &NewMessage.Length,
+					&p_pGameStateManager->DebugAdapter.pData[ BytesRead ],
+					sizeof( Uint16 ) );
 				BytesRead += 2;
 				if( NewMessage.Length > 0 )
 				{

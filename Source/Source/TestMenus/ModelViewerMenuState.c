@@ -103,7 +103,8 @@ static int MDLV_Update( void *p_pArgs )
 					ModelViewerState.pModelData = NULL;
 				}
 
-				ModelViewerState.ModelSize = ( Uint32 )( *pMessage->Data );
+				memcpy( &ModelViewerState.ModelSize, pMessage->Data,
+					sizeof( Uint32 ) );
 
 				ModelViewerState.pModelData = MEM_AllocateFromBlock(
 					ModelViewerState.Base.pGameStateManager->MemoryBlocks.
@@ -121,7 +122,8 @@ static int MDLV_Update( void *p_pArgs )
 				memcpy( &ModelChunk, pMessage->Data, sizeof( ModelChunk ) );
 
 				memcpy( &ModelViewerState.pModelData[
-					ModelChunk.Sequence * MAX_DEBUG_ADAPTER_MESSAGE_SIZE ],
+					ModelChunk.Sequence *( MAX_DEBUG_ADAPTER_MESSAGE_SIZE -
+						sizeof( MODEL_CHUNK ) ) ],
 					&pMessage->Data[ sizeof( ModelChunk ) ], ModelChunk.Size );
 
 				ModelViewerState.ModelSizePopulated += ModelChunk.Size;

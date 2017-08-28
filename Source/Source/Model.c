@@ -203,7 +203,7 @@ int MDL_LoadModelFromMemory( PMODEL p_pModel, const Uint8 *p_pMemory,
 
 	MemoryPosition += sizeof( Header );
 	
-	/*while( MemoryPosition != p_MemorySize )
+	while( MemoryPosition != p_MemorySize )
 	{
 		CHUNK Chunk;
 		memcpy( &Chunk, &p_pMemory[ MemoryPosition ], sizeof( Chunk ) );
@@ -235,7 +235,7 @@ int MDL_LoadModelFromMemory( PMODEL p_pModel, const Uint8 *p_pMemory,
 				MemoryPosition += Chunk.Size;
 			}
 		}
-	}*/
+	}
 
 	p_pModel->pMemoryBlock = p_pMemoryBlock;
 
