@@ -344,6 +344,13 @@ void main( void )
 		goto MainCleanup;
 	}
 
+	if( MDL_Initialise( &GraphicsMemoryBlock ) != 0 )
+	{
+		LOG_Debug( "Failed to initialise the model library" );
+
+		goto MainCleanup;
+	}
+
 	memset( g_ConsoleIDPrint, '\0', sizeof( g_ConsoleIDPrint ) );
 	if( syCfgGetIndividualID( g_ConsoleID ) != SYD_CFG_IID_OK )
 	{
@@ -386,7 +393,8 @@ void main( void )
 	GameStateMemoryBlocks.pGraphicsMemory = &GraphicsMemoryBlock;
 	GameStateMemoryBlocks.pAudioMemory = &AudioMemoryBlock;
 
-	if( GSM_Initialise( &GameStateManager, &GameStateMemoryBlocks ) != 0 )
+	if( GSM_Initialise( &GameStateManager, &Renderer,
+		&GameStateMemoryBlocks ) != 0 )
 	{
 		LOG_Debug( "Failed to initialise the game state manager\n" );
 

@@ -2,14 +2,19 @@
 #include <GameState.h>
 #include <MainMenuState.h>
 #include <Peripheral.h>
-#include <Renderer.h>
 #include <Log.h>
-#include <DebugAdapter.h>
 #include <string.h>
 
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
-	PGAMESTATE_MEMORY_BLOCKS p_pMemoryBlocks )
+	PRENDERER p_pRenderer, PGAMESTATE_MEMORY_BLOCKS p_pMemoryBlocks )
 {
+	if( p_pRenderer == NULL )
+	{
+		LOG_Debug( "GSM_Initialise: Renderer interface is null" );
+
+		return 1;
+	}
+
 	p_pGameStateManager->pRegistry = NULL;
 	p_pGameStateManager->pRegistry->pNext = NULL;
 
@@ -50,6 +55,8 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 
 		return 1;
 	}
+
+	p_pGameStateManager->pRenderer = p_pRenderer;
 
 	MEM_ListMemoryBlocks(
 		p_pGameStateManager->MemoryBlocks.pSystemMemory );
@@ -399,6 +406,9 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 	}
 
 	pGameState = STK_GetItem( &p_pGameStateManager->GameStateStack, 0 );
+
+	p_pGameStateManager->pRenderer->VisiblePolygons =
+		p_pGameStateManager->pRenderer->CulledPolygons = 0;
 
 	REN_Clear( );
 #if defined ( DEBUG ) || defined ( DEVELOPMENT )

@@ -29,9 +29,14 @@ int FS_Initialise( void )
 		Error = gdFsInit( GDROM_MAX_OPEN_FILES, pWork,
 			GDROM_BUFFER_COUNT, pDirectory );
 
-		if( ( Error == GDD_ERR_TRAYOPEND ) ||
-			( Error == GDD_ERR_UNITATTENT ) )
+		if( Error == GDD_ERR_TRAYOPEND )
 		{
+			LOG_Debug( "[FS_Initialise] Disc tray open" );
+			return 1;
+		}
+		else if( Error == GDD_ERR_UNITATTENT )
+		{
+			LOG_Debug( "[FS_Initialise] Hardware failure" );
 			return 1;
 		}
 		else if( Error == GDD_ERR_OK )
@@ -42,6 +47,8 @@ int FS_Initialise( void )
 
 	if( Itr == 0 )
 	{
+		LOG_Debug( "[FS_Initialise] Retried initiaising the file system eight "
+			"times, did not succeed" );
 		return 1;
 	}
 

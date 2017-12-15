@@ -199,7 +199,9 @@ int MDL_LoadModelFromMemory( PMODEL p_pModel, const Uint8 *p_pMemory,
 	p_pModel->MeshCount = Header.MeshCount;
 	p_pModel->pMeshes = MEM_AllocateFromBlock( p_pMemoryBlock,
 		Header.MeshCount * sizeof( MESH ), "Model mesh buffer" );
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 	memcpy( p_pModel->Name, Header.Name, 32 );
+#endif // DEBUG || DEVELOPMENT
 
 	MemoryPosition += sizeof( Header );
 	
@@ -218,6 +220,14 @@ int MDL_LoadModelFromMemory( PMODEL p_pModel, const Uint8 *p_pMemory,
 				MeshSize = MDL_ReadMeshData( p_pMemory + MemoryPosition,
 					&p_pModel->pMeshes[ MeshIndex ], p_pMemoryBlock );
 
+				if( MeshSize != Chunk.Size )
+				{
+					LOG_Debug( "[MDL_LoadModelFromMemory] <ERROR> Failed to "
+						"load all bytes from the mesh data" );
+
+					return 1;
+				}
+
 				if( MeshSize == 0 )
 				{
 					MEM_FreeFromBlock( p_pMemoryBlock, p_pModel->pMeshes );
@@ -226,6 +236,20 @@ int MDL_LoadModelFromMemory( PMODEL p_pModel, const Uint8 *p_pMemory,
 				}
 
 				MemoryPosition += MeshSize;
+
+				memcpy( &Chunk, &p_pMemory[ MemoryPosition ],
+					sizeof( Chunk  ) );
+
+				if( ( Chunk.ID != 0xFFFFFFFF ) && ( Chunk.Size != 0 ) )
+				{
+					LOG_Debug( "[MDL_LoadModelFromMemory] <ERROR> "
+						"Mismatched end chunk" );
+
+					return 1;
+				}
+
+				MemoryPosition += sizeof( Chunk );
+
 				++MeshIndex;
 
 				break;
