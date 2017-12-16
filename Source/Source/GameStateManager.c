@@ -4,6 +4,10 @@
 #include <Peripheral.h>
 #include <Log.h>
 #include <string.h>
+#include <GitVersion.h>
+
+static Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
+static char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
 
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	PRENDERER p_pRenderer, PGAMESTATE_MEMORY_BLOCKS p_pMemoryBlocks )
@@ -44,6 +48,22 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	QUE_Initialise( &p_pGameStateManager->DebugAdapter.Queue,
 		p_pGameStateManager->MemoryBlocks.pSystemMemory, 64,
 		sizeof( DEBUG_ADAPTER_MESSAGE ), 20, "Debug Adapter Queue" );
+	
+	/* Get the console's ID for debug/development purposes */
+	memset( g_ConsoleIDPrint, '\0', sizeof( g_ConsoleIDPrint ) );
+	if( syCfgGetIndividualID( g_ConsoleID ) != SYD_CFG_IID_OK )
+	{
+		sprintf( g_ConsoleIDPrint, "ERROR" );
+	}
+	g_ConsoleID[ SYD_CFG_IID_SIZE ] = '\0';
+
+	sprintf( g_ConsoleIDPrint, "%02X%02X%02X%02X%02X%02X",
+		( unsigned char )g_ConsoleID[ 0 ],
+		( unsigned char )g_ConsoleID[ 1 ],
+		( unsigned char )g_ConsoleID[ 2 ],
+		( unsigned char )g_ConsoleID[ 3 ],
+		( unsigned char )g_ConsoleID[ 4 ],
+		( unsigned char )g_ConsoleID[ 5 ] );
 #endif /* DEBUG || DEVELOPMENT */
 
 	if( STK_Initialise( &p_pGameStateManager->GameStateStack,
@@ -430,6 +450,8 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 		Uint8 ChannelStatus;
 		Sint32 Channel = 0;
 		static char FPSString[ 6 ];
+		static char PrintBuffer[ 128 ];
+		static float TextLength;
 		float FPSXOffset;
 		PGLYPHSET pGlyphSet = GSM_GetGlyphSet( p_pGameStateManager,
 			GSM_GLYPH_SET_GUI_1 );
@@ -473,6 +495,25 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 
 		TXT_RenderString( pGlyphSet, &TextColour, 620.0f - FPSXOffset,
 			( float )pGlyphSet->LineHeight * 1.5f, FPSString );
+
+		TextColour.byte.bRed = 83;
+		TextColour.byte.bGreen = 254;
+		TextColour.byte.bBlue = 255;
+		TextColour.byte.bAlpha = 200;
+		sprintf( PrintBuffer, "Tag: %s | Branch: %s | Version: %s",
+			GIT_TAGNAME, GIT_BRANCH, GIT_VERSION );
+		TXT_MeasureString( pGlyphSet, PrintBuffer, &TextLength );
+		TXT_RenderString( pGlyphSet, &TextColour,
+			320.0f - ( TextLength / 2.0f ),
+			480.0f - ( float )pGlyphSet->LineHeight * 2.0f, PrintBuffer );
+
+		TextColour.byte.bRed = 230;
+		TextColour.byte.bGreen = 30;
+		TextColour.byte.bBlue = 230;
+
+		TXT_MeasureString( pGlyphSet, g_ConsoleIDPrint, &TextLength );
+		TXT_RenderString( pGlyphSet, &TextColour, 20.0f,
+				( float )pGlyphSet->LineHeight * 2.5f, g_ConsoleIDPrint );
 	}
 #endif /* DEBUG || DEVELOPMENT */
 	REN_SwapBuffers( );

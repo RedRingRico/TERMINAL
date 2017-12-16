@@ -49,10 +49,10 @@ KMDWORD g_pTextureWorkArea[ MAX_TEXTURES * 24 / 4 + MAX_SMALLVQ * 76 / 4 ];
 unsigned char RecvBuf[ 1024 * 8 ];
 unsigned char SendBuf[ 1024 * 8 ];
 
-char g_VersionString[ 256 ];
-Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
-char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
-bool g_ConnectedToDA = false;
+static char g_VersionString[ 256 ];
+static Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
+static char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
+static bool g_ConnectedToDA = false;
 
 typedef struct _tagRENDER_VERTEX
 {
