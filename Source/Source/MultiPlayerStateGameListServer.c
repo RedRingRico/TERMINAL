@@ -12,11 +12,11 @@ static const Uint32 GLS_MESSAGE_CONNECT = 0x000100;
 static const Uint32 MAX_PACKETS_PER_UPDATE = 10;
 static const size_t GAMESERVER_PACKET_SIZE = 6;
 
-/*#if defined ( DEBUG ) || defined ( DEVELOPMENT )
-#define LIST_SERVER_DOMAIN "dev.list.dreamcast.live"
-#else*/
-#define LIST_SERVER_DOMAIN "list.dreamcast.live"
-/*#endif *//* DEBUG || DEVELOPMENT */
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+#define LIST_SERVER_DOMAIN "dev.master.terminal.dreamcast.live"
+#else
+#define LIST_SERVER_DOMAIN "master.terminal.dreamcast.live"
+#endif /* DEBUG || DEVELOPMENT */
 
 typedef enum 
 {
