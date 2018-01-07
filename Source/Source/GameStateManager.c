@@ -61,15 +61,6 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
-	/* Mount all available memory units */
-	if( SU_MountDrives( &DrivesMounted ) != 0 )
-	{
-		LOG_Debug( "GSM_Initialise <ERROR> Failed to mount memory units" );
-		return 1;
-	}
-
-	LOG_Debug( "Mounted %d memory units", DrivesMounted );
-
 	p_pGameStateManager->pRenderer = p_pRenderer;
 
 	/* Mount all available memory units */
