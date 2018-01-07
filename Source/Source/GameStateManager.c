@@ -2,12 +2,17 @@
 #include <GameState.h>
 #include <MainMenuState.h>
 #include <Peripheral.h>
+#include <Renderer.h>
 #include <Log.h>
+#include <DebugAdapter.h>
 #include <string.h>
+#include <StorageUnit.h>
 
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	PRENDERER p_pRenderer, PGAMESTATE_MEMORY_BLOCKS p_pMemoryBlocks )
 {
+	Sint32 DrivesMounted = 0;
+
 	if( p_pRenderer == NULL )
 	{
 		LOG_Debug( "GSM_Initialise: Renderer interface is null" );
@@ -56,10 +61,25 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
+	/* Mount all available memory units */
+	if( SU_MountDrives( &DrivesMounted ) != 0 )
+	{
+		LOG_Debug( "GSM_Initialise <ERROR> Failed to mount memory units" );
+		return 1;
+	}
+
+	LOG_Debug( "Mounted %d memory units", DrivesMounted );
+
 	p_pGameStateManager->pRenderer = p_pRenderer;
 
-	MEM_ListMemoryBlocks(
-		p_pGameStateManager->MemoryBlocks.pSystemMemory );
+	/* Mount all available memory units */
+	if( SU_MountDrives( &DrivesMounted ) != 0 )
+	{
+		LOG_Debug( "GSM_Initialise <ERROR> Failed to mount memory units" );
+		return 1;
+	}
+
+	LOG_Debug( "Mounted %d memory units", DrivesMounted );
 
 	return 0;
 }
@@ -671,6 +691,11 @@ Sint32 GSM_RunVSync( PGAMESTATE_MANAGER p_pGameStateManager )
 	Uint8 ChannelStatus;
 	size_t StackItem =
 		STK_GetCount( &p_pGameStateManager->GameStateStack ) - 1;
+
+	/* Get the Debug Adapter information */
+	DA_GetData( p_pGameStateManager->DebugAdapter.pData,
+		p_pGameStateManager->DebugAdapter.DataSize, 3,
+		&p_pGameStateManager->DebugAdapter.DataRead );
 
 	/* Walk the stack */
 	for( ; StackItem > 0; --StackItem )

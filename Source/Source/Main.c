@@ -1,3 +1,4 @@
+#include <StorageUnit.h>
 #include <Renderer.h>
 #include <GitVersion.h>
 #include <sn_fcntl.h>
@@ -149,6 +150,8 @@ void main( void )
 	LOG_Debug( "TERMINAL" );
 	LOG_Debug( "Version: %s", GIT_VERSION );
 
+	pVertexBuffer = ( PKMDWORD )syMalloc( 0x100000 );
+
 	/*syCacheAllocCacheRAM( &pTVMMemory, 7 );
 
 	if( pTVMMemory == NULL )
@@ -249,7 +252,7 @@ void main( void )
 	scif_putq( '1' );
 	scif_putq( 'f' );
 
-	pVertexBuffer = ( PKMDWORD )syMalloc( 0x100000 );
+	SU_Initialise( &SystemMemoryBlock );
 
 	memset( &RendererConfiguration, 0, sizeof( RendererConfiguration ) );
 
@@ -446,6 +449,7 @@ MainCleanup:
 	GSM_Terminate( &GameStateManager );
 	AUD_Terminate( );
 	REN_Terminate( &Renderer );
+	SU_Terminate( );
 
 	/*if( pTVMMemory != NULL )
 	{
