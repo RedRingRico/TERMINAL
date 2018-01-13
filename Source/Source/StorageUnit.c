@@ -267,14 +267,17 @@ bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName )
 			/* Empty disk */
 			if( Status == BUD_ERR_FILE_NOT_FOUND )
 			{
-				LOG_Debug( "[SU_FindFileOnDrive] <INFO> Emtpty disk!" );
+				LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> Emtpty disk!",
+					p_Drive );
 				return false;
 			}
 		}
 
 #if defined ( DEBUG )
-			LOG_Debug( "[SU_FindFileOnDrive] <INFO> Status: 0x%08X", Status );
-			LOG_Debug( "[SU_FindFileOnDrive] <INFO> File: %s", FileName );
+			LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> Status: 0x%08X",
+				p_Drive, Status );
+			LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> File: %s", p_Drive,
+				FileName );
 #endif /* DEBUG */
 
 		FileFound = strncmp( FileName, p_pFileName, 16 );
@@ -301,8 +304,10 @@ bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName )
 			}
 
 #if defined ( DEBUG )
-			LOG_Debug( "[SU_FindFileOnDrive] <INFO> Status: 0x%08X", Status );
-			LOG_Debug( "[SU_FindFileOnDrive] <INFO> File: %s", FileName );
+			LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> Status: 0x%08X",
+				p_Drive, Status );
+			LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> File: %s", p_Drive,
+				FileName );
 #endif /* DEBUG */
 		} while( ( FileFound = strncmp( FileName, p_pFileName, 13 ) ) != 0 );
 
@@ -315,8 +320,41 @@ bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName )
 	return false;
 
 FileFound:
-	LOG_Debug( "Found file %s", p_pFileName );
+	LOG_Debug( "[SU_FindFileOnDrive(%d)] Found file %s", p_Drive,
+		p_pFileName );
 	return true;
+}
+
+bool SU_FindFileAcrossDrives( char *p_pFileName, bool p_StopAtFirstDrive,
+	Uint8 *p_pFoundOnDrives )
+{
+	size_t Drive;
+	Uint8 FoundOnDrives = 0;
+
+	for( Drive = 0; Drive < SU_MAX_DRIVES; ++Drive )
+	{
+		if( SU_FindFileOnDrive( Drive, p_pFileName ) == true )
+		{
+			FoundOnDrives |= ( 1 << Drive );
+
+			if( p_StopAtFirstDrive == true )
+			{
+				break;
+			}
+		}
+	}
+
+	if( FoundOnDrives != 0 )
+	{
+		if( p_pFoundOnDrives )
+		{
+			( *p_pFoundOnDrives ) = FoundOnDrives;
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
 static void InitialiseCallback( void )
@@ -356,6 +394,7 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 		{
 			if( p_Status == BUD_ERR_OK )
 			{
+				Uint8 FoundOnDrives;
 #if defined ( DEBUG )
 				LOG_Debug( "[BUP] <INFO> Memory unit %d mounted", p_Drive );
 #endif /* DEBUG */
@@ -368,7 +407,21 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 				pInformation->LastError = BUD_ERR_OK;
 
 				/* Remove this! */
-				SU_FindFileOnDrive( p_Drive, "SAVEDATA_002" );
+				if( SU_FindFileAcrossDrives( "H_HUNTER.SYS", true,
+					&FoundOnDrives ) == true )
+				{
+					Uint8 Drive;
+
+					LOG_Debug( "Found file on drives:" );
+
+					for( Drive = 0; Drive < SU_MAX_DRIVES; ++Drive )
+					{
+						if( FoundOnDrives & ( 1 << Drive ) )
+						{
+							LOG_Debug( "\t%d", Drive );
+						}
+					}
+				}
 			}
 			break;
 		}

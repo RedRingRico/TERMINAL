@@ -42,7 +42,8 @@ Sint32 SU_MountDrives( Sint32 *p_pDrivesMounted );
 Sint32 SU_UnmountDrives( Sint32 *p_pDrivesUnmounted );
 
 bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName );
-bool SU_FindFileAcrossDrives( char *p_pFileName );
+bool SU_FindFileAcrossDrives( char *p_pFileName, bool p_StopAtFirstDrive,
+	Uint8 *p_pFoundOnDrives );
 
 #endif /* __TERMINAL_STORAGEUNIT_H__ */
 
