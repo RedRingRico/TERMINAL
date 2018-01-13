@@ -439,11 +439,12 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 		Uint8 ChannelStatus;
 		Sint32 Channel = 0;
 		static char FPSString[ 6 ];
-		static char MemoryUnits[ 4 ];
+		static char MemoryUnits[ 6 ];
 		float FPSXOffset;
 		PGLYPHSET pGlyphSet = GSM_GetGlyphSet( p_pGameStateManager,
 			GSM_GLYPH_SET_GUI_1 );
 		size_t ConnectedMemoryUnits = 0;
+		size_t MountedMemoryUnits = 0;
 
 		sprintf( FPSString, "%d", FPS );
 		TXT_MeasureString( pGlyphSet, FPSString, &FPSXOffset );
@@ -488,7 +489,9 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 		TextColour.dwPacked = 0xFFFFFFFF;
 
 		SU_GetConnectedStorageUnits( NULL, &ConnectedMemoryUnits );
-		sprintf( MemoryUnits, "[%d]", ConnectedMemoryUnits );
+		SU_GetMountedStorageUnits( NULL, &MountedMemoryUnits );
+		sprintf( MemoryUnits, "[%d/%d]", MountedMemoryUnits,
+			ConnectedMemoryUnits );
 
 		TXT_RenderString( pGlyphSet, &TextColour, 10.0f, 480.0f -
 			( float )pGlyphSet->LineHeight * 5.0f, MemoryUnits );

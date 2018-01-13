@@ -4,6 +4,7 @@
 static STORAGEUNIT_INFO g_StorageUnits[ SU_MAX_DRIVES ];
 static PMEMORY_BLOCK g_pMemoryBlock;
 static size_t g_ConnectedStorageUnits;
+static size_t g_MountedStorageUnits;
 
 static void InitialiseCallback( void );
 static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
@@ -78,6 +79,34 @@ Sint32 SU_GetConnectedStorageUnits( PSTORAGEUNIT_INFO p_pConnectedUnits,
 	if( p_pConnectedUnitCount )
 	{
 		( *p_pConnectedUnitCount ) = g_ConnectedStorageUnits;
+
+		return 0;
+	}
+
+	return 0;
+}
+
+Sint32 SU_GetMountedStorageUnits( PSTORAGEUNIT_INFO p_pMountedUnits,
+	size_t *p_pMountedUnitCount )
+{
+	if( p_pMountedUnits != NULL )
+	{
+		/* p_pMountedUnits should have been initialised and allocated enough
+		 * memory beforehand */
+		size_t Index, Offset = 0;
+		for( Index = 0; Index < g_ConnectedStorageUnits; ++Index )
+		{
+			if( g_StorageUnits[ Index ].Flags & SUI_CONNECTED )
+			{
+				memcpy( &p_pMountedUnits[ Offset ], &g_StorageUnits[ Index ],
+					sizeof( STORAGEUNIT_INFO ) );
+			}
+		}
+	}
+	
+	if( p_pMountedUnitCount )
+	{
+		( *p_pMountedUnitCount ) = g_MountedStorageUnits;
 
 		return 0;
 	}
@@ -259,70 +288,23 @@ bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName )
 
 		do
 		{
-			Status = buFindFirstFile( p_Drive, FileName );
+			Status = buFindFirstFile( p_Drive, p_pFileName );
 		} while( Status == BUD_ERR_BUSY );
 
 		if( Status < 0 )
 		{
-			/* Empty disk */
 			if( Status == BUD_ERR_FILE_NOT_FOUND )
 			{
-				LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> Emtpty disk!",
-					p_Drive );
+				LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> File \"%s\"not "
+					"found", p_Drive, p_pFileName );
 				return false;
 			}
 		}
 
-#if defined ( DEBUG )
-			LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> Status: 0x%08X",
-				p_Drive, Status );
-			LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> File: %s", p_Drive,
-				FileName );
-#endif /* DEBUG */
-
-		FileFound = strncmp( FileName, p_pFileName, 16 );
-
-		if( FileFound == 0 )
-		{
-			goto FileFound;
-		}
-
-		do
-		{
-			do
-			{
-				Status = buFindNextFile( p_Drive, FileName );
-			} while( Status == BUD_ERR_BUSY );
-
-			if( Status < 0 )
-			{
-				/* End of the road */
-				if( Status == BUD_ERR_FILE_NOT_FOUND )
-				{
-					return false;
-				}
-			}
-
-#if defined ( DEBUG )
-			LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> Status: 0x%08X",
-				p_Drive, Status );
-			LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> File: %s", p_Drive,
-				FileName );
-#endif /* DEBUG */
-		} while( ( FileFound = strncmp( FileName, p_pFileName, 13 ) ) != 0 );
-
-		if( FileFound == 0 )
-		{
-			goto FileFound;
-		}
+		return true;
 	}
 
 	return false;
-
-FileFound:
-	LOG_Debug( "[SU_FindFileOnDrive(%d)] Found file %s", p_Drive,
-		p_pFileName );
-	return true;
 }
 
 bool SU_FindFileAcrossDrives( char *p_pFileName, bool p_StopAtFirstDrive,
@@ -399,6 +381,7 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 				LOG_Debug( "[BUP] <INFO> Memory unit %d mounted", p_Drive );
 #endif /* DEBUG */
 				pInformation->Flags |= SUI_READY;
+				++g_MountedStorageUnits;
 				if( buGetDiskInfo( p_Drive, &pInformation->DiskInformation ) ==
 					BUD_ERR_OK )
 				{
@@ -439,6 +422,7 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 			ClearDriveInformation( p_Drive );
 			pInformation->Flags &= ~( SUI_CONNECTED );
 			--g_ConnectedStorageUnits;
+			--g_MountedStorageUnits;
 #if defined( DEBUG )
 			LOG_Debug( "[BUP] <INFO> Memory unit %d disconnected", p_Drive );
 #endif /* DEBUG */

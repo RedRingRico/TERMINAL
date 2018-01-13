@@ -35,6 +35,8 @@ void SU_Terminate( void );
 
 Sint32 SU_GetConnectedStorageUnits( PSTORAGEUNIT_INFO p_pConnectedUnits,
 	size_t *p_pConnectedUnitCount );
+Sint32 SU_GetMountedStorageUnits( PSTORAGEUNIT_INFO p_pMountedUnits,
+	size_t *p_pMountedUnitCount );
 
 Sint32 SU_MountDrive( Sint32 p_Drive );
 Sint32 SU_UnmountDrive( Sint32 p_Drive );
