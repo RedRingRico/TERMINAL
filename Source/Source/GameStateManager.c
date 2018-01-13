@@ -70,8 +70,6 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
-	LOG_Debug( "Mounted %d memory units", DrivesMounted );
-
 	return 0;
 }
 
@@ -441,9 +439,11 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 		Uint8 ChannelStatus;
 		Sint32 Channel = 0;
 		static char FPSString[ 6 ];
+		static char MemoryUnits[ 4 ];
 		float FPSXOffset;
 		PGLYPHSET pGlyphSet = GSM_GetGlyphSet( p_pGameStateManager,
 			GSM_GLYPH_SET_GUI_1 );
+		size_t ConnectedMemoryUnits = 0;
 
 		sprintf( FPSString, "%d", FPS );
 		TXT_MeasureString( pGlyphSet, FPSString, &FPSXOffset );
@@ -484,6 +484,14 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 
 		TXT_RenderString( pGlyphSet, &TextColour, 620.0f - FPSXOffset,
 			( float )pGlyphSet->LineHeight * 1.5f, FPSString );
+
+		TextColour.dwPacked = 0xFFFFFFFF;
+
+		SU_GetConnectedStorageUnits( NULL, &ConnectedMemoryUnits );
+		sprintf( MemoryUnits, "[%d]", ConnectedMemoryUnits );
+
+		TXT_RenderString( pGlyphSet, &TextColour, 10.0f, 480.0f -
+			( float )pGlyphSet->LineHeight * 5.0f, MemoryUnits );
 	}
 #endif /* DEBUG || DEVELOPMENT */
 	REN_SwapBuffers( );
@@ -682,11 +690,12 @@ Sint32 GSM_RunVSync( PGAMESTATE_MANAGER p_pGameStateManager )
 	Uint8 ChannelStatus;
 	size_t StackItem =
 		STK_GetCount( &p_pGameStateManager->GameStateStack ) - 1;
-
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 	/* Get the Debug Adapter information */
 	DA_GetData( p_pGameStateManager->DebugAdapter.pData,
 		p_pGameStateManager->DebugAdapter.DataSize, 3,
 		&p_pGameStateManager->DebugAdapter.DataRead );
+#endif /* DEBUG || DEVELOPMENT */
 
 	/* Walk the stack */
 	for( ; StackItem > 0; --StackItem )
