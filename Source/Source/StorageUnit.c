@@ -249,20 +249,74 @@ Sint32 SU_UnmountDrives( Sint32 *p_pDrivesUnmounted )
 
 bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName )
 {
-	char FileName[ 16 ];
+	char FileName[ 13 ];
 	Sint32 Status;
+	PSTORAGEUNIT_INFO pInformation = &g_StorageUnits[ p_Drive ];
 
-	Status = buFindFirstFile( p_Drive, FileName );
-
-	if( Status < 0 )
+	if( pInformation->Flags & ( SUI_READY | SUI_FORMATTED ) )
 	{
-		if( Status == BUD_ERR_FILE_NOT_FOUND )
+		int FileFound = 0;
+
+		do
 		{
-			return false;
+			Status = buFindFirstFile( p_Drive, FileName );
+		} while( Status == BUD_ERR_BUSY );
+
+		if( Status < 0 )
+		{
+			/* Empty disk */
+			if( Status == BUD_ERR_FILE_NOT_FOUND )
+			{
+				LOG_Debug( "[SU_FindFileOnDrive] <INFO> Emtpty disk!" );
+				return false;
+			}
+		}
+
+#if defined ( DEBUG )
+			LOG_Debug( "[SU_FindFileOnDrive] <INFO> Status: 0x%08X", Status );
+			LOG_Debug( "[SU_FindFileOnDrive] <INFO> File: %s", FileName );
+#endif /* DEBUG */
+
+		FileFound = strncmp( FileName, p_pFileName, 16 );
+
+		if( FileFound == 0 )
+		{
+			goto FileFound;
+		}
+
+		do
+		{
+			do
+			{
+				Status = buFindNextFile( p_Drive, FileName );
+			} while( Status == BUD_ERR_BUSY );
+
+			if( Status < 0 )
+			{
+				/* End of the road */
+				if( Status == BUD_ERR_FILE_NOT_FOUND )
+				{
+					return false;
+				}
+			}
+
+#if defined ( DEBUG )
+			LOG_Debug( "[SU_FindFileOnDrive] <INFO> Status: 0x%08X", Status );
+			LOG_Debug( "[SU_FindFileOnDrive] <INFO> File: %s", FileName );
+#endif /* DEBUG */
+		} while( ( FileFound = strncmp( FileName, p_pFileName, 13 ) ) != 0 );
+
+		if( FileFound == 0 )
+		{
+			goto FileFound;
 		}
 	}
 
 	return false;
+
+FileFound:
+	LOG_Debug( "Found file %s", p_pFileName );
+	return true;
 }
 
 static void InitialiseCallback( void )
@@ -279,7 +333,9 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 
 	pInformation = &g_StorageUnits[ p_Drive ];
 
+#if defined ( DEBUG )
 	LOG_Debug( "[BUP] Complete callback" );
+#endif /* DEBUG */
 
 	switch( p_Operation )
 	{
@@ -301,7 +357,7 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 			if( p_Status == BUD_ERR_OK )
 			{
 #if defined ( DEBUG )
-				LOG_Debug( "Memory unit %d mounted", p_Drive );
+				LOG_Debug( "[BUP] <INFO> Memory unit %d mounted", p_Drive );
 #endif /* DEBUG */
 				pInformation->Flags |= SUI_READY;
 				if( buGetDiskInfo( p_Drive, &pInformation->DiskInformation ) ==
@@ -310,6 +366,9 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 					pInformation->Flags |= SUI_FORMATTED;
 				}
 				pInformation->LastError = BUD_ERR_OK;
+
+				/* Remove this! */
+				SU_FindFileOnDrive( p_Drive, "SAVEDATA_002" );
 			}
 			break;
 		}
