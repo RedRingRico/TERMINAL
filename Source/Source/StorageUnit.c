@@ -47,7 +47,8 @@ void SU_Terminate( void )
 	Sint32 DrivesUnmounted = 0;
 
 	SU_UnmountDrives( &DrivesUnmounted );
-	LOG_Debug( "[SU_Terminate] <INFO> Unmounted %d drives", DrivesUnmounted );
+	LOG_Debug( "[SU_Terminate] <INFO> Unmounted %d drive%s", DrivesUnmounted,
+		( DrivesUnmounted == 1 ) ? "" : "s");
 
 	do
 	{
@@ -87,6 +88,7 @@ Sint32 SU_GetConnectedStorageUnits( PSTORAGEUNIT_INFO p_pConnectedUnits,
 Sint32 SU_MountDrive( Sint32 p_Drive )
 {
 	PSTORAGEUNIT_INFO pInformation = &g_StorageUnits[ p_Drive ];
+	Sint32 MountStatus;
 
 	/* Already mounted */
 	if( pInformation->pWorkAddress )
@@ -107,7 +109,22 @@ Sint32 SU_MountDrive( Sint32 p_Drive )
 		return -1;
 	}
 
-	LOG_Debug( "[SU_MountDrive] <INFO> Drive %d mounted", p_Drive );
+	MountStatus = buMountDisk( p_Drive, pInformation->pWorkAddress,
+		pInformation->WorkSize );
+
+	switch( MountStatus )
+	{
+		case BUD_ERR_OK:
+		{
+			LOG_Debug( "[SU_MountDrive] <INFO> Drive %d mounted", p_Drive );
+			break;
+		}
+		default:
+		{
+			LOG_Debug( "[SU_MountDrive] <WARNING> Unhandled return value for "
+				"drive %d [0x%08X]", p_Drive, MountStatus );
+		}
+	}
 
 	return 0;
 }
@@ -115,6 +132,7 @@ Sint32 SU_MountDrive( Sint32 p_Drive )
 Sint32 SU_UnmountDrive( Sint32 p_Drive )
 {
 	PSTORAGEUNIT_INFO pInformation = &g_StorageUnits[ p_Drive ];
+	Sint32 Unmount;
 
 	if( pInformation->pWorkAddress == NULL )
 	{
@@ -122,16 +140,33 @@ Sint32 SU_UnmountDrive( Sint32 p_Drive )
 		return 0;
 	}
 
-	if( buUnmount( p_Drive ) == BUD_ERR_OK )
+	Unmount = buUnmount( p_Drive );
+	switch( Unmount )
 	{
-		MEM_FreeFromBlock( g_pMemoryBlock, pInformation->pWorkAddress );
-		pInformation->pWorkAddress = NULL;
-		ClearDriveInformation( p_Drive );
+		case BUD_ERR_OK:
+		{
+			MEM_FreeFromBlock( g_pMemoryBlock, pInformation->pWorkAddress );
+			pInformation->pWorkAddress = NULL;
+			ClearDriveInformation( p_Drive );
 
-		return 0;
+			return 0;
+		}
+		case BUD_ERR_NO_DISK:
+		{
+			LOG_Debug( "[SU_UnmountDrive] <INFO> No disk connected at index "
+				"%d", p_Drive );
+
+			return SU_NO_DISK;
+		}
+		default:
+		{
+			LOG_Debug( "[SU_UnmountDrive] <WARNING> Unhandled return value: "
+				"0x%08X", Unmount );
+		}
 	}
 
-	LOG_Debug( "Failed to unmount drive %d", p_Drive );
+	LOG_Debug( "[SU_UnmountDrive] Failed to unmount drive %d [0x%08X]",
+		p_Drive, Unmount );
 	
 	return -1;
 }
@@ -163,6 +198,9 @@ Sint32 SU_MountDrives( Sint32 *p_pDrivesMounted )
 		}
 	}
 
+	LOG_Debug( "[SU_MountDrives] Mounted %d drive%s", ( *p_pDrivesMounted ),
+		( ( *p_pDrivesMounted ) == 1 ) ? "" : "s" );
+
 	return 0;
 }
 
@@ -182,18 +220,49 @@ Sint32 SU_UnmountDrives( Sint32 *p_pDrivesUnmounted )
 	{
 		if( g_StorageUnits[ Drive ].Flags & SUI_CONNECTED )
 		{
-			if( SU_UnmountDrive( Drive ) != 0 )
+			Sint32 UnmountStatus = SU_UnmountDrive( Drive );
+			switch( UnmountStatus )
 			{
-				LOG_Debug( "Error unmounting all drives" );
+				case 0:
+				{
+					++( *p_pDrivesUnmounted );
+					break;
+				}
+				case SU_NO_DISK:
+				{
+					LOG_Debug( "[SU_UnmountDrives] <ERROR> Failed to unmount "
+						"drive %d, continuing to unmount other drives",
+						Drive );
 
-				return -1;
+					continue;
+				}
+				default:
+				{
+					return -1;
+				}
 			}
-
-			++( *p_pDrivesUnmounted );
 		}
 	}
 
 	return 0;
+}
+
+bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName )
+{
+	char FileName[ 16 ];
+	Sint32 Status;
+
+	Status = buFindFirstFile( p_Drive, FileName );
+
+	if( Status < 0 )
+	{
+		if( Status == BUD_ERR_FILE_NOT_FOUND )
+		{
+			return false;
+		}
+	}
+
+	return false;
 }
 
 static void InitialiseCallback( void )
@@ -209,6 +278,8 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 	Sint32 Return;
 
 	pInformation = &g_StorageUnits[ p_Drive ];
+
+	LOG_Debug( "[BUP] Complete callback" );
 
 	switch( p_Operation )
 	{
@@ -230,7 +301,7 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 			if( p_Status == BUD_ERR_OK )
 			{
 #if defined ( DEBUG )
-				LOG_Debug( "Mmeory unit %d mounted", p_Drive );
+				LOG_Debug( "Memory unit %d mounted", p_Drive );
 #endif /* DEBUG */
 				pInformation->Flags |= SUI_READY;
 				if( buGetDiskInfo( p_Drive, &pInformation->DiskInformation ) ==
@@ -250,14 +321,14 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 					pInformation->pWorkAddress );
 				pInformation->pWorkAddress = NULL;
 #if defined( DEBUG )
-			LOG_Debug( "Memory unit %d unmounted", p_Drive );
+				LOG_Debug( "[BUP] <INFO> Memory unit %d unmounted", p_Drive );
 #endif /* DEBUG */
 			}
 			ClearDriveInformation( p_Drive );
 			pInformation->Flags &= ~( SUI_CONNECTED );
 			--g_ConnectedStorageUnits;
 #if defined( DEBUG )
-			LOG_Debug( "Memory unit %d disconnected", p_Drive );
+			LOG_Debug( "[BUP] <INFO> Memory unit %d disconnected", p_Drive );
 #endif /* DEBUG */
 			break;
 		}

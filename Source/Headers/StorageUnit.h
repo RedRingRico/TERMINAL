@@ -11,6 +11,12 @@
 
 #define SU_MAX_DRIVES	8
 
+#define SU_OK 0
+#define SU_ERROR 1
+#define SU_FATALERROR -1
+
+#define SU_NO_DISK BUD_ERR_NO_DISK
+
 typedef struct _tagSTORAGEUNIT_INFO
 {
 	void			*pWorkAddress;
@@ -34,6 +40,9 @@ Sint32 SU_MountDrive( Sint32 p_Drive );
 Sint32 SU_UnmountDrive( Sint32 p_Drive );
 Sint32 SU_MountDrives( Sint32 *p_pDrivesMounted );
 Sint32 SU_UnmountDrives( Sint32 *p_pDrivesUnmounted );
+
+bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName );
+bool SU_FindFileAcrossDrives( char *p_pFileName );
 
 #endif /* __TERMINAL_STORAGEUNIT_H__ */
 
