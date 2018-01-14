@@ -34,6 +34,7 @@ typedef struct _tagMPG_GAMESTATE
 	Uint16				Port;
 	QUEUE				PacketQueue;
 	GAME_CLIENT			GameClient;
+	Uint32				ConnectionTimeOutStart;
 }MPG_GAMESTATE,*PMPG_GAMESTATE;
 
 static MPG_GAMESTATE MultiPlayerGameState;
@@ -60,6 +61,8 @@ static int MPG_Load( void *p_pArgs )
 		MultiPlayerGameState.Base.pGameStateManager->MemoryBlocks.
 			pSystemMemory,
 		20, sizeof( PACKET ), 0, "Network Message Queue" );
+	
+	return 0;
 }
 
 static int MPG_Initialise( void *p_pArgs )
@@ -81,6 +84,9 @@ static int MPG_Initialise( void *p_pArgs )
 	MSG_DestroyNetworkMessage( &JoinMessage );
 
 	MultiPlayerGameState.MultiPlayerState = MULTIPLAYER_STATE_JOIN;
+	MultiPlayerGameState.ConnectionTimeOutStart = syTmrGetCount( );
+
+	return 0;
 }
 
 static int MPG_Update( void *p_pArgs )
@@ -89,6 +95,17 @@ static int MPG_Update( void *p_pArgs )
 	{
 		case MULTIPLAYER_STATE_JOIN:
 		{
+			/* Time out after trying to connect for ten seconds (this should be
+			 * configurable at some later point) */
+			if( syTmrCountToMicro( syTmrDiffCount(
+				MultiPlayerGameState.ConnectionTimeOutStart,
+					syTmrGetCount( ) ) ) >= 10000000UL )
+			{
+				NET_Update( );
+				MPG_ProcessIncomingPackets( );
+				GSM_PopState( MultiPlayerGameState.Base.pGameStateManager );
+			}
+
 			break;
 		}
 		case MULTIPLAYER_STATE_CONNECTED:
@@ -114,16 +131,21 @@ static int MPG_Update( void *p_pArgs )
 
 			break;
 		}
-
-		NET_Update( );
-
-		MPG_ProcessIncomingPackets( );
-
-		if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
+		default:
 		{
-			GSM_PopState( MultiPlayerGameState.Base.pGameStateManager );
+			break;
 		}
 	}
+
+	NET_Update( );
+	MPG_ProcessIncomingPackets( );
+
+	if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
+	{
+		GSM_PopState( MultiPlayerGameState.Base.pGameStateManager );
+	}
+
+	return 0;
 }
 
 static int MPG_Render( void *p_pArgs )
