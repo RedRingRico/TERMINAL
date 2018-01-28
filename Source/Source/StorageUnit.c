@@ -66,12 +66,12 @@ Sint32 SU_GetConnectedStorageUnits( PSTORAGEUNIT_INFO p_pConnectedUnits,
 		/* p_pConnectedUnits should have been initialised and allocated enough
 		 * memory beforehand */
 		size_t Index, Offset = 0;
-		for( Index = 0; Index < g_ConnectedStorageUnits; ++Index )
+		for( Index = 0; Index < SU_MAX_DRIVES; ++Index )
 		{
 			if( g_StorageUnits[ Index ].Flags & SUI_CONNECTED )
 			{
-				memcpy( &p_pConnectedUnits[ Offset ], &g_StorageUnits[ Index ],
-					sizeof( STORAGEUNIT_INFO ) );
+				memcpy( &p_pConnectedUnits[ Offset++ ],
+					&g_StorageUnits[ Index ], sizeof( STORAGEUNIT_INFO ) );
 			}
 		}
 	}
@@ -91,24 +91,25 @@ Sint32 SU_GetMountedStorageUnits( PSTORAGEUNIT_INFO p_pMountedUnits,
 {
 	if( p_pMountedUnits != NULL )
 	{
-		/* p_pMountedUnits should have been initialised and allocated enough
-		 * memory beforehand */
-		size_t Index, Offset = 0;
-		for( Index = 0; Index < g_ConnectedStorageUnits; ++Index )
+		if( g_MountedStorageUnits != 0 )
 		{
-			if( g_StorageUnits[ Index ].Flags & SUI_CONNECTED )
+			/* p_pMountedUnits should have been initialised and allocated
+			 * enough memory beforehand */
+			size_t Index, Offset = 0;
+			for( Index = 0; Index < SU_MAX_DRIVES; ++Index )
 			{
-				memcpy( &p_pMountedUnits[ Offset ], &g_StorageUnits[ Index ],
-					sizeof( STORAGEUNIT_INFO ) );
+				if( g_StorageUnits[ Index ].Flags & SUI_READY )
+				{
+					memcpy( &p_pMountedUnits[ Offset++ ],
+						&g_StorageUnits[ Index ], sizeof( STORAGEUNIT_INFO ) );
+				}
 			}
 		}
 	}
-	
+
 	if( p_pMountedUnitCount )
 	{
 		( *p_pMountedUnitCount ) = g_MountedStorageUnits;
-
-		return 0;
 	}
 
 	return 0;
@@ -276,27 +277,40 @@ Sint32 SU_UnmountDrives( Sint32 *p_pDrivesUnmounted )
 	return 0;
 }
 
+Uint32 SU_DriveToFlag( Uint8 p_Drive )
+{
+	Uint32 Flag = 0x000000FF & p_Drive;
+	Flag = Flag << 28;
+
+	return Flag;
+}
+
+Uint8 SU_FlagToDrive( Uint32 p_Flag )
+{
+	Uint8 Drive = p_Flag >> 28;
+
+	return Drive;
+}
+
 bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName )
 {
-	char FileName[ 13 ];
 	Sint32 Status;
 	PSTORAGEUNIT_INFO pInformation = &g_StorageUnits[ p_Drive ];
 
 	if( pInformation->Flags & ( SUI_READY | SUI_FORMATTED ) )
 	{
-		int FileFound = 0;
-
 		do
 		{
-			Status = buFindFirstFile( p_Drive, p_pFileName );
+			Status = buIsExistFile( p_Drive, p_pFileName );
 		} while( Status == BUD_ERR_BUSY );
 
 		if( Status < 0 )
 		{
 			if( Status == BUD_ERR_FILE_NOT_FOUND )
 			{
-				LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> File \"%s\"not "
+				LOG_Debug( "[SU_FindFileOnDrive(%d)] <INFO> File \"%s\" not "
 					"found", p_Drive, p_pFileName );
+
 				return false;
 			}
 		}
@@ -364,12 +378,17 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 			pInformation->WorkSize = BUM_WORK_SIZE( p_Status, 1 );
 			pInformation->Capacity = p_Status;
 			pInformation->Flags |= SUI_CONNECTED;
+			pInformation->Flags |= SU_DriveToFlag( p_Drive );
 			++g_ConnectedStorageUnits;
 #if defined ( DEBUG )
 			LOG_Debug( "Memory unit %d connected", p_Drive );
 			LOG_Debug( "    Work size: %d", pInformation->WorkSize );
 			LOG_Debug( "    Capacity:  %d", pInformation->Capacity );
+			LOG_Debug( "    Drive:     %d", SU_FlagToDrive( SU_DriveToFlag( p_Drive ) ) );
 #endif /* DEBUG */
+			/* Attempt to auto-mount the drive */
+			SU_MountDrive( p_Drive );
+
 			break;
 		}
 		case BUD_OP_MOUNT:
@@ -388,23 +407,6 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 					pInformation->Flags |= SUI_FORMATTED;
 				}
 				pInformation->LastError = BUD_ERR_OK;
-
-				/* Remove this! */
-				if( SU_FindFileAcrossDrives( "H_HUNTER.SYS", true,
-					&FoundOnDrives ) == true )
-				{
-					Uint8 Drive;
-
-					LOG_Debug( "Found file on drives:" );
-
-					for( Drive = 0; Drive < SU_MAX_DRIVES; ++Drive )
-					{
-						if( FoundOnDrives & ( 1 << Drive ) )
-						{
-							LOG_Debug( "\t%d", Drive );
-						}
-					}
-				}
 			}
 			break;
 		}
@@ -415,17 +417,21 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 				MEM_FreeFromBlock( g_pMemoryBlock,
 					pInformation->pWorkAddress );
 				pInformation->pWorkAddress = NULL;
+				--g_MountedStorageUnits;
 #if defined( DEBUG )
 				LOG_Debug( "[BUP] <INFO> Memory unit %d unmounted", p_Drive );
 #endif /* DEBUG */
 			}
 			ClearDriveInformation( p_Drive );
-			pInformation->Flags &= ~( SUI_CONNECTED );
-			--g_ConnectedStorageUnits;
-			--g_MountedStorageUnits;
+			if( pInformation->Flags & SUI_CONNECTED )
+			{
+				pInformation->Flags &= ~( SUI_CONNECTED );
+				--g_ConnectedStorageUnits;
 #if defined( DEBUG )
-			LOG_Debug( "[BUP] <INFO> Memory unit %d disconnected", p_Drive );
+				LOG_Debug( "[BUP] <INFO> Memory unit %d disconnected",
+					p_Drive );
 #endif /* DEBUG */
+			}
 			break;
 		}
 		default:
@@ -464,7 +470,9 @@ static void ClearDriveInformation( Sint32 p_Drive )
 	pInformation->ProgressCount = 0;
 	pInformation->ProgressMaximum = 0;
 	pInformation->Operation = 0;
+	LOG_Debug( "Drive %d flags before: 0x%08X", p_Drive, pInformation->Flags );
 	pInformation->Flags &= ~( SUI_READY | SUI_FORMATTED );
+	LOG_Debug( "Drive %d flags after:  0x%08X", p_Drive, pInformation->Flags );
 	memset( &pInformation->DiskInformation, 0,
 		sizeof( pInformation->DiskInformation ) );
 }

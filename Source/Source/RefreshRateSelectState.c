@@ -23,16 +23,8 @@ static REFRESHRATESELECT_GAMESTATE RefreshRateSelectState;
 
 static int RRSS_Load( void *p_pArgs )
 {
-	PREFRESHRATESELECT pArguments = p_pArgs;
-
-	if( pArguments == NULL )
-	{
-		LOG_Debug( "[RRSS_Load] <ERROR> Arguments pointer is null" );
-
-		return 1;
-	}
-
-	RefreshRateSelectState.pGlyphSet = pArguments->pGlyphSet;
+	RefreshRateSelectState.pGlyphSet = GSM_GetGlyphSet(
+		RefreshRateSelectState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
 
 	return 0;
 }

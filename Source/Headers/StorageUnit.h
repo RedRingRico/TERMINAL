@@ -43,6 +43,9 @@ Sint32 SU_UnmountDrive( Sint32 p_Drive );
 Sint32 SU_MountDrives( Sint32 *p_pDrivesMounted );
 Sint32 SU_UnmountDrives( Sint32 *p_pDrivesUnmounted );
 
+Uint32 SU_DriveToFlag( Uint8 p_Drive );
+Uint8 SU_FlagToDrive( Uint32 p_Flag );
+
 bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName );
 bool SU_FindFileAcrossDrives( char *p_pFileName, bool p_StopAtFirstDrive,
 	Uint8 *p_pFoundOnDrives );

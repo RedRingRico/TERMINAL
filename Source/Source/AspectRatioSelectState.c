@@ -32,16 +32,9 @@ static int ARSS_Load( void *p_pArgs )
 	KMSTRIPCONTEXT SquareContext;
 	KMPACKEDARGB BaseColour;
 	VECTOR3 Translate = { 0.0f, 0.0f, 100.0f };
-	PASPECTRATIOSELECT pArguments = p_pArgs;
 
-	if( pArguments == NULL )
-	{
-		LOG_Debug( "[ARSS_Load] <ERROR> Arguments pointer is null" );
-
-		return 1;
-	}
-
-	AspectRatioSelectState.pGlyphSet = pArguments->pGlyphSet;
+	AspectRatioSelectState.pGlyphSet = GSM_GetGlyphSet(
+		AspectRatioSelectState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
 
 	memset( &SquareContext, 0, sizeof( KMSTRIPCONTEXT ) );
 	BaseColour.dwPacked = 0xFFFFFFFF;

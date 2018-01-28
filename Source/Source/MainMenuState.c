@@ -28,7 +28,6 @@ static int LaunchTestMenu( void *p_pArgs );
 
 static int MMS_Load( void *p_pArgs )
 {
-	PMAINMENU pArguments = p_pArgs;
 	KMPACKEDARGB TextColour;
 	KMPACKEDARGB HighlightColour;
 	MENU_ITEM MenuItems[ MENU_ITEMS ];

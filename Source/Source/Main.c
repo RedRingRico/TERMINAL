@@ -24,6 +24,7 @@
 #include <string.h>
 #include <Stack.h>
 #include <GameStateManager.h>
+#include <MemoryUnitSelectState.h>
 #include <RefreshRateSelectState.h>
 #include <AspectRatioSelectState.h>
 #include <MainMenuState.h>
@@ -409,6 +410,7 @@ void main( void )
 	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_DEBUG, &GlyphSet );
 	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_GUI_1, &GlyphSet );
 
+	MUSS_RegisterWithGameStateManager( &GameStateManager );
 	RRSS_RegisterWithGameStateManager( &GameStateManager );
 	ARSS_RegisterWithGameStateManager( &GameStateManager );
 	MMS_RegisterWithGameStateManager( &GameStateManager );
@@ -421,7 +423,12 @@ void main( void )
 	MDLV_RegisterWithGameStateManager( &GameStateManager );
 #endif /* DEBUG || DEVELOPMENT */
 
-	if( AVCable == SYE_CBL_PAL )
+	/* If there's a memory unit with system settings already stored, use those
+	 * settings */
+
+	GSM_ChangeState( &GameStateManager, GAME_STATE_MEMORYUNITSELECT,
+	 	NULL, NULL );
+	/*if( AVCable == SYE_CBL_PAL )
 	{
 		REFRESHRATESELECT RefreshRateArgs;
 		RefreshRateArgs.pGlyphSet = &GlyphSet;
@@ -436,7 +443,7 @@ void main( void )
 
 		GSM_ChangeState( &GameStateManager, GAME_STATE_ASPECTRATIOSELECT,
 			&AspectRatioArgs, NULL );
-	}
+	}*/
 
 	while( GSM_IsRunning( &GameStateManager ) == true )
 	{
