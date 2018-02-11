@@ -4,6 +4,7 @@
 #include <Renderer.h>
 #include <Menu.h>
 #include <Log.h>
+#include <SinglePlayerState.h>
 #include <MultiPlayerState.h>
 #include <TestMenuState.h>
 
@@ -175,7 +176,7 @@ int MMS_RegisterWithGameStateManager(
 static int LaunchSinglePlayer( void *p_pArgs )
 {
 	GSM_PushState( MainMenuState.Base.pGameStateManager,
-		GAME_STATE_MULTIPLAYER_MAIN, NULL, NULL, true );
+		GAME_STATE_SINGLEPLAYER_MAIN, NULL, NULL, true );
 }
 
 static int LaunchMultiPlayer( void *p_pArgs )

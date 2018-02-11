@@ -29,6 +29,7 @@
 #include <AspectRatioSelectState.h>
 #include <MainMenuState.h>
 #include <MultiPlayerState.h>
+#include <SinglePlayerState.h>
 #include <TestMenuState.h>
 
 #include <Array.h>
@@ -414,6 +415,7 @@ void main( void )
 	RRSS_RegisterWithGameStateManager( &GameStateManager );
 	ARSS_RegisterWithGameStateManager( &GameStateManager );
 	MMS_RegisterWithGameStateManager( &GameStateManager );
+	SP_RegisterMainWithGameStateManager( &GameStateManager );
 	MP_RegisterMainWithGameStateManager( &GameStateManager );
 	MP_RegisterISPConnectWithGameStateManager( &GameStateManager );
 	MP_RegisterGameListServerWithGameStateManager( &GameStateManager );
@@ -426,9 +428,11 @@ void main( void )
 	/* If there's a memory unit with system settings already stored, use those
 	 * settings */
 
-	GSM_ChangeState( &GameStateManager, GAME_STATE_MEMORYUNITSELECT,
-	 	NULL, NULL );
-	/*if( AVCable == SYE_CBL_PAL )
+	/*GSM_ChangeState( &GameStateManager, GAME_STATE_MAINMENU,
+	 	NULL, NULL );*/
+	/*GSM_ChangeState( &GameStateManager, GAME_STATE_MEMORYUNITSELECT,
+	 	NULL, NULL );*/
+	if( AVCable == SYE_CBL_PAL )
 	{
 		REFRESHRATESELECT RefreshRateArgs;
 		RefreshRateArgs.pGlyphSet = &GlyphSet;
@@ -443,7 +447,7 @@ void main( void )
 
 		GSM_ChangeState( &GameStateManager, GAME_STATE_ASPECTRATIOSELECT,
 			&AspectRatioArgs, NULL );
-	}*/
+	}
 
 	while( GSM_IsRunning( &GameStateManager ) == true )
 	{
