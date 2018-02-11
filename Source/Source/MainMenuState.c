@@ -23,6 +23,7 @@ typedef struct _tagMAINMENU_GAMESTATE
 static MAINMENU_GAMESTATE MainMenuState;
 
 static int BootROM( void *p_pArgs );
+static int LaunchSinglePlayer( void *p_pArgs );
 static int LaunchMultiPlayer( void *p_pArgs );
 static int LaunchTestMenu( void *p_pArgs );
 
@@ -40,8 +41,8 @@ static int MMS_Load( void *p_pArgs )
 	MainMenuState.pGlyphSet = GSM_GetGlyphSet(
 		MainMenuState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
 
-	MenuItems[ 0 ].pName = "SINGLE PLAYER [COMING 20XX]";
-	MenuItems[ 0 ].Function = NULL;
+	MenuItems[ 0 ].pName = "SINGLE PLAYER";
+	MenuItems[ 0 ].Function = LaunchSinglePlayer;
 
 	MenuItems[ 1 ].pName = "MULTI PLAYER";
 	MenuItems[ 1 ].Function = LaunchMultiPlayer;
@@ -167,6 +168,12 @@ int MMS_RegisterWithGameStateManager(
 
 	return GSM_RegisterGameState( p_pGameStateManager, GAME_STATE_MAINMENU,
 		( GAMESTATE * )&MainMenuState );
+}
+
+static int LaunchSinglePlayer( void *p_pArgs )
+{
+	GSM_PushState( MainMenuState.Base.pGameStateManager,
+		GAME_STATE_MULTIPLAYER_MAIN, NULL, NULL, true );
 }
 
 static int LaunchMultiPlayer( void *p_pArgs )
