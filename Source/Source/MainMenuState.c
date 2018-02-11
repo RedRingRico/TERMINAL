@@ -29,7 +29,6 @@ static int LaunchTestMenu( void *p_pArgs );
 
 static int MMS_Load( void *p_pArgs )
 {
-	PMAINMENU pArguments = p_pArgs;
 	KMPACKEDARGB TextColour;
 	KMPACKEDARGB HighlightColour;
 	MENU_ITEM MenuItems[ MENU_ITEMS ];
@@ -165,6 +164,9 @@ int MMS_RegisterWithGameStateManager(
 	MainMenuState.Base.Unload = &MMS_Unload;
 	MainMenuState.Base.VSyncCallback = &MMS_VSyncCallback;
 	MainMenuState.Base.pGameStateManager = p_pGameStateManager;
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	MainMenuState.Base.VisibleToDebugAdapter = true;
+#endif /* DEBUG || DEVELOPMENT */
 
 	return GSM_RegisterGameState( p_pGameStateManager, GAME_STATE_MAINMENU,
 		( GAMESTATE * )&MainMenuState );

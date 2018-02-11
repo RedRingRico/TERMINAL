@@ -6,6 +6,7 @@
 #include <Memory.h>
 #include <Text.h>
 #include <DebugAdapter.h>
+#include <Renderer.h>
 
 #define GSM_GLYPH_SET_DEBUG	0
 #define GSM_GLYPH_SET_GUI_1	1
@@ -29,10 +30,13 @@ typedef struct _tagGAMESTATE_REGISTRY
 
 typedef struct _tagGAMESTATE_MANAGER
 {
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
 	DEBUG_ADAPTER			DebugAdapter;
+#endif /* DEBUG || DEVELOPMENT */
 	GAME_OPTIONS			GameOptions;
 	GAMESTATE_REGISTRY		*pRegistry;
 	struct _tagGAMESTATE	*pTopGameState;
+	struct _tagRENDERER		*pRenderer;
 	PGLYPHSET				*ppGlyphSet;
 	GAMESTATE_MEMORY_BLOCKS	MemoryBlocks;
 	bool					Running;
@@ -40,7 +44,7 @@ typedef struct _tagGAMESTATE_MANAGER
 }GAMESTATE_MANAGER,*PGAMESTATE_MANAGER;
 
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
-	PGAMESTATE_MEMORY_BLOCKS p_pMemoryBlocks );
+	PRENDERER p_pRenderer, PGAMESTATE_MEMORY_BLOCKS p_pMemoryBlocks );
 void GSM_Terminate( PGAMESTATE_MANAGER p_pGameStateManager );
 
 int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,

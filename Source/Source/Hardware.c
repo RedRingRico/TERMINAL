@@ -65,6 +65,7 @@ int HW_Initialise( KMBPPMODE p_BPP, SYE_CBL *p_pCableType,
 
 	if( FS_Initialise( ) != 0 )
 	{
+		LOG_Debug( "Failed to initialise the file system" );
 		return 1;
 	}
 

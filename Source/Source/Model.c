@@ -176,6 +176,96 @@ int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName,
 	return 0;
 }
 
+int MDL_LoadModelFromMemory( PMODEL p_pModel, const Uint8 *p_pMemory,
+	const size_t p_MemorySize, PMEMORY_BLOCK p_pMemoryBlock )
+{
+	MODEL_HEADER Header;
+	size_t MemoryPosition = 0;
+	size_t MeshIndex = 0;
+
+	memcpy( &Header, p_pMemory, sizeof( Header ) );
+
+	if( Header.ID[ 0 ] != 'T' ||
+		Header.ID[ 1 ] != 'M' ||
+		Header.ID[ 2 ] != 'L' ||
+		Header.ID[ 3 ] != 'M' )
+	{
+		LOG_Debug( "[MDL_LoadModelFromMemory] <ERROR> "
+			"Invalid header detected" );
+
+		return 1;
+	}
+
+	p_pModel->MeshCount = Header.MeshCount;
+	p_pModel->pMeshes = MEM_AllocateFromBlock( p_pMemoryBlock,
+		Header.MeshCount * sizeof( MESH ), "Model mesh buffer" );
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	memcpy( p_pModel->Name, Header.Name, 32 );
+#endif // DEBUG || DEVELOPMENT
+
+	MemoryPosition += sizeof( Header );
+	
+	while( MemoryPosition != p_MemorySize )
+	{
+		CHUNK Chunk;
+		memcpy( &Chunk, &p_pMemory[ MemoryPosition ], sizeof( Chunk ) );
+		MemoryPosition += sizeof( Chunk );
+
+		switch( Chunk.ID )
+		{
+			case 1:
+			{
+				int MeshSize = 0;
+
+				MeshSize = MDL_ReadMeshData( p_pMemory + MemoryPosition,
+					&p_pModel->pMeshes[ MeshIndex ], p_pMemoryBlock );
+
+				if( MeshSize != Chunk.Size )
+				{
+					LOG_Debug( "[MDL_LoadModelFromMemory] <ERROR> Failed to "
+						"load all bytes from the mesh data" );
+
+					return 1;
+				}
+
+				if( MeshSize == 0 )
+				{
+					MEM_FreeFromBlock( p_pMemoryBlock, p_pModel->pMeshes );
+
+					return 1;
+				}
+
+				MemoryPosition += MeshSize;
+
+				memcpy( &Chunk, &p_pMemory[ MemoryPosition ],
+					sizeof( Chunk  ) );
+
+				if( ( Chunk.ID != 0xFFFFFFFF ) && ( Chunk.Size != 0 ) )
+				{
+					LOG_Debug( "[MDL_LoadModelFromMemory] <ERROR> "
+						"Mismatched end chunk" );
+
+					return 1;
+				}
+
+				MemoryPosition += sizeof( Chunk );
+
+				++MeshIndex;
+
+				break;
+			}
+			default:
+			{
+				MemoryPosition += Chunk.Size;
+			}
+		}
+	}
+
+	p_pModel->pMemoryBlock = p_pMemoryBlock;
+
+	return 0;
+}
+
 void MDL_DeleteModel( PMODEL p_pModel )
 {
 	size_t Mesh;

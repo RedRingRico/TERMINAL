@@ -1,3 +1,4 @@
+#include <StorageUnit.h>
 #include <Renderer.h>
 #include <GitVersion.h>
 #include <sn_fcntl.h>
@@ -23,6 +24,7 @@
 #include <string.h>
 #include <Stack.h>
 #include <GameStateManager.h>
+#include <MemoryUnitSelectState.h>
 #include <RefreshRateSelectState.h>
 #include <AspectRatioSelectState.h>
 #include <MainMenuState.h>
@@ -49,10 +51,10 @@ KMDWORD g_pTextureWorkArea[ MAX_TEXTURES * 24 / 4 + MAX_SMALLVQ * 76 / 4 ];
 unsigned char RecvBuf[ 1024 * 8 ];
 unsigned char SendBuf[ 1024 * 8 ];
 
-char g_VersionString[ 256 ];
-Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
-char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
-bool g_ConnectedToDA = false;
+static char g_VersionString[ 256 ];
+static Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
+static char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
+static bool g_ConnectedToDA = false;
 
 typedef struct _tagRENDER_VERTEX
 {
@@ -141,12 +143,15 @@ void main( void )
 
 	if( HW_Initialise( KM_DSPBPP_RGB888, &AVCable, &MemoryFree ) != 0 )
 	{
-		goto MainCleanup;
+		HW_Terminate( );
+		HW_Reboot( );
 	}
 
 	LOG_Initialise( NULL );
 	LOG_Debug( "TERMINAL" );
 	LOG_Debug( "Version: %s", GIT_VERSION );
+
+	pVertexBuffer = ( PKMDWORD )syMalloc( 0x100000 );
 
 	/*syCacheAllocCacheRAM( &pTVMMemory, 7 );
 
@@ -248,7 +253,7 @@ void main( void )
 	scif_putq( '1' );
 	scif_putq( 'f' );
 
-	pVertexBuffer = ( PKMDWORD )syMalloc( 0x100000 );
+	SU_Initialise( &SystemMemoryBlock );
 
 	memset( &RendererConfiguration, 0, sizeof( RendererConfiguration ) );
 
@@ -343,6 +348,13 @@ void main( void )
 		goto MainCleanup;
 	}
 
+	if( MDL_Initialise( &GraphicsMemoryBlock ) != 0 )
+	{
+		LOG_Debug( "Failed to initialise the model library" );
+
+		goto MainCleanup;
+	}
+
 	memset( g_ConsoleIDPrint, '\0', sizeof( g_ConsoleIDPrint ) );
 	if( syCfgGetIndividualID( g_ConsoleID ) != SYD_CFG_IID_OK )
 	{
@@ -385,7 +397,8 @@ void main( void )
 	GameStateMemoryBlocks.pGraphicsMemory = &GraphicsMemoryBlock;
 	GameStateMemoryBlocks.pAudioMemory = &AudioMemoryBlock;
 
-	if( GSM_Initialise( &GameStateManager, &GameStateMemoryBlocks ) != 0 )
+	if( GSM_Initialise( &GameStateManager, &Renderer,
+		&GameStateMemoryBlocks ) != 0 )
 	{
 		LOG_Debug( "Failed to initialise the game state manager\n" );
 
@@ -397,6 +410,7 @@ void main( void )
 	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_DEBUG, &GlyphSet );
 	GSM_RegisterGlyphSet( &GameStateManager, GSM_GLYPH_SET_GUI_1, &GlyphSet );
 
+	MUSS_RegisterWithGameStateManager( &GameStateManager );
 	RRSS_RegisterWithGameStateManager( &GameStateManager );
 	ARSS_RegisterWithGameStateManager( &GameStateManager );
 	MMS_RegisterWithGameStateManager( &GameStateManager );
@@ -409,7 +423,12 @@ void main( void )
 	MDLV_RegisterWithGameStateManager( &GameStateManager );
 #endif /* DEBUG || DEVELOPMENT */
 
-	if( AVCable == SYE_CBL_PAL )
+	/* If there's a memory unit with system settings already stored, use those
+	 * settings */
+
+	GSM_ChangeState( &GameStateManager, GAME_STATE_MEMORYUNITSELECT,
+	 	NULL, NULL );
+	/*if( AVCable == SYE_CBL_PAL )
 	{
 		REFRESHRATESELECT RefreshRateArgs;
 		RefreshRateArgs.pGlyphSet = &GlyphSet;
@@ -424,7 +443,7 @@ void main( void )
 
 		GSM_ChangeState( &GameStateManager, GAME_STATE_ASPECTRATIOSELECT,
 			&AspectRatioArgs, NULL );
-	}
+	}*/
 
 	while( GSM_IsRunning( &GameStateManager ) == true )
 	{
@@ -437,6 +456,7 @@ MainCleanup:
 	GSM_Terminate( &GameStateManager );
 	AUD_Terminate( );
 	REN_Terminate( &Renderer );
+	SU_Terminate( );
 
 	/*if( pTVMMemory != NULL )
 	{

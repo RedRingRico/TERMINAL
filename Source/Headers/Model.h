@@ -18,9 +18,12 @@ typedef struct _tagMODEL_HEADER
 
 typedef struct _tagMODEL
 {
+#if defined ( DEBUG ) || defined ( DEVELOPMENT )
+	char			Name[ 32 ];
+#endif /* DEBUG || DEVELOPMENT */
 	size_t			PolygonCount;
 	size_t			MeshCount;
-	MESH			*pMeshes;
+	PMESH			pMeshes;
 	PMEMORY_BLOCK	pMemoryBlock;
 }MODEL,*PMODEL;
 
@@ -29,6 +32,8 @@ void MDL_Terminate( void );
 
 int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName,
 	PMEMORY_BLOCK p_pMemoryBlock );
+int MDL_LoadModelFromMemory( PMODEL p_pModel, const Uint8 *p_pMemory,
+	const size_t p_MemorySize, PMEMORY_BLOCK p_pMemoryBlock );
 void MDL_DeleteModel( PMODEL p_pModel );
 void MDL_CalculateLighting( PMODEL p_pModel, const MATRIX4X4 *p_pTransform,
 	const VECTOR3 *p_pLightPosition );
