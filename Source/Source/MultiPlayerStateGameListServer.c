@@ -10,7 +10,7 @@
 
 static const Uint32 GLS_MESSAGE_CONNECT = 0x000100;
 static const Uint32 MAX_PACKETS_PER_UPDATE = 10;
-static const size_t GAMESERVER_PACKET_SIZE = 6;
+static const size_t GAMESERVER_PACKET_SIZE = 8;
 
 #if defined ( DEBUG ) || defined ( DEVELOPMENT )
 #define LIST_SERVER_DOMAIN "dev.master.terminal.dreamcast.live"
@@ -35,8 +35,8 @@ typedef struct _tagGAMESERVER
 	Uint16					Port;
 	/* Ping is measured in milliseconds */
 	Uint16					Ping;
-	Uint8					TotalSlots;
-	Uint8					FreeSlots;
+	Uint8					Players;
+	Uint8					MaxPlayers;
 	struct _tagGAMESERVER	*pNext;
 }GAMESERVER,*PGAMESERVER;
 
@@ -44,6 +44,8 @@ typedef struct _tagGAMESERVER_PACKET
 {
 	Uint32	IP;
 	Uint16	Port;
+	Uint8	Players;
+	Uint8	MaxPlayers;
 }GAMESERVER_PACKET,*PGAMESERVER_PACKET;
 
 typedef struct _tagPACKET
@@ -164,6 +166,7 @@ static int GLS_Update( void *p_pArgs )
 					GameListServerState.StateTimerStart,
 					syTmrGetCount( ) ) );
 
+			/* Retry every two seconds */
 			if( GameListServerState.StateTimer >= 2000000UL )
 			{
 				NETWORK_MESSAGE Message;
@@ -189,7 +192,8 @@ static int GLS_Update( void *p_pArgs )
 
 			if( GameListServerState.StateMessageTries > 10 )
 			{
-				LOG_Debug( "Unable to connect to game server\n" );
+				LOG_Debug( "Unable to connect to game server at %s\n",
+					LIST_SERVER_DOMAIN );
 				LOG_Debug( "Popping GLS state\n" );
 				GSM_PopState( GameListServerState.Base.pGameStateManager );
 			}
@@ -342,6 +346,12 @@ static int GLS_Render( void *p_pArgs )
 					LIST_SERVER_DOMAIN );
 			}
 
+			TXT_MeasureString( pGlyphSet, "[B] back", &TextLength );
+			TXT_RenderString( pGlyphSet, &TextColour,
+				640.0f - 64.0f - TextLength,
+				480.0f - ( 32.0f + ( float )pGlyphSet->LineHeight ),
+				"[B] back" );
+
 			break;
 		}
 		case SERVERLIST_STATE_CONNECTING:
@@ -381,6 +391,16 @@ static int GLS_Render( void *p_pArgs )
 
 			Servers = ARY_GetCount( &GameListServerState.Servers );
 
+			if( Servers == 0 )
+			{
+				TXT_MeasureString( pGlyphSet, "No Game Servers available",
+					&TextLength );
+
+				TXT_RenderString( pGlyphSet, &TextColour,
+					320.0f - ( TextLength * 0.5f ),
+					96.0f, "No Game Servers available" );
+			}
+
 			for( Index = 0; Index < Servers; ++Index )
 			{
 				PGAMESERVER GameServer;
@@ -404,6 +424,13 @@ static int GLS_Render( void *p_pArgs )
 					ntohs( GameServer->Port ) );
 
 				TXT_RenderString( pGlyphSet, &TextColour, 32.0f,
+					96.0f + ( ( float )pGlyphSet->LineHeight * Index ),
+					IPPort );
+
+				sprintf( IPPort, "[%d/%d]",
+					GameServer->Players, GameServer->MaxPlayers );
+
+				TXT_RenderString( pGlyphSet, &TextColour, 540.0f,
 					96.0f + ( ( float )pGlyphSet->LineHeight * Index ),
 					IPPort );
 			}
@@ -595,6 +622,8 @@ static void GLS_ProcessPacket( PNETWORK_MESSAGE p_pMessage,
 
 					GameServer.IP = GameServerPacket.IP;
 					GameServer.Port = GameServerPacket.Port;
+					GameServer.Players = GameServerPacket.Players;
+					GameServer.MaxPlayers = GameServerPacket.MaxPlayers;
 
 					ARY_Append( &GameListServerState.Servers, &GameServer );
 				}

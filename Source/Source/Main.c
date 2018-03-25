@@ -426,9 +426,9 @@ void main( void )
 	/* If there's a memory unit with system settings already stored, use those
 	 * settings */
 
-	GSM_ChangeState( &GameStateManager, GAME_STATE_MEMORYUNITSELECT,
-	 	NULL, NULL );
-	/*if( AVCable == SYE_CBL_PAL )
+	/*GSM_ChangeState( &GameStateManager, GAME_STATE_MEMORYUNITSELECT,
+	 	NULL, NULL );*/
+	if( AVCable == SYE_CBL_PAL )
 	{
 		REFRESHRATESELECT RefreshRateArgs;
 		RefreshRateArgs.pGlyphSet = &GlyphSet;
@@ -443,7 +443,7 @@ void main( void )
 
 		GSM_ChangeState( &GameStateManager, GAME_STATE_ASPECTRATIOSELECT,
 			&AspectRatioArgs, NULL );
-	}*/
+	}
 
 	while( GSM_IsRunning( &GameStateManager ) == true )
 	{
