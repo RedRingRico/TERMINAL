@@ -12,6 +12,7 @@ typedef struct _tagMEMORYUNITSELECT_GAMESTATE
 	GAMESTATE	Base;
 	bool		ConfigurationFound;
 	Uint8		ConfigurationDrive;
+	Uint8		ConfigurationDriveLast;
 }MEMORYUNITSELECT_GAMESTATE, *PMEMORYUNITSELECT_GAMESTATE;
 
 static size_t g_StorageUnitCount, g_StorageUnitCountLast;
@@ -28,9 +29,11 @@ static int MUSS_Load( void *p_pArgs )
 
 static int MUSS_Initialise( void *p_pArgs )
 {
-	/* If the game configuration file is present, skip the whole thing */
+	/* If the game configuration file is present, skip the whole thing 
+	 * (for now, just look for a file that doesn't exist to force this)
+	 */
 	MemoryUnitSelectState.ConfigurationFound = SU_FindFileAcrossDrives(
-		"TERMINAL.SYS", true, &MemoryUnitSelectState.ConfigurationDrive );
+		"ERMINAL.SYS", true, &MemoryUnitSelectState.ConfigurationDrive );
 
 	g_pStorageUnitsAvailable = MEM_AllocateFromBlock(
 		MemoryUnitSelectState.Base.pGameStateManager->
@@ -54,6 +57,8 @@ static int MUSS_Update( void *p_pArgs )
 	/* For now, just quit */
 	if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
 	{
+		SU_SaveFile( 0, "TERMINAL.SYS", NULL, 0, "Game Options",
+			"[TERMINAL]" );
 		GSM_Quit( MemoryUnitSelectState.Base.pGameStateManager );
 	}
 

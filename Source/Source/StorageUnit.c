@@ -1,5 +1,6 @@
 #include <StorageUnit.h>
 #include <Log.h>
+#include <sg_syrtc.h>
 
 static STORAGEUNIT_INFO g_StorageUnits[ SU_MAX_DRIVES ];
 static PMEMORY_BLOCK g_pMemoryBlock;
@@ -163,11 +164,18 @@ Sint32 SU_UnmountDrive( Sint32 p_Drive )
 {
 	PSTORAGEUNIT_INFO pInformation = &g_StorageUnits[ p_Drive ];
 	Sint32 Unmount;
+	Uint32 Retries = 0;
 
 	if( pInformation->pWorkAddress == NULL )
 	{
 		/* Memory unit isn't mounted */
 		return 0;
+	}
+
+TryUnmount:
+	if( Retries > 3 )
+	{
+		return SU_BUSY;
 	}
 
 	Unmount = buUnmount( p_Drive );
@@ -187,6 +195,23 @@ Sint32 SU_UnmountDrive( Sint32 p_Drive )
 				"%d", p_Drive );
 
 			return SU_NO_DISK;
+		}
+		case BUD_ERR_BUSY:
+		{
+			/* Wait it out... */
+			LOG_Debug( "[SU_UnmountDrive] <INFO> Waiting on disk %d "
+				"to finish processing", p_Drive );
+
+			while( buStat( p_Drive ) == BUD_STAT_BUSY )
+			{
+			}
+
+			LOG_Debug( "[SU_UnmountDrives] <INFO> Disk %d has "
+				"finished processing", p_Drive );
+
+			++Retries;
+
+			goto TryUnmount;
 		}
 		default:
 		{
@@ -262,6 +287,13 @@ Sint32 SU_UnmountDrives( Sint32 *p_pDrivesUnmounted )
 				{
 					LOG_Debug( "[SU_UnmountDrives] <ERROR> Failed to unmount "
 						"drive %d, continuing to unmount other drives",
+						Drive );
+
+					continue;
+				}
+				case SU_BUSY:
+				{
+					LOG_Debug( "[SU_UnmountDrives] <INFO> Drive %d busy",
 						Drive );
 
 					continue;
@@ -475,5 +507,96 @@ static void ClearDriveInformation( Sint32 p_Drive )
 	LOG_Debug( "Drive %d flags after:  0x%08X", p_Drive, pInformation->Flags );
 	memset( &pInformation->DiskInformation, 0,
 		sizeof( pInformation->DiskInformation ) );
+}
+
+
+Sint32 SU_SaveFile( Sint32 p_Drive, const char *p_pFileName, const *p_pData,
+	const Sint32 p_BlockCount, const char *p_pVMUComment,
+	const char *p_pBootROMComment )
+{
+	BUS_BACKUPFILEHEADER FileHeader;
+	Uint8 TestData[ 128 ];
+	Uint8 IconData[ 512 ];
+	Uint16 IconPalette[ 16 ];
+	Sint32 BlockCount;
+	void *pBuffer;
+	BUS_TIME Time =
+	{
+		1998, 12, 31,
+		23, 59, 59,
+		4
+	};
+	Sint32 SaveReturn;
+	Sint32 ReturnValue = SU_OK;
+
+	memset( IconData, 0, sizeof( IconData ) );
+	memset( IconPalette, 0, sizeof( IconPalette ) );
+
+	strncpy( FileHeader.vms_comment, p_pVMUComment, 16 );
+	strncpy( FileHeader.btr_comment, p_pBootROMComment, 32 );
+	strncpy( FileHeader.game_name, SU_GAME_NAME, 16 );
+	FileHeader.icon_palette = IconPalette;
+	FileHeader.icon_data = IconData;
+	FileHeader.icon_num = 1;
+	FileHeader.icon_speed = 1;
+	FileHeader.visual_data = NULL;
+	FileHeader.visual_type = BUD_VISUALTYPE_NONE;
+	FileHeader.reserved = 0;
+	FileHeader.save_data = TestData;
+	FileHeader.save_size = 128;
+
+	BlockCount = buCalcBackupFileSize( FileHeader.icon_num,
+		FileHeader.visual_type, FileHeader.save_size );
+
+	if( BlockCount < 0 )
+	{
+		LOG_Debug( "[SU_SaveFile] <ERROR> Failed to calculate the backup file "
+			"size.  Invalid parameter?" );
+
+		return SU_FATAL_ERROR;
+	}
+
+	pBuffer = MEM_AllocateFromBlock( g_pMemoryBlock, BlockCount * 512,
+		"Backup File Header" );
+	BlockCount = buMakeBackupFileImage( pBuffer, &FileHeader );
+
+	SaveReturn = buSaveFile( p_Drive, p_pFileName, pBuffer, BlockCount, &Time,
+		BUD_FLAG_VERIFY | BUD_FLAG_COPY( 0X00 ) );
+
+	if( SaveReturn != BUD_ERR_OK )
+	{
+		switch( SaveReturn )
+		{
+			case BUD_ERR_CANNOT_CREATE:
+			{
+				LOG_Debug( "[SU_SaveFile] <ERROR> Could not create save file: "
+					"\"%s\"", p_pFileName );
+
+				ReturnValue = SU_CREATE_ERROR;
+
+				break;
+			}
+			case BUD_ERR_VERIFY:
+			{
+				LOG_Debug( "[SU_SaveFile] <ERROR> Could not verify the save "
+					"file: \"%s\"", p_pFileName );
+
+				ReturnValue = SU_VERIFY_ERROR;
+
+				break;
+			}
+			default:
+			{
+				LOG_Debug( "[SU_SaveFile] <ERROR> Unknown error occurred "
+					"saving file: \"\"", p_pFileName );
+
+				ReturnValue = SU_UNKNOWN_ERROR;
+			}
+		}
+	}
+
+	MEM_FreeFromBlock( g_pMemoryBlock, pBuffer );
+
+	return ReturnValue;
 }
 
