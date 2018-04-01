@@ -57,8 +57,26 @@ static int MUSS_Update( void *p_pArgs )
 	/* For now, just quit */
 	if( g_Peripherals[ 0 ].press & PDD_DGT_TA )
 	{
-		SU_SaveFile( 0, "TERMINAL.SYS", NULL, 0, "Game Options",
-			"[TERMINAL]" );
+		char TestData[ 64 ];
+		char TestDataRead[ 64 ];
+		Uint32 DataOffset;
+		Sint32 FileSize;
+
+		strcpy( TestData, "[TERMINAL] Game save data" );
+		
+		SU_SaveFile( 0, "TERMINAL.SYS", TestData, sizeof( TestData ),
+			"Game Settings", "[TERMINAL]" );
+
+		FileSize = SU_GetFileSize( 0, "TERMINAL.SYS", &DataOffset,
+				SU_FILETYPE_NORMAL );
+
+		LOG_Debug( "Got file size %d", FileSize );
+		LOG_Debug( "Data offset: %d", DataOffset );
+
+		SU_LoadFile( 0, "TERMINAL.SYS", TestDataRead, FileSize, DataOffset );
+
+		LOG_Debug( "File contents: %s", TestDataRead );
+
 		GSM_Quit( MemoryUnitSelectState.Base.pGameStateManager );
 	}
 

@@ -2,6 +2,19 @@
 #include <Log.h>
 #include <sg_syrtc.h>
 
+typedef struct _tagINFORMATION_FORK
+{
+	char	VMSComment[ 16 ];
+	char	GUIComment[ 32 ];
+	Uint8	GameName[ 16 ];
+	Uint16	IconCount;
+	Uint16	AnimationSpeed;
+	Uint16	VisualType;
+	Uint16	CRC;
+	Uint32	SaveDataSize;
+	Uint8	Reserved[ 20 ];
+}INFORMATION_FORK, *PINFORMATION_FORK;
+
 static STORAGEUNIT_INFO g_StorageUnits[ SU_MAX_DRIVES ];
 static PMEMORY_BLOCK g_pMemoryBlock;
 static size_t g_ConnectedStorageUnits;
@@ -13,6 +26,8 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 static Sint32 ProgressCallback( Sint32 p_Drive, Sint32 p_Operation,
 	Sint32 p_Count, Sint32 p_Maximum );
 static void ClearDriveInformation( Sint32 p_Drive );
+
+static Uint8 g_StaticBuffer[ 512 ];
 
 Sint32 SU_Initialise( PMEMORY_BLOCK p_pMemoryBlock )
 {
@@ -509,13 +524,11 @@ static void ClearDriveInformation( Sint32 p_Drive )
 		sizeof( pInformation->DiskInformation ) );
 }
 
-
-Sint32 SU_SaveFile( Sint32 p_Drive, const char *p_pFileName, const *p_pData,
-	const Sint32 p_BlockCount, const char *p_pVMUComment,
+Sint32 SU_SaveFile( Sint32 p_Drive, const char *p_pFileName,
+	const void *p_pData, const Uint32 p_DataSize, const char *p_pVMUComment,
 	const char *p_pBootROMComment )
 {
 	BUS_BACKUPFILEHEADER FileHeader;
-	Uint8 TestData[ 128 ];
 	Uint8 IconData[ 512 ];
 	Uint16 IconPalette[ 16 ];
 	Sint32 BlockCount;
@@ -542,8 +555,8 @@ Sint32 SU_SaveFile( Sint32 p_Drive, const char *p_pFileName, const *p_pData,
 	FileHeader.visual_data = NULL;
 	FileHeader.visual_type = BUD_VISUALTYPE_NONE;
 	FileHeader.reserved = 0;
-	FileHeader.save_data = TestData;
-	FileHeader.save_size = 128;
+	FileHeader.save_data = p_pData;
+	FileHeader.save_size = p_DataSize;
 
 	BlockCount = buCalcBackupFileSize( FileHeader.icon_num,
 		FileHeader.visual_type, FileHeader.save_size );
@@ -598,5 +611,127 @@ Sint32 SU_SaveFile( Sint32 p_Drive, const char *p_pFileName, const *p_pData,
 	MEM_FreeFromBlock( g_pMemoryBlock, pBuffer );
 
 	return ReturnValue;
+}
+
+Sint32 SU_GetFileSize( Sint32 p_Drive, const char *p_pFileName,
+	Uint32 *p_pDataOffset, const Uint8 p_FileType )
+{
+	BUS_FILEINFO FileInfo;
+	Sint32 ReturnValue;
+	INFORMATION_FORK InformationFork;
+
+	/* Wait it out (should probably not do this) */
+	while( buStat( p_Drive ) == BUD_STAT_BUSY )
+	{
+	}
+
+	ReturnValue = buGetFileInfo( p_Drive, p_pFileName, &FileInfo );
+
+	if( ReturnValue != BUD_ERR_OK )
+	{
+		switch( ReturnValue )
+		{
+			case BUD_ERR_BUSY:
+			{
+				LOG_Debug( "[SU_GetFileSize] <INFO> Drive %d busy", p_Drive );
+				return SU_BUSY;
+			}
+			default:
+			{
+				LOG_Debug( "[SU_GetFileSize] <ERROR> Unknown return value "
+					"from buGetFileInfo: 0x%08X", ReturnValue );
+				return SU_FILEINFO_ERROR;
+			}
+		}
+	}
+
+	ReturnValue = buLoadFile( p_Drive, p_pFileName, g_StaticBuffer, 1 );
+
+	while( buStat( p_Drive ) == BUD_ERR_BUSY )
+	{
+	}
+
+	memcpy( &InformationFork, g_StaticBuffer, sizeof( InformationFork ) );
+
+	LOG_Debug( "Size of IF: %d", sizeof( InformationFork ) );
+
+	/* Calculate the offset */
+	if( p_pDataOffset != NULL )
+	{
+		Uint32 DataOffset = sizeof( InformationFork );
+
+		/* Skip past the palette data (16 colours, two bytes each) and n * 512
+		 * where n is the icon count
+		 */
+		DataOffset += 32;
+		DataOffset += 512 * InformationFork.IconCount;
+
+		/* The visual comment is a 72*56 icon of four different types:
+		 * None - Nothing stored
+		 * Type A (direct colour) - 8064 bytes required
+		 * Type B (256-colour) - 4544 bytes required
+		 * Type C (16-colour) - 2048 bytes required
+		 */
+		switch( InformationFork.VisualType )
+		{
+			case BUD_VISUALTYPE_A:
+			{
+				DataOffset += 8064;
+				break;
+			}
+			case BUD_VISUALTYPE_B:
+			{
+				DataOffset += 4544;
+				break;
+			}
+			case BUD_VISUALTYPE_C:
+			{
+				DataOffset += 2048;
+				break;
+			}
+			default:
+			{
+			}
+		}
+
+		( *p_pDataOffset ) = DataOffset;
+	}
+
+	return InformationFork.SaveDataSize;
+}
+
+Sint32 SU_LoadFile( Sint32 p_Drive, const char *p_pFileName, void *p_pData,
+	const Uint32 p_DataSize, const Uint32 p_DataOffset )
+{
+	Uint8 *pReadBuffer = NULL;
+
+	/* Read n blocks after */
+	if( p_DataOffset > 512 )
+	{
+		Uint32 DataOffsetFraction, DataOffsetWhole, BlocksToRead;
+
+		BlocksToRead = p_DataSize / 512 + p_DataSize % 512 ? 1 : 0;
+		DataOffsetWhole = p_DataOffset / 512;
+		DataOffsetFraction = p_DataOffset % 512;
+
+		pReadBuffer = MEM_AllocateFromBlock( g_pMemoryBlock,
+			BlocksToRead * 512, "File Load Buffer" );
+
+		buLoadFileEx( p_Drive, p_pFileName, pReadBuffer, DataOffsetWhole,
+			BlocksToRead );
+
+		while( buStat( p_Drive ) == BUD_ERR_BUSY )
+		{
+		}
+
+		memcpy( p_pData, &pReadBuffer[ DataOffsetFraction ], p_DataSize );
+
+		MEM_FreeFromBlock( g_pMemoryBlock, pReadBuffer );
+	}
+	else
+	{
+	}
+
+	return SU_OK;
 }
 

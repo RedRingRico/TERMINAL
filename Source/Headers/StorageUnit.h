@@ -7,6 +7,9 @@
 
 #define SU_GAME_NAME "[TERMINAL]"
 
+#define SU_FILETYPE_NORMAL		BUD_FILETYPE_NORMAL
+#define SU_FILETYPE_EXECUTABLE	BUD_FILETYPE_EXECUTABLE
+
 #define SUI_READY		1
 #define SUI_FORMATTED	2
 #define SUI_CONNECTED	4
@@ -19,6 +22,7 @@
 #define SU_UNKNOWN_ERROR -2
 #define SU_CREATE_ERROR -10
 #define SU_VERIFY_ERROR -11
+#define SU_FILEINFO_ERROR -20
 
 #define SU_BUSY BUD_ERR_BUSY
 #define SU_NO_DISK BUD_ERR_NO_DISK
@@ -59,11 +63,15 @@ Uint8 SU_FlagToDrive( Uint32 p_Flag );
 bool SU_FindFileOnDrive( Sint32 p_Drive, char *p_pFileName );
 bool SU_FindFileAcrossDrives( char *p_pFileName, bool p_StopAtFirstDrive,
 	Uint8 *p_pFoundOnDrives );
+Sint32 SU_GetFileSize( Sint32 p_Drive, const char *p_pFileName,
+	Uint32 *p_pDataOffset, const Uint8 p_FileType );
 
 /* Save/Load */
-Sint32 SU_SaveFile( Sint32 p_Drive, const char *p_pFileName, const *p_pData,
-	const Sint32 p_BlockCount, const char *p_pVMUComment,
+Sint32 SU_SaveFile( Sint32 p_Drive, const char *p_pFileName,
+	const void *p_pData, const Uint32 p_DataSize, const char *p_pVMUComment,
 	const char *p_pBootROMComment );
+Sint32 SU_LoadFile( Sint32 p_Drive, const char *p_pFileName, void *p_pData,
+	const Uint32 p_DataSize, const Uint32 p_DataOffset );
 
 #endif /* __TERMINAL_STORAGEUNIT_H__ */
 
