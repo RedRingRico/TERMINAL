@@ -62,20 +62,24 @@ static int MUSS_Update( void *p_pArgs )
 		Uint32 DataOffset;
 		Sint32 FileSize;
 
-		strcpy( TestData, "[TERMINAL] Game save data" );
-		
-		SU_SaveFile( 0, "TERMINAL.SYS", TestData, sizeof( TestData ),
-			"Game Settings", "[TERMINAL]" );
+		if( g_pStorageUnitsAvailable[ SelectedDrive ].Flags & SUI_FORMATTED )
+		{
+			strcpy( TestData, "[TERMINAL] Game save data" );
+			
+			SU_SaveFile( 0, "TERMINAL.SYS", TestData, sizeof( TestData ),
+				"Game Settings", "[TERMINAL]" );
 
-		FileSize = SU_GetFileSize( 0, "TERMINAL.SYS", &DataOffset,
-				SU_FILETYPE_NORMAL );
+			FileSize = SU_GetFileSize( 0, "TERMINAL.SYS", &DataOffset,
+					SU_FILETYPE_NORMAL );
 
-		LOG_Debug( "Got file size %d", FileSize );
-		LOG_Debug( "Data offset: %d", DataOffset );
+			LOG_Debug( "Got file size %d", FileSize );
+			LOG_Debug( "Data offset: %d", DataOffset );
 
-		SU_LoadFile( 0, "TERMINAL.SYS", TestDataRead, FileSize, DataOffset );
+			SU_LoadFile( 0, "TERMINAL.SYS", TestDataRead, FileSize,
+				DataOffset );
 
-		LOG_Debug( "File contents: %s", TestDataRead );
+			LOG_Debug( "File contents: %s", TestDataRead );
+		}
 
 		GSM_Quit( MemoryUnitSelectState.Base.pGameStateManager );
 	}
@@ -190,7 +194,7 @@ static int MUSS_Render( void *p_pArgs )
 
 				TXT_MeasureString( pGlyphSet, "$ ", &TextLength );
 
-				TXT_RenderString( pGlyphSet, &TextColour, 320.0f - TextLength,
+				TXT_RenderString( pGlyphSet, &TextColour, 64.0f - TextLength,
 					40.0f + ( float )pGlyphSet->LineHeight * ( float )Drive,
 					"$ " );
 			}
@@ -198,14 +202,28 @@ static int MUSS_Render( void *p_pArgs )
 			if( SU_FlagToDrive(
 				g_pStorageUnitsAvailable[ DriveNumber ].Flags ) == Drive )
 			{
-				TextColour.byte.bRed = 83;
-				TextColour.byte.bGreen = 254;
-				TextColour.byte.bBlue = 255;
-				TextColour.byte.bAlpha = 220;
+				if( g_pStorageUnitsAvailable[ DriveNumber ].Flags &
+					SUI_FORMATTED )
+				{
+					TextColour.byte.bRed = 83;
+					TextColour.byte.bGreen = 254;
+					TextColour.byte.bBlue = 255;
+					TextColour.byte.bAlpha = 220;
 
-				sprintf( PrintBuffer, "VMU inserted at slot %d", Drive );
+					sprintf( PrintBuffer, "VMU inserted at slot %d", Drive );
+				}
+				else
+				{
+					TextColour.byte.bRed = 255;
+					TextColour.byte.bGreen = 129;
+					TextColour.byte.bBlue = 38;
+					TextColour.byte.bAlpha = 240;
 
-				TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
+					sprintf( PrintBuffer, "Unformatted VMU at slot %d",
+						Drive );
+				}
+
+				TXT_RenderString( pGlyphSet, &TextColour, 64.0f,
 					40.0f + ( float )pGlyphSet->LineHeight * ( float )Drive,
 					PrintBuffer );
 
@@ -220,7 +238,7 @@ static int MUSS_Render( void *p_pArgs )
 
 				sprintf( PrintBuffer, "VMU not present at slot %d", Drive );
 
-				TXT_RenderString( pGlyphSet, &TextColour, 320.0f,
+				TXT_RenderString( pGlyphSet, &TextColour, 64.0f,
 					40.0f + ( float )pGlyphSet->LineHeight * ( float )Drive,
 					PrintBuffer );
 			}

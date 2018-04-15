@@ -440,20 +440,56 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 		}
 		case BUD_OP_MOUNT:
 		{
-			if( p_Status == BUD_ERR_OK )
+			switch( p_Status )
 			{
-				Uint8 FoundOnDrives;
-#if defined ( DEBUG )
-				LOG_Debug( "[BUP] <INFO> Memory unit %d mounted", p_Drive );
-#endif /* DEBUG */
-				pInformation->Flags |= SUI_READY;
-				++g_MountedStorageUnits;
-				if( buGetDiskInfo( p_Drive, &pInformation->DiskInformation ) ==
-					BUD_ERR_OK )
+				case BUD_ERR_OK:
 				{
-					pInformation->Flags |= SUI_FORMATTED;
+					Uint8 FoundOnDrives;
+					Sint32 DiskInfoReturn;
+#if defined ( DEBUG )
+					LOG_Debug( "[BUP] <INFO> Memory unit %d mounted", p_Drive );
+#endif /* DEBUG */
+					pInformation->Flags |= SUI_READY;
+					++g_MountedStorageUnits;
+					DiskInfoReturn = buGetDiskInfo( p_Drive,
+						&pInformation->DiskInformation );
+					switch( DiskInfoReturn )
+					{
+						case BUD_ERR_OK:
+						{
+							pInformation->Flags |= SUI_FORMATTED;
+							break;
+						}
+						case BUD_ERR_UNFORMAT:
+						{
+							/* Make sure to explicitly mark it as unformatted */
+							pInformation->Flags &= ~( SUI_FORMATTED );
+							LOG_Debug( "[BUP] <WARN> Disk %d not formatted",
+								p_Drive );
+							break;
+						}
+						default:
+						{
+							LOG_Debug( "[SUP] <WARN> Unknown error getting the "
+								"disk info for drive %d", p_Drive );
+						}
+					}
+					pInformation->LastError = SU_OK;
+					break;
 				}
-				pInformation->LastError = BUD_ERR_OK;
+				case BUD_ERR_NO_DISK:
+				{
+					pInformation->LastError = SU_NO_DISK;
+					LOG_Debug( "[BUP] <ERROR> Disk %d removed during mount",
+						p_Drive );
+
+					break;
+				}
+				default:
+				{
+					LOG_Debug( "[BUP] Unknown error occurred during the mount "
+						"operation: 0x%08X", p_Status );
+				}
 			}
 			break;
 		}
