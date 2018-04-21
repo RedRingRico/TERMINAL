@@ -431,7 +431,8 @@ static Sint32 CompleteCallback( Sint32 p_Drive, Sint32 p_Operation,
 			LOG_Debug( "Memory unit %d connected", p_Drive );
 			LOG_Debug( "    Work size: %d", pInformation->WorkSize );
 			LOG_Debug( "    Capacity:  %d", pInformation->Capacity );
-			LOG_Debug( "    Drive:     %d", SU_FlagToDrive( SU_DriveToFlag( p_Drive ) ) );
+			LOG_Debug( "    Drive:     %d",
+				SU_FlagToDrive( SU_DriveToFlag( p_Drive ) ) );
 #endif /* DEBUG */
 			/* Attempt to auto-mount the drive */
 			SU_MountDrive( p_Drive );
@@ -558,6 +559,136 @@ static void ClearDriveInformation( Sint32 p_Drive )
 	LOG_Debug( "Drive %d flags after:  0x%08X", p_Drive, pInformation->Flags );
 	memset( &pInformation->DiskInformation, 0,
 		sizeof( pInformation->DiskInformation ) );
+}
+
+static Sint32 RefreshDiskInformation( Sint32 p_Drive )
+{
+	Sint32 Return = SU_ERROR;
+
+	if( g_StorageUnits[ p_Drive ].Flags & SUI_FORMATTED )
+	{
+		Sint32 DiskInfoReturn =
+			buGetDiskInfo( p_Drive,
+				&g_StorageUnits[ p_Drive ].DiskInformation );
+
+		switch( DiskInfoReturn )
+		{
+			case BUD_ERR_OK:
+			{
+				Return = SU_OK;
+
+				break;
+			}
+			default:
+			{
+				LOG_Debug( "[SU_GetTotalBlockSize] <ERROR> Unknown return "
+					"value from buGetDiskInfo: 0x%08X", DiskInfoReturn );
+			}
+		}
+	}
+
+	return Return;
+}
+
+Sint32 SU_GetDrivesWithFreeBlocks( Uint16 p_Blocks, bool p_StopAtFirstDrive,
+	Uint8 *p_pDrives )
+{
+	size_t Drive;
+	Uint8 Drives = 0;
+
+	for( Drive = 0; Drive < SU_MAX_DRIVES; ++Drive )
+	{
+		Uint16 BlockCount;
+		if( SU_GetFreeBlockSize( Drive, &BlockCount ) == SU_OK )
+		{
+			if( BlockCount >= p_Blocks )
+			{
+				Drives |= ( 1 << Drive );
+				if( p_StopAtFirstDrive == true )
+				{
+					break;
+				}
+			}
+		}
+	}
+
+	if( Drives != 0 )
+	{
+		if( p_pDrives )
+		{
+			( *p_pDrives ) = Drives;
+		}
+
+		return SU_OK;
+	}
+
+	return SU_ERROR;
+}
+
+Sint32 SU_GetTotalBlockSize( Sint32 p_Drive, Uint16 *p_pBlockCount )
+{
+	Sint32 Return;
+
+	if( p_pBlockCount == NULL )
+	{
+		return SU_OK;
+	}
+
+	Return = RefreshDiskInformation( p_Drive );
+
+	if( Return == SU_OK )
+	{
+		( *p_pBlockCount ) =
+			g_StorageUnits[ p_Drive ].DiskInformation.total_blocks;
+	}
+
+	return Return;
+}
+
+Sint32 SU_GetUsedBlockSize( Sint32 p_Drive, Uint16 *p_pBlockCount )
+{
+	Sint32 Return;
+
+	if( p_pBlockCount == NULL )
+	{
+		return SU_OK;
+	}
+
+	Return = RefreshDiskInformation( p_Drive );
+
+	if( Return == SU_OK )
+	{
+		( *p_pBlockCount ) =
+			g_StorageUnits[ p_Drive ].DiskInformation.total_blocks-
+			g_StorageUnits[ p_Drive ].DiskInformation.free_blocks;
+	}
+
+	return Return;
+}
+
+Sint32 SU_GetFreeBlockSize( Sint32 p_Drive, Uint16 *p_pBlockCount )
+{
+	Sint32 Return;
+
+	if( p_pBlockCount == NULL )
+	{
+		return SU_OK;
+	}
+
+	Return = RefreshDiskInformation( p_Drive );
+
+	if( Return == SU_OK )
+	{
+		( *p_pBlockCount ) =
+			g_StorageUnits[ p_Drive ].DiskInformation.free_blocks;
+	}
+
+	return Return;
+}
+
+Sint32 SU_DefragmentDisk( Sint32 p_Drive )
+{
+	return SU_OK;
 }
 
 Sint32 SU_SaveFile( Sint32 p_Drive, const char *p_pFileName,

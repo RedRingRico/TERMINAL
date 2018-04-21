@@ -534,7 +534,16 @@ int GSM_Run( PGAMESTATE_MANAGER p_pGameStateManager )
 
 		TXT_MeasureString( pGlyphSet, g_ConsoleIDPrint, &TextLength );
 		TXT_RenderString( pGlyphSet, &TextColour, 20.0f,
-				( float )pGlyphSet->LineHeight * 2.5f, g_ConsoleIDPrint );
+			( float )pGlyphSet->LineHeight * 2.5f, g_ConsoleIDPrint );
+
+		TextColour.byte.bRed = 255;
+		TextColour.byte.bGreen = 255;
+		TextColour.byte.bBlue = 255;
+		sprintf( PrintBuffer, "%lu",
+			p_pGameStateManager->pTopGameState->ElapsedGameTime );
+		TXT_MeasureString( pGlyphSet, PrintBuffer, &TextLength );
+		TXT_RenderString( pGlyphSet, &TextColour, 620.0f - TextLength,
+			( float )pGlyphSet->LineHeight * 2.5f, PrintBuffer );
 	}
 #endif /* DEBUG || DEVELOPMENT */
 	REN_SwapBuffers( );

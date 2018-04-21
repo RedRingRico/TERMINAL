@@ -66,6 +66,14 @@ bool SU_FindFileAcrossDrives( char *p_pFileName, bool p_StopAtFirstDrive,
 Sint32 SU_GetFileSize( Sint32 p_Drive, const char *p_pFileName,
 	Uint32 *p_pDataOffset, const Uint8 p_FileType );
 
+/* Space management */
+Sint32 SU_GetDrivesWithFreeBlocks( Uint16 p_Blocks, bool p_StopAtFirstDrive,
+	Uint8 *p_pDrives );
+Sint32 SU_GetTotalBlockSize( Sint32 p_Drive, Uint16 *p_pBlockCount );
+Sint32 SU_GetUsedBlockSize( Sint32 p_Drive, Uint16 *p_pBlockCount );
+Sint32 SU_GetFreeBlockSize( Sint32 p_Drive, Uint16 *p_pBlockCount );
+Sint32 SU_DefragmentDisk( Sint32 p_Drive );
+
 /* Save/Load */
 Sint32 SU_SaveFile( Sint32 p_Drive, const char *p_pFileName,
 	const void *p_pData, const Uint32 p_DataSize, const char *p_pVMUComment,
