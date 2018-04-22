@@ -77,7 +77,7 @@ static void GLS_UpdateBytesSentLastFrame( void );
 static void GLS_ProcessPacket( PNETWORK_MESSAGE p_pMessage,
 	PSOCKET_ADDRESS p_pAddress );
 
-static int GLS_Load( void *p_pArgs )
+static Sint32 GLS_Load( void *p_pArgs )
 {
 	ARY_Initialise( &GameListServerState.Servers,
 		GameListServerState.Base.pGameStateManager->MemoryBlocks.pSystemMemory,
@@ -90,7 +90,7 @@ static int GLS_Load( void *p_pArgs )
 	return 0;
 }
 
-static int GLS_Initialise( void *p_pArgs )
+static Sint32 GLS_Initialise( void *p_pArgs )
 {
 	NET_DNSRequest( &GameListServerState.DNSRequest, LIST_SERVER_DOMAIN );
 
@@ -103,7 +103,7 @@ static int GLS_Initialise( void *p_pArgs )
 	return 0;
 }
 
-static int GLS_Update( void *p_pArgs )
+static Sint32 GLS_Update( void *p_pArgs )
 {
 	static Uint8 MessageBuffer[ 1400 ];
 	static size_t MessageBufferLength = sizeof( MessageBuffer );
@@ -294,7 +294,7 @@ static int GLS_Update( void *p_pArgs )
 	return 0;
 }
 
-static int GLS_Render( void *p_pArgs )
+static Sint32 GLS_Render( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour = 0xFFFFFFFF;
 	float TextLength;
@@ -445,7 +445,7 @@ static int GLS_Render( void *p_pArgs )
 	return 0;
 }
 
-static int GLS_Terminate( void *p_pArgs )
+static Sint32 GLS_Terminate( void *p_pArgs )
 {
 	QUE_Terminate( &GameListServerState.PacketQueue );
 	NCL_Terminate( &GameListServerState.Client );
@@ -453,19 +453,19 @@ static int GLS_Terminate( void *p_pArgs )
 	return 0;
 }
 
-static int GLS_Unload( void *p_pArgs )
+static Sint32 GLS_Unload( void *p_pArgs )
 {
 	ARY_Terminate( &GameListServerState.Servers );
 
 	return 0;
 }
 
-static int GLS_VSyncCallback( void *p_pArgs )
+static Sint32 GLS_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int MP_RegisterGameListServerWithGameStateManager(
+Sint32 MP_RegisterGameListServerWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	GameListServerState.Base.Load = &GLS_Load;
@@ -494,8 +494,8 @@ static void GLS_ReadIncomingPackets( void )
 	static Uint8 PacketMemory[ 1400 ];
 	static size_t PacketSize = sizeof( PacketMemory );
 	PACKET NetworkPacket;
-	int ReceivedPackets = 0;
-	int TotalReadBytes = 0;
+	Sint32 ReceivedPackets = 0;
+	Sint32 TotalReadBytes = 0;
 	NETWORK_MESSAGE NetworkMessage;
 
 	MSG_CreateNetworkMessage( &NetworkMessage, PacketMemory, PacketSize,
@@ -504,7 +504,7 @@ static void GLS_ReadIncomingPackets( void )
 
 	while( ReceivedPackets < MAX_PACKETS_PER_UPDATE )
 	{
-		int ReadBytes = NET_SocketReceiveFrom(
+		Sint32 ReadBytes = NET_SocketReceiveFrom(
 			&GameListServerState.Client.Socket, PacketMemory,
 			PacketSize, &NetworkPacket.Address );
 

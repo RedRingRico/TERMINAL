@@ -12,7 +12,7 @@ typedef struct _tagREFRESHRATESELECT
 	PGLYPHSET	pGlyphSet;
 }REFRESHRATESELECT,*PREFRESHRATESELECT;
 
-int RRSS_RegisterWithGameStateManager(
+Sint32 RRSS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager );
 
 #endif /* __TERMINAL_REFRESHRATESELECTSTATE_H__ */

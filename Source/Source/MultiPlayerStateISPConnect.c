@@ -18,7 +18,7 @@ typedef struct _tagMPISP_GAMESTATE
 
 static MPISP_GAMESTATE ISPConnectState;
 
-static int MPISP_Load( void *p_pArgs )
+static Sint32 MPISP_Load( void *p_pArgs )
 {
 	NETWORK_CONFIGURATION NetConfig;
 
@@ -35,7 +35,7 @@ static int MPISP_Load( void *p_pArgs )
 	return 0;
 }
 
-static int MPISP_Initialise( void *p_pArgs )
+static Sint32 MPISP_Initialise( void *p_pArgs )
 {
 	if( NET_ConnectToISP( ) != 0 )
 	{
@@ -52,7 +52,7 @@ static int MPISP_Initialise( void *p_pArgs )
 	return 0;
 }
 
-static int MPISP_Update( void *p_pArgs )
+static Sint32 MPISP_Update( void *p_pArgs )
 {
 	Uint32 StartTime = syTmrGetCount( );
 	ISPConnectState.NetStatus = NET_GetStatus( );
@@ -155,7 +155,7 @@ static int MPISP_Update( void *p_pArgs )
 	return 0;
 }
 
-static int MPISP_Render( void *p_pArgs )
+static Sint32 MPISP_Render( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	float TextLength;
@@ -244,7 +244,7 @@ static int MPISP_Render( void *p_pArgs )
 	return 0;
 }
 
-static int MPISP_Terminate( void *p_pArgs )
+static Sint32 MPISP_Terminate( void *p_pArgs )
 {
 	/* Wait for a successful disconnect */
 	NET_Update( );
@@ -263,7 +263,7 @@ static int MPISP_Terminate( void *p_pArgs )
 	return 0;
 }
 
-static int MPISP_Unload( void *p_pArgs )
+static Sint32 MPISP_Unload( void *p_pArgs )
 {
 	LOG_Debug( "MPISP_Unload <INFO> Terminating the network\n" );
 
@@ -272,12 +272,12 @@ static int MPISP_Unload( void *p_pArgs )
 	return 0;
 }
 
-static int MPISP_VSyncCallback( void *p_pArgs )
+static Sint32 MPISP_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int MP_RegisterISPConnectWithGameStateManager(
+Sint32 MP_RegisterISPConnectWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	ISPConnectState.Base.Load = &MPISP_Load;

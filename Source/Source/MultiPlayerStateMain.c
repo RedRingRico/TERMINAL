@@ -14,9 +14,9 @@ typedef struct _tagMPM_GAMESTATE
 
 static MPM_GAMESTATE MultiPlayerMainState;
 
-static int ConnectToISP( void *p_pArgs );
+static Sint32 ConnectToISP( void *p_pArgs );
 
-static int MPM_Load( void *p_pArgs )
+static Sint32 MPM_Load( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	KMPACKEDARGB HighlightColour;
@@ -58,12 +58,12 @@ static int MPM_Load( void *p_pArgs )
 	return 0;
 }
 
-static int MPM_Initialise( void *p_pArgs )
+static Sint32 MPM_Initialise( void *p_pArgs )
 {
 	return 0;
 }
 
-static int MPM_Update( void *p_pArgs )
+static Sint32 MPM_Update( void *p_pArgs )
 {
 	if( g_Peripherals[ 0 ].press & PDD_DGT_KU )
 	{
@@ -98,7 +98,7 @@ static int MPM_Update( void *p_pArgs )
 	return 0;
 }
 
-static int MPM_Render( void *p_pArgs )
+static Sint32 MPM_Render( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	float TextLength;
@@ -126,24 +126,24 @@ static int MPM_Render( void *p_pArgs )
 	return 0;
 }
 
-static int MPM_Terminate( void *p_pArgs )
+static Sint32 MPM_Terminate( void *p_pArgs )
 {
 	return 0;
 }
 
-static int MPM_Unload( void *p_pArgs )
+static Sint32 MPM_Unload( void *p_pArgs )
 {
 	MNU_Terminate( &MultiPlayerMainState.Menu );
 
 	return 0;
 }
 
-static int MPM_VSyncCallback( void *p_pArgs )
+static Sint32 MPM_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int MP_RegisterMainWithGameStateManager(
+Sint32 MP_RegisterMainWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	MultiPlayerMainState.Base.Load = &MPM_Load;
@@ -162,7 +162,7 @@ int MP_RegisterMainWithGameStateManager(
 		GAME_STATE_MULTIPLAYER_MAIN, ( GAMESTATE * )&MultiPlayerMainState );
 }
 
-static int ConnectToISP( void *p_pArgs )
+static Sint32 ConnectToISP( void *p_pArgs )
 {
 	GSM_ChangeState( MultiPlayerMainState.Base.pGameStateManager,
 		GAME_STATE_MULTIPLAYER_ISPCONNECT, NULL, NULL );

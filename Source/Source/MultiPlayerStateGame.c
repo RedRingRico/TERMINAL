@@ -45,7 +45,7 @@ static void MPG_ProcessQueuedPackets( void );
 static void MPG_ProcessPacket( PNETWORK_MESSAGE p_pMessage,
 	PSOCKET_ADDRESS p_pAddress );
 
-static int MPG_Load( void *p_pArgs )
+static Sint32 MPG_Load( void *p_pArgs )
 {
 	PMULTIPLAYER_GAME_ARGS pArgs = p_pArgs;
 	struct in_addr Address;
@@ -65,7 +65,7 @@ static int MPG_Load( void *p_pArgs )
 	return 0;
 }
 
-static int MPG_Initialise( void *p_pArgs )
+static Sint32 MPG_Initialise( void *p_pArgs )
 {
 	Uint8 MessageBuffer[ 1400 ];
 	size_t MessageBufferLength = sizeof( MessageBuffer );
@@ -89,7 +89,7 @@ static int MPG_Initialise( void *p_pArgs )
 	return 0;
 }
 
-static int MPG_Update( void *p_pArgs )
+static Sint32 MPG_Update( void *p_pArgs )
 {
 	switch( MultiPlayerGameState.MultiPlayerState )
 	{
@@ -148,7 +148,7 @@ static int MPG_Update( void *p_pArgs )
 	return 0;
 }
 
-static int MPG_Render( void *p_pArgs )
+static Sint32 MPG_Render( void *p_pArgs )
 {
 	PGLYPHSET pGlyphSet;
 	KMPACKEDARGB TextColour = 0xFFFFFFFF;
@@ -197,12 +197,12 @@ static int MPG_Render( void *p_pArgs )
 	}
 }
 
-static int MPG_Terminate( void *p_pArgs )
+static Sint32 MPG_Terminate( void *p_pArgs )
 {
 	return 0;
 }
 
-static int MPG_Unload( void *p_pArgs )
+static Sint32 MPG_Unload( void *p_pArgs )
 {
 	QUE_Terminate( &MultiPlayerGameState.PacketQueue );
 	NCL_Terminate( &MultiPlayerGameState.Client );
@@ -210,12 +210,12 @@ static int MPG_Unload( void *p_pArgs )
 	return 0;
 }
 
-static int MPG_VSyncCallback( void *p_pArgs )
+static Sint32 MPG_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int MP_RegisterMultiPlayerGameWithGameStateManager(
+Sint32 MP_RegisterMultiPlayerGameWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	MultiPlayerGameState.Base.Load = &MPG_Load;
@@ -243,8 +243,8 @@ static void MPG_ReadIncomingPackets( void )
 	static Uint8 PacketMemory[ 1400 ];
 	static size_t PacketSize = sizeof( PacketMemory );
 	PACKET NetworkPacket;
-	int ReceivedPackets = 0;
-	int TotalReadBytes = 0;
+	Sint32 ReceivedPackets = 0;
+	Sint32 TotalReadBytes = 0;
 	NETWORK_MESSAGE NetworkMessage;
 
 	MSG_CreateNetworkMessage( &NetworkMessage, PacketMemory, PacketSize,
@@ -253,7 +253,7 @@ static void MPG_ReadIncomingPackets( void )
 
 	while( ReceivedPackets < MAX_PACKETS_PER_UPDATE )
 	{
-		int ReadBytes = NET_SocketReceiveFrom(
+		Sint32 ReadBytes = NET_SocketReceiveFrom(
 			&MultiPlayerGameState.Client.Socket, PacketMemory,
 			PacketSize, &NetworkPacket.Address );
 

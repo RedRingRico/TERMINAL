@@ -20,16 +20,16 @@ typedef struct _tagMULTIPLAYER_GAME_ARGS
 	Uint16	Port;
 }MULTIPLAYER_GAME_ARGS,*PMULTIPLAYER_GAME_ARGS;
 
-int MP_RegisterMainWithGameStateManager(
+Sint32 MP_RegisterMainWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager );
 
-int MP_RegisterISPConnectWithGameStateManager(
+Sint32 MP_RegisterISPConnectWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager );
 
-int MP_RegisterGameListServerWithGameStateManager(
+Sint32 MP_RegisterGameListServerWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager );
 
-int MP_RegisterMultiPlayerGameWithGameStateManager(
+Sint32 MP_RegisterMultiPlayerGameWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager );
 
 #endif /* __TERMINAL_MULTIPLAYERSTATE_H__ */

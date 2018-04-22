@@ -21,7 +21,7 @@ typedef struct _tagREFRESHRATESELECT_GAMESTATE
 
 static REFRESHRATESELECT_GAMESTATE RefreshRateSelectState;
 
-static int RRSS_Load( void *p_pArgs )
+static Sint32 RRSS_Load( void *p_pArgs )
 {
 	RefreshRateSelectState.pGlyphSet = GSM_GetGlyphSet(
 		RefreshRateSelectState.Base.pGameStateManager, GSM_GLYPH_SET_GUI_1 );
@@ -29,7 +29,7 @@ static int RRSS_Load( void *p_pArgs )
 	return 0;
 }
 
-static int RRSS_Initialise( void *p_pArgs )
+static Sint32 RRSS_Initialise( void *p_pArgs )
 {
 	RefreshRateSelectState.CableSelect = true;
 	RefreshRateSelectState.SixtyHz = false;
@@ -44,7 +44,7 @@ static int RRSS_Initialise( void *p_pArgs )
 	return 0;
 }
 
-static int RRSS_Update( void *p_pArgs )
+static Sint32 RRSS_Update( void *p_pArgs )
 {
 	static float Alpha = 1.0f, AlphaInc = 0.2f;
 
@@ -163,7 +163,7 @@ static int RRSS_Update( void *p_pArgs )
 	return 0;
 }
 
-static int RRSS_Render( void *p_pArgs )
+static Sint32 RRSS_Render( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	float TextLength;
@@ -332,22 +332,22 @@ static int RRSS_Render( void *p_pArgs )
 	return 0;
 }
 
-static int RRSS_Terminate( void *p_pArgs )
+static Sint32 RRSS_Terminate( void *p_pArgs )
 {
 	return 0;
 }
 
-static int RRSS_Unload( void *p_pArgs )
+static Sint32 RRSS_Unload( void *p_pArgs )
 {
 	return 0;
 }
 
-static int RRSS_VSyncCallback( void *p_pArgs )
+static Sint32 RRSS_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int RRSS_RegisterWithGameStateManager(
+Sint32 RRSS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	RefreshRateSelectState.Base.Load = &RRSS_Load;
