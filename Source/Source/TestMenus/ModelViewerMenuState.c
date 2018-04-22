@@ -39,7 +39,7 @@ typedef struct
 
 static MODELVIEWER_GAMESTATE ModelViewerState;
 
-static int MDLV_Load( void *p_pArgs )
+static Sint32 MDLV_Load( void *p_pArgs )
 {
 	memset( ModelViewerState.Model.Name, '\0',
 		sizeof( ModelViewerState.Model.Name ) );
@@ -91,17 +91,17 @@ static int MDLV_Load( void *p_pArgs )
 	return 0;
 }
 
-static int MDLV_Initialise( void *p_pArgs )
+static Sint32 MDLV_Initialise( void *p_pArgs )
 {
 	return 0;
 }
 
-static int MDLV_Update( void *p_pArgs )
+static Sint32 MDLV_Update( void *p_pArgs )
 {
-	int DAData;
+	Sint32 DAData;
 	Uint8 ChannelStatus;
 	char DataTemp[ 64 ];
-	int DataSize;
+	Sint32 DataSize;
 	PQUEUE pDAQueue =
 		&ModelViewerState.Base.pGameStateManager->DebugAdapter.Queue;
 
@@ -254,7 +254,7 @@ static int MDLV_Update( void *p_pArgs )
 	return 0;
 }
 
-static int MDLV_Render( void *p_pArgs )
+static Sint32 MDLV_Render( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	float TextLength;
@@ -343,25 +343,25 @@ static int MDLV_Render( void *p_pArgs )
 	return 0;
 }
 
-static int MDLV_Terminate( void *p_pArgs )
+static Sint32 MDLV_Terminate( void *p_pArgs )
 {
 
 	return 0;
 }
 
-static int MDLV_Unload( void *p_pArgs )
+static Sint32 MDLV_Unload( void *p_pArgs )
 {
 	MDL_DeleteModel( &ModelViewerState.Model );
 
 	return 0;
 }
 
-static int MDLV_VSyncCallback( void *p_pArgs )
+static Sint32 MDLV_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int MDLV_RegisterWithGameStateManager(
+Sint32 MDLV_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	ModelViewerState.Base.Load = &MDLV_Load;

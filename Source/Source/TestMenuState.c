@@ -15,10 +15,10 @@ typedef struct
 
 static TESTMENU_GAMESTATE TestMenuState;
 
-static int LaunchModelViewer( void *p_pArgs );
-static int LaunchKeyboardTest( void *p_pArgs );
+static Sint32 LaunchModelViewer( void *p_pArgs );
+static Sint32 LaunchKeyboardTest( void *p_pArgs );
 
-static int TMU_Load( void *p_pArgs )
+static Sint32 TMU_Load( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour, HighlightColour;
 	MENU_ITEM MenuItems[ TEST_MENU_ITEMS ];
@@ -83,12 +83,12 @@ static int TMU_Load( void *p_pArgs )
 	return 0;
 }
 
-static int TMU_Initialise( void *p_pArgs )
+static Sint32 TMU_Initialise( void *p_pArgs )
 {
 	return 0;
 }
 
-static int TMU_Update( void *p_pArgs )
+static Sint32 TMU_Update( void *p_pArgs )
 {
 	if( g_Peripherals[ 0 ].press & PDD_DGT_KU )
 	{
@@ -123,7 +123,7 @@ static int TMU_Update( void *p_pArgs )
 	return 0;
 }
 
-static int TMU_Render( void *p_pArgs )
+static Sint32 TMU_Render( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	float TextLength;
@@ -149,24 +149,24 @@ static int TMU_Render( void *p_pArgs )
 	return 0;
 }
 
-static int TMU_Terminate( void *p_pArgs )
+static Sint32 TMU_Terminate( void *p_pArgs )
 {
 	return 0;
 }
 
-static int TMU_Unload( void *p_pArgs )
+static Sint32 TMU_Unload( void *p_pArgs )
 {
 	MNU_Terminate( &TestMenuState.Menu );
 
 	return 0;
 }
 
-static int TMU_VSyncCallback( void *p_pArgs )
+static Sint32 TMU_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int TMU_RegisterWithGameStateManager(
+Sint32 TMU_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	TestMenuState.Base.Load = &TMU_Load;
@@ -185,13 +185,13 @@ int TMU_RegisterWithGameStateManager(
 		( GAMESTATE * )&TestMenuState );
 }
 
-static int LaunchModelViewer( void *p_pArgs )
+static Sint32 LaunchModelViewer( void *p_pArgs )
 {
 	return GSM_PushState( TestMenuState.Base.pGameStateManager,
 		GAME_STATE_MODELVIEWER, NULL, NULL, true );
 }
 
-static int LaunchKeyboardTest( void *p_pArgs )
+static Sint32 LaunchKeyboardTest( void *p_pArgs )
 {
 	return GSM_PushState( TestMenuState.Base.pGameStateManager,
 		GAME_STATE_KEYBOARDTEST, NULL, NULL, true );
