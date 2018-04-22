@@ -16,6 +16,7 @@ typedef struct
 static TESTMENU_GAMESTATE TestMenuState;
 
 static int LaunchModelViewer( void *p_pArgs );
+static int LaunchKeyboardTest( void *p_pArgs );
 
 static int TMU_Load( void *p_pArgs )
 {
@@ -59,6 +60,9 @@ static int TMU_Load( void *p_pArgs )
 
 	MenuItems[ MenuItemCount ].pName = "Volumetric Lighting [Coming 20XX]";
 	MenuItems[ MenuItemCount ].Function = NULL;
+
+	MenuItems[ MenuItemCount ].pName = "Keyboard";
+	MenuItems[ MenuItemCount ].Function = LaunchKeyboardTest;
 
 	SelectionHighlight.Base.Type = SELECTION_HIGHLIGHT_TYPE_STRING;
 	SelectionHighlight.Base.HighlightColour = HighlightColour;
@@ -185,6 +189,12 @@ static int LaunchModelViewer( void *p_pArgs )
 {
 	return GSM_PushState( TestMenuState.Base.pGameStateManager,
 		GAME_STATE_MODELVIEWER, NULL, NULL, true );
+}
+
+static int LaunchKeyboardTest( void *p_pArgs )
+{
+	return GSM_PushState( TestMenuState.Base.pGameStateManager,
+		GAME_STATE_KEYBOARDTEST, NULL, NULL, true );
 }
 
 #endif /* DEBUG || DEVELOPMENT */
