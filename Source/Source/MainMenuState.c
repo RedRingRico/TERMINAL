@@ -22,11 +22,11 @@ typedef struct _tagMAINMENU_GAMESTATE
 
 static MAINMENU_GAMESTATE MainMenuState;
 
-static int BootROM( void *p_pArgs );
-static int LaunchMultiPlayer( void *p_pArgs );
-static int LaunchTestMenu( void *p_pArgs );
+static Sint32 BootROM( void *p_pArgs );
+static Sint32 LaunchMultiPlayer( void *p_pArgs );
+static Sint32 LaunchTestMenu( void *p_pArgs );
 
-static int MMS_Load( void *p_pArgs )
+static Sint32 MMS_Load( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	KMPACKEDARGB HighlightColour;
@@ -75,12 +75,12 @@ static int MMS_Load( void *p_pArgs )
 	return 0;
 }
 
-static int MMS_Initialise( void *p_pArgs )
+static Sint32 MMS_Initialise( void *p_pArgs )
 {
 	return 0;
 }
 
-static int MMS_Update( void *p_pArgs )
+static Sint32 MMS_Update( void *p_pArgs )
 {
 	if( g_Peripherals[ 0 ].press & PDD_DGT_KU )
 	{
@@ -110,7 +110,7 @@ static int MMS_Update( void *p_pArgs )
 	return 0;
 }
 
-static int MMS_Render( void *p_pArgs )
+static Sint32 MMS_Render( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	float TextLength;
@@ -135,24 +135,24 @@ static int MMS_Render( void *p_pArgs )
 	return 0;
 }
 
-static int MMS_Terminate( void *p_pArgs )
+static Sint32 MMS_Terminate( void *p_pArgs )
 {
 	return 0;
 }
 
-static int MMS_Unload( void *p_pArgs )
+static Sint32 MMS_Unload( void *p_pArgs )
 {
 	MNU_Terminate( &MainMenuState.Menu );
 
 	return 0;
 }
 
-static int MMS_VSyncCallback( void *p_pArgs )
+static Sint32 MMS_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int MMS_RegisterWithGameStateManager(
+Sint32 MMS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	MainMenuState.Base.Load = &MMS_Load;
@@ -171,7 +171,7 @@ int MMS_RegisterWithGameStateManager(
 		( GAMESTATE * )&MainMenuState );
 }
 
-static int LaunchMultiPlayer( void *p_pArgs )
+static Sint32 LaunchMultiPlayer( void *p_pArgs )
 {
 	GSM_PushState( MainMenuState.Base.pGameStateManager,
 		GAME_STATE_MULTIPLAYER_MAIN, NULL, NULL, true );
@@ -179,7 +179,7 @@ static int LaunchMultiPlayer( void *p_pArgs )
 	return 0;
 }
 
-static int LaunchTestMenu( void *p_pArgs )
+static Sint32 LaunchTestMenu( void *p_pArgs )
 {
 	GSM_PushState( MainMenuState.Base.pGameStateManager,
 		GAME_STATE_TESTMENU, NULL, NULL, true );
@@ -187,7 +187,7 @@ static int LaunchTestMenu( void *p_pArgs )
 	return 0;
 }
 
-static int BootROM( void *p_pArgs )
+static Sint32 BootROM( void *p_pArgs )
 {
 	GSM_Quit( MainMenuState.Base.pGameStateManager );
 

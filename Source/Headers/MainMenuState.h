@@ -11,7 +11,7 @@ typedef struct _tagMAINMENU
 	PGLYPHSET	pGlyphSet;
 }MAINMENU,*PMAINMENU;
 
-int MMS_RegisterWithGameStateManager(
+Sint32 MMS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager );
 
 #endif /* __TERMINAL_MAINMENUSTATE_H__ */

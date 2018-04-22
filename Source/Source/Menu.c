@@ -1,7 +1,7 @@
 #include <Menu.h>
 #include <Log.h>
 
-int MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
+Sint32 MNU_Initialise( PMENU p_pMenu, PMENU_ITEM p_pMenuItems,
 	size_t p_MenuItemCount, PSELECTION_HIGHLIGHT p_pSelectionHighlight,
 	PGLYPHSET p_pGlyphSet, KMPACKEDARGB p_TextColour,
 	MENU_ITEM_ALIGNMENT p_MenuItemAlignment, PMEMORY_BLOCK p_pMemoryBlock )
