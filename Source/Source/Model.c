@@ -13,7 +13,7 @@ typedef struct _tagCHUNK
 	Uint32 Size;
 }CHUNK,*PCHUNK;
 
-static int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh,
+static int MDL_ReadMeshData( Uint8 *p_pData, PMESH p_pMesh,
 	PMEMORY_BLOCK p_pMemoryBlock );
 static KMSTRIPHEAD	MDL_ModelStripHead;
 
@@ -78,7 +78,7 @@ int MDL_LoadModel( PMODEL p_pModel, const char *p_pFileName,
 	GDFS FileHandle;
 	long FileBlocks;
 	Sint32 FileSize;
-	char *pFileContents;
+	Uint8 *pFileContents;
 	size_t FilePosition = 0;
 	MODEL_HEADER Header;
 	size_t MeshIndex = 0;
@@ -490,7 +490,7 @@ RENDER_NORMAL:
 	}
 }
 
-static int MDL_ReadMeshData( char *p_pData, PMESH p_pMesh,
+static int MDL_ReadMeshData( Uint8 *p_pData, PMESH p_pMesh,
 	PMEMORY_BLOCK p_pMemoryBlock )
 {
 	MESH_CHUNK MeshChunk;
