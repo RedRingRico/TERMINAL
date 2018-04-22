@@ -11,7 +11,7 @@ typedef struct _tagASPECTRATIOSELECT
 	PGLYPHSET	pGlyphSet;
 }ASPECTRATIOSELECT,*PASPECTRATIOSELECT;
 
-int ARSS_RegisterWithGameStateManager(
+Sint32 ARSS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager );
 
 #endif /* __TERMINAL_ASPECRATIOSELECTSTATE_H__ */

@@ -27,7 +27,7 @@ typedef struct _tagASPECTRATIOSELECT_GAMESTATE
 
 static ASPECTRATIOSELECT_GAMESTATE AspectRatioSelectState;
 
-static int ARSS_Load( void *p_pArgs )
+static Sint32 ARSS_Load( void *p_pArgs )
 {
 	KMSTRIPCONTEXT SquareContext;
 	KMPACKEDARGB BaseColour;
@@ -116,13 +116,13 @@ static int ARSS_Load( void *p_pArgs )
 	return 0;
 }
 
-static int ARSS_Initialise( void *p_pArgs )
+static Sint32 ARSS_Initialise( void *p_pArgs )
 {
 	MATRIX4X4 ScreenMatrix;
 	MATRIX4X4 ProjectionMatrix;
 	MATRIX4X4 ViewMatrix;
 	VECTOR3 SquareVertsT[ 4 ];
-	int i;
+	Sint32 i;
 
 	AspectRatioSelectState.AspectRatio = 4.0f / 3.0f;
 	AspectRatioSelectState.SelectAspect = true;
@@ -178,7 +178,7 @@ static int ARSS_Initialise( void *p_pArgs )
 	return 0;
 }
 
-static int ARSS_Update( void *p_pArgs )
+static Sint32 ARSS_Update( void *p_pArgs )
 {
 	static float Alpha = 1.0f, AlphaInc = 0.2f;
 
@@ -196,7 +196,7 @@ static int ARSS_Update( void *p_pArgs )
 			MATRIX4X4 ProjectionMatrix;
 			MATRIX4X4 ViewMatrix;
 			VECTOR3 SquareVertsT[ 4 ];
-			int i;
+			Sint32 i;
 
 			Alpha = 1.0f;
 
@@ -295,7 +295,7 @@ static int ARSS_Update( void *p_pArgs )
 	return 0;
 }
 
-static int ARSS_Render( void *p_pArgs )
+static Sint32 ARSS_Render( void *p_pArgs )
 {
 	float TextLength;
 	KMPACKEDARGB TextColour;
@@ -359,22 +359,22 @@ static int ARSS_Render( void *p_pArgs )
 	return 0;
 }
 
-static int ARSS_Terminate( void *p_pArgs )
+static Sint32 ARSS_Terminate( void *p_pArgs )
 {
 	return 0;
 }
 
-static int ARSS_Unload( void *p_pArgs )
+static Sint32 ARSS_Unload( void *p_pArgs )
 {
 	return 0;
 }
 
-static int ARSS_VSyncCallback( void *p_pArgs )
+static Sint32 ARSS_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int ARSS_RegisterWithGameStateManager(
+Sint32 ARSS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	AspectRatioSelectState.Base.Load = &ARSS_Load;
