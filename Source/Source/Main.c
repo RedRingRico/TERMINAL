@@ -508,6 +508,7 @@ MainCleanup:
 	HW_Reboot( );
 
 	/* Unused code below, get rid of it! */
+#if defined( UNUSED_CODE )
 
 	if( MDL_Initialise( &GraphicsMemoryBlock ) != 0 )
 	{
@@ -899,6 +900,7 @@ MainCleanup:
 	LOG_Terminate( );
 	HW_Terminate( );
 	HW_Reboot( );
+#endif /* UNUSED_CODE */
 }
 
 void DrawOverlayText( GLYPHSET *p_pGlyphSet )
