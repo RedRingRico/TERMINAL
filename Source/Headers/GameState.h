@@ -6,7 +6,7 @@
 
 /* Game state functions can accept a parameter of any type, for multiple
  * parameters, use a struct */
-typedef int ( *GS_Function )( void * );
+typedef Sint32 ( *GS_Function )( void * );
 
 typedef struct _tagGAMESTATE
 {
