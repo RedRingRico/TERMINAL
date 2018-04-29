@@ -1,4 +1,7 @@
 #include <Serial.h>
+
+/* For now, only allow serial communicaiton for development purposes */
+#if defined ( DEBUG ) || defined( DEVELOPMENT )
 #include <Log.h>
 #include <stddef.h>
 #include <Hardware.h>
@@ -7,7 +10,7 @@ static unsigned char RecvBuf[ 1024 * 8 ];
 static unsigned char SendBuf[ 1024 * 8 ];
 static bool g_Initialised = false;
 
-Sint32 SIF_Initialise( Sint32 p_RecvBufferSize, Sint32 p_SendBufferSize,
+Sint32 SIF_Initialise_Int( Sint32 p_RecvBufferSize, Sint32 p_SendBufferSize,
 	Sint32 p_Speed )
 {
 	if( scif_init( RecvBuf, 1024 * 8, SendBuf, 1024 * 8 ) != 0 )
@@ -26,14 +29,14 @@ Sint32 SIF_Initialise( Sint32 p_RecvBufferSize, Sint32 p_SendBufferSize,
 	return SIF_OK;
 }
 
-void SIF_Terminate( void )
+void SIF_Terminate_Int( void )
 {
 	scif_close( );
 	g_Initialised = false;
 	LOG_Debug( "[SIF_Initialise] <INFO> Terminated" );
 }
 
-void SIF_Clear( void )
+void SIF_Clear_Int( void )
 {
 	if( g_Initialised == true )
 	{
@@ -49,7 +52,7 @@ void SIF_Clear( void )
 	}
 }
 
-void SIF_Print( const char *p_pString )
+void SIF_Print_Int( const char *p_pString )
 {
 	if( g_Initialised == true )
 	{
@@ -69,7 +72,7 @@ void SIF_Print( const char *p_pString )
 	}
 }
 
-void SIF_PrintLine( const char *p_pString )
+void SIF_PrintLine_Int( const char *p_pString )
 {
 	if( g_Initialised == true )
 	{
@@ -91,7 +94,7 @@ void SIF_PrintLine( const char *p_pString )
 	}
 }
 
-void SIF_NewLine( void )
+void SIF_NewLine_Int( void )
 {
 	if( g_Initialised == true )
 	{
@@ -126,6 +129,8 @@ void SIF_NewLine( void )
 		{
 			/* Something went horribly wrong... */
 			LOG_Debug( "[SIF_NewLine] <ERROR> Unable to insert a newline!" );
+			LOG_Debug( "Cursor report: %s", CursorReport );
+
 			return;
 		}
 
@@ -141,4 +146,5 @@ void SIF_NewLine( void )
 		SIF_Print( CursorReport );
 	}
 }
+#endif /* DEBUG || DEVELOPMENT */
 
