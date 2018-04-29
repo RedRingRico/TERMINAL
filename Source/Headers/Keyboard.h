@@ -46,6 +46,7 @@ Sint32 KBD_Initialise( void );
 void KBD_Terminate( );
 
 void KBD_SetKeyTable( PKEYBOARD p_pKeyboard, const Uint8 **p_ppKeyTable );
+void KBD_AutoSetKeyTable( PKEYBOARD p_pKeyboard, Uint8 p_Language );
 void KBD_SetState( PKEYBOARD p_pKeyboard, Uint8 p_Rate, Uint8 p_Delay );
 void KBD_GetState( PKEYBOARD p_pKeyboard, Uint8 *p_pRate, Uint8 *p_pDelay );
 
