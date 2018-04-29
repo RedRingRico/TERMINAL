@@ -8,6 +8,7 @@
 #include <string.h>
 #include <StorageUnit.h>
 #include <GitVersion.h>
+#include <Keyboard.h>
 
 static Sint8 g_ConsoleID[ SYD_CFG_IID_SIZE + 1 ];
 static char g_ConsoleIDPrint[ ( SYD_CFG_IID_SIZE * 2 ) + 1 ];
@@ -748,6 +749,8 @@ Sint32 GSM_RunVSync( PGAMESTATE_MANAGER p_pGameStateManager )
 		p_pGameStateManager->DebugAdapter.DataSize, 3,
 		&p_pGameStateManager->DebugAdapter.DataRead );
 #endif /* DEBUG || DEVELOPMENT */
+
+	KBD_Server( );
 
 	/* Walk the stack */
 	for( ; StackItem > 0; --StackItem )

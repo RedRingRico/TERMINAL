@@ -30,11 +30,9 @@
 #include <MainMenuState.h>
 #include <MultiPlayerState.h>
 #include <TestMenuState.h>
-
+#include <Serial.h>
 #include <Array.h>
-
 #include <FileSystem.h>
-
 #include <ac.h>
 #include <am.h>
 
@@ -224,34 +222,11 @@ void main( void )
 	sprintf( g_VersionString, "[TERMINAL] | %s | %s", GIT_VERSION,
 		GIT_TAGNAME );
 
-	scif_init( RecvBuf, 1024 * 8, SendBuf, 1024 * 8 );
-	/* The perfect speed for a cool peripheral */
-	scif_open( BPS_19200 );
-
-	/* Clear the terminal */
-	scif_putq( 0x1B );
-	scif_putq( '[' );
-	scif_putq( '2' );
-	scif_putq( 'J' );
-
-	/* Test the output */
-	scif_putq( '[' );
-	scif_putq( 'T' );
-	scif_putq( 'E' );
-	scif_putq( 'R' );
-	scif_putq( 'M' );
-	scif_putq( 'I' );
-	scif_putq( 'N' );
-	scif_putq( 'A' );
-	scif_putq( 'L' );
-	/* Set the cursor to the next row */
-	scif_putq( ']' );
-	scif_putq( 0x1B );
-	scif_putq( '[' );
-	scif_putq( '2' );
-	scif_putq( ';' );
-	scif_putq( '1' );
-	scif_putq( 'f' );
+	SIF_Initialise( 1024 * 8, 1024 * 8, BPS_19200 );
+	SIF_Clear( );
+	SIF_Print( "[TERMINAL] SI/F test\n\n" );
+	SIF_PrintLine( "Another line!" );
+	SIF_PrintLine( "Again!\n" );
 
 	SU_Initialise( &SystemMemoryBlock );
 
@@ -287,7 +262,7 @@ void main( void )
 
 	kmSetWaitVsyncCallback(&VSyncCallback, &VSyncCallbackArgs);
 
-	scif_close( );
+	//scif_close( );
 
 	AudioParameters.IntCallback = NULL;
 	AudioParameters.pMemoryBlock = &AudioMemoryBlock;
@@ -421,6 +396,7 @@ void main( void )
 #if defined ( DEBUG ) || defined ( DEVELOPMENT )
 	TMU_RegisterWithGameStateManager( &GameStateManager );
 	MDLV_RegisterWithGameStateManager( &GameStateManager );
+	KBDT_RegisterWithGameStateManager( &GameStateManager );
 #endif /* DEBUG || DEVELOPMENT */
 
 	/* If there's a memory unit with system settings already stored, use those
@@ -455,6 +431,7 @@ MainCleanup:
 
 	GSM_Terminate( &GameStateManager );
 	AUD_Terminate( );
+	SIF_Terminate( );
 	REN_Terminate( &Renderer );
 	SU_Terminate( );
 
