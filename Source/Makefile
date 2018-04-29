@@ -41,7 +41,7 @@ LINK_FILES = $(addprefix xlnk.,$(basename $(DEFAULT_OBJS))) $(addprefix lnk.,$(O
 
 BUILD = Debug
 
-SOURCEDIR := Source Source/TestMenus
+SOURCEDIR := Source Source/TestMenus Source/KeyboardLayouts
 
 MAKE	:= make.exe
 ELFCONV	:= elfcnv.exe
@@ -65,7 +65,6 @@ DEFAULT_OBJS = strt1.obj strt2.obj systemid.obj toc.obj sg_sec.obj \
 	sg_are02.obj sg_are03.obj sg_are04.obj sg_ini.obj aip.obj zero.obj
 
 OPTIMISE ?= 0
-#LISTING
 LISTING = -list="$(OBJSDIR)\$*.lst"
 
 COPT_LINK = -g
