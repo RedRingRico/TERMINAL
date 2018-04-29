@@ -639,7 +639,7 @@ Sint32 SU_GetTotalBlockSize( Sint32 p_Drive, Uint16 *p_pBlockCount )
 	if( Return == SU_OK )
 	{
 		( *p_pBlockCount ) =
-			g_StorageUnits[ p_Drive ].DiskInformation.total_blocks;
+			g_StorageUnits[ p_Drive ].DiskInformation.total_user_blocks;
 	}
 
 	return Return;
@@ -659,8 +659,8 @@ Sint32 SU_GetUsedBlockSize( Sint32 p_Drive, Uint16 *p_pBlockCount )
 	if( Return == SU_OK )
 	{
 		( *p_pBlockCount ) =
-			g_StorageUnits[ p_Drive ].DiskInformation.total_blocks-
-			g_StorageUnits[ p_Drive ].DiskInformation.free_blocks;
+			g_StorageUnits[ p_Drive ].DiskInformation.total_user_blocks -
+			g_StorageUnits[ p_Drive ].DiskInformation.free_user_blocks;
 	}
 
 	return Return;
@@ -680,7 +680,7 @@ Sint32 SU_GetFreeBlockSize( Sint32 p_Drive, Uint16 *p_pBlockCount )
 	if( Return == SU_OK )
 	{
 		( *p_pBlockCount ) =
-			g_StorageUnits[ p_Drive ].DiskInformation.free_blocks;
+			g_StorageUnits[ p_Drive ].DiskInformation.free_user_blocks;
 	}
 
 	return Return;
