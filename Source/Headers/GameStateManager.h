@@ -7,6 +7,7 @@
 #include <Text.h>
 #include <DebugAdapter.h>
 #include <Renderer.h>
+#include <Keyboard.h>
 
 #define GSM_GLYPH_SET_DEBUG	0
 #define GSM_GLYPH_SET_GUI_1	1
@@ -41,6 +42,7 @@ typedef struct _tagGAMESTATE_MANAGER
 	GAMESTATE_MEMORY_BLOCKS	MemoryBlocks;
 	bool					Running;
 	STACK					GameStateStack;
+	PKEYBOARD				Keyboard[ 4 ];
 }GAMESTATE_MANAGER,*PGAMESTATE_MANAGER;
 
 int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,

@@ -17,6 +17,7 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 	PRENDERER p_pRenderer, PGAMESTATE_MEMORY_BLOCKS p_pMemoryBlocks )
 {
 	Sint32 DrivesMounted = 0;
+	size_t Index = 0;
 
 	if( p_pRenderer == NULL )
 	{
@@ -91,12 +92,20 @@ int GSM_Initialise( PGAMESTATE_MANAGER p_pGameStateManager,
 		return 1;
 	}
 
+	/* Set up the keyboard(s) */
+	for( Index = 0; Index < 4; ++Index )
+	{
+		p_pGameStateManager->Keyboard[ Index ] =
+			KBD_Create( PDD_PORT_A0 + Index * 6 );
+	}
+
 	return 0;
 }
 
 void GSM_Terminate( PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	PGAMESTATE_REGISTRY pRegistryItr = p_pGameStateManager->pRegistry;
+	size_t Index = 0;
 
 	/* Pop all states */
 	while( STK_GetCount( &p_pGameStateManager->GameStateStack ) )
@@ -128,6 +137,12 @@ void GSM_Terminate( PGAMESTATE_MANAGER p_pGameStateManager )
 		p_pGameStateManager->ppGlyphSet );
 
 	STK_Terminate( &p_pGameStateManager->GameStateStack );
+
+	for( Index = 0; Index < 4; ++Index )
+	{
+		KBD_Destroy( p_pGameStateManager->Keyboard[ Index ] );
+	}
+
 }
 
 int GSM_ChangeState( PGAMESTATE_MANAGER p_pGameStateManager,

@@ -24,7 +24,7 @@ static Sint32 KBDT_Initialise( void *p_pArgs )
 	for( Index = 0; Index < 4; ++Index )
 	{
 		KeyboardTestState.Keyboard[ Index ] =
-			KBD_Create( PDD_PORT_A0 + Index * 6 );
+			KeyboardTestState.Base.pGameStateManager->Keyboard[ Index ];
 	}
 
 	return 0;
@@ -59,13 +59,6 @@ static Sint32 KBDT_Render( void *p_pArgs )
 
 static Sint32 KBDT_Terminate( void *p_pArgs )
 {
-	size_t Index = 0;
-
-	for( Index = 0; Index < 4; ++Index )
-	{
-		KBD_Destroy( KeyboardTestState.Keyboard[ Index ] );
-	}
-
 	return 0;
 }
 
