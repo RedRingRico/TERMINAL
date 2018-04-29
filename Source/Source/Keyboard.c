@@ -69,69 +69,97 @@ void KBD_AutoSetKeyTable( PKEYBOARD p_pKeyboard, Uint8 p_Language )
 
 				break;
 			}
-			/*case PDD_KBDLANG_US:
+			case PDD_KBDLANG_US:
 			{
-				LOG_Debug( "[KBD_Create] <INFO> American keyboard connected to "
-					"port %s", HW_PortToName( p_Port ) );
+				pKeyboardRegion = "American";
 
 				break;
-			}*/
+			}
 			case PDD_KBDLANG_UK:
 			{
 				pKeyboardRegion = "English";
 				p_pKeyboard->ppKeyTable = g_KeyTableJapan;
 
 				break;
-			}/*
+			}
 			case PDD_KBDLANG_GERMANY:
 			{
-				LOG_Debug( "[KBD_Create] <INFO> German keyboard connected to "
-					"port %s", HW_PortToName( p_Port ) );
+				pKeyboardRegion = "German";
 
 				break;
 			}
 			case PDD_KBDLANG_FRANCE:
 			{
-				LOG_Debug( "[KBD_Create] <INFO> French keyboard connected to "
-					"port %s", HW_PortToName( p_Port ) );
+				pKeyboardRegion = "French";
 
 				break;
 			}
 			case PDD_KBDLANG_ITALY:
 			{
-				LOG_Debug( "[KBD_Create] <INFO> Italian keyboard connected to "
-					"port %s", HW_PortToName( p_Port ) );
+				pKeyboardRegion = "Italian";
 
 				break;
 			}
 			case PDD_KBDLANG_SPAIN:
 			{
-				LOG_Debug( "[KBD_Create] <INFO> Spanish keyboard connected to "
-					"port %s", HW_PortToName( p_Port ) );
+				pKeyboardRegion = "Spanish";
 
 				break;
 			}
 			case PDD_KBDLANG_SWEDEN:
 			{
-				LOG_Debug( "[KBD_Create] <INFO> Swedish keyboard connected to "
-					"port %s", HW_PortToName( p_Port ) );
+				pKeyboardRegion = "Swediash";
 
 				break;
 			}
 			case PDD_KBDLANG_SWITZER:
 			{
-				LOG_Debug( "[KBD_Create] <INFO> Swiss keyboard connected to "
-					"port %s", HW_PortToName( p_Port ) );
+				pKeyboardRegion = "Swiss";
 
 				break;
 			}
 			case PDD_KBDLANG_NETHER:
 			{
-				LOG_Debug( "[KBD_Create] <INFO> Netherlands keyboard connected "
-					"to port %s", HW_PortToName( p_Port ) );
+				pKeyboardRegion = "Netherlands";
 
 				break;
-			}*/
+			}
+			case PDD_KBDLANG_PORTUGAL:
+			{
+				pKeyboardRegion = "Portuguese";
+
+				break;
+			}
+			case PDD_KBDLANG_LATIN:
+			{
+				pKeyboardRegion = "Latin American";
+
+				break;
+			}
+			case PDD_KBDLANG_CANFRENCH:
+			{
+				pKeyboardRegion = "French Canadian";
+
+				break;
+			}
+			case PDD_KBDLANG_RUSSIA:
+			{
+				pKeyboardRegion = "Russian";
+
+				break;
+			}
+			case PDD_KBDLANG_CHINA:
+			{
+				pKeyboardRegion = "Chinese";
+				
+				break;
+			}
+			case PDD_KBDLANG_KOREA:
+			{
+				pKeyboardRegion = "Korean";
+
+				break;
+			}
 			default:
 			{
 				LOG_Debug( "[KBD_AutoSetKeyTable] <WARN> Unknown keyboard "
