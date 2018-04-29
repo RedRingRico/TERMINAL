@@ -5,6 +5,7 @@
 bool g_KeyboardLibraryInitialised = false;
 static KEYBOARD g_KeyboardState[ 4 ];
 static Uint16 g_KeyboardBuffer[ 4 ][ KBD_BUFFER_SIZE ];
+static bool g_KeyboardConnected[ 4 ];
 
 /* Keyboard layouts:
  * Japan, America, England, Germany, France, Italy, Spain, Sweden, Switzerland,
@@ -50,6 +51,99 @@ void KBD_SetKeyTable( PKEYBOARD p_pKeyboard, const Uint8 **p_ppKeyTable )
 	else
 	{
 		p_pKeyboard->ppKeyTable = g_KeyTableJapan;
+	}
+}
+
+void KBD_AutoSetKeyTable( PKEYBOARD p_pKeyboard, Uint8 p_Language )
+{
+	if( p_pKeyboard )
+	{
+		char *pKeyboardRegion;
+
+		switch( p_Language )
+		{
+			case PDD_KBDLANG_JP:
+			{
+				pKeyboardRegion = "Japanese";
+				p_pKeyboard->ppKeyTable = g_KeyTableJapan;
+
+				break;
+			}
+			/*case PDD_KBDLANG_US:
+			{
+				LOG_Debug( "[KBD_Create] <INFO> American keyboard connected to "
+					"port %s", HW_PortToName( p_Port ) );
+
+				break;
+			}*/
+			case PDD_KBDLANG_UK:
+			{
+				pKeyboardRegion = "English";
+				p_pKeyboard->ppKeyTable = g_KeyTableJapan;
+
+				break;
+			}/*
+			case PDD_KBDLANG_GERMANY:
+			{
+				LOG_Debug( "[KBD_Create] <INFO> German keyboard connected to "
+					"port %s", HW_PortToName( p_Port ) );
+
+				break;
+			}
+			case PDD_KBDLANG_FRANCE:
+			{
+				LOG_Debug( "[KBD_Create] <INFO> French keyboard connected to "
+					"port %s", HW_PortToName( p_Port ) );
+
+				break;
+			}
+			case PDD_KBDLANG_ITALY:
+			{
+				LOG_Debug( "[KBD_Create] <INFO> Italian keyboard connected to "
+					"port %s", HW_PortToName( p_Port ) );
+
+				break;
+			}
+			case PDD_KBDLANG_SPAIN:
+			{
+				LOG_Debug( "[KBD_Create] <INFO> Spanish keyboard connected to "
+					"port %s", HW_PortToName( p_Port ) );
+
+				break;
+			}
+			case PDD_KBDLANG_SWEDEN:
+			{
+				LOG_Debug( "[KBD_Create] <INFO> Swedish keyboard connected to "
+					"port %s", HW_PortToName( p_Port ) );
+
+				break;
+			}
+			case PDD_KBDLANG_SWITZER:
+			{
+				LOG_Debug( "[KBD_Create] <INFO> Swiss keyboard connected to "
+					"port %s", HW_PortToName( p_Port ) );
+
+				break;
+			}
+			case PDD_KBDLANG_NETHER:
+			{
+				LOG_Debug( "[KBD_Create] <INFO> Netherlands keyboard connected "
+					"to port %s", HW_PortToName( p_Port ) );
+
+				break;
+			}*/
+			default:
+			{
+				LOG_Debug( "[KBD_AutoSetKeyTable] <WARN> Unknown keyboard "
+					"connected to port %s [Language: 0x%08X]",
+					HW_PortToName( p_pKeyboard->Port ), p_Language );
+				p_pKeyboard->ppKeyTable = g_KeyTableJapan;
+				return;
+			}
+		}
+
+		LOG_Debug( "[KBD_AutoSetKeyTable] <INFO> %s keyboard connected to "
+			"port %s", pKeyboardRegion, HW_PortToName( p_pKeyboard->Port ) );
 	}
 }
 
@@ -113,90 +207,7 @@ PKEYBOARD KBD_Create( Uint32 p_Port )
 	pKeyboard->LastKey = 0xFF;
 
 	/* Set the keyboard layout */
-	switch( pKeyboardInfo->lang )
-	{
-		case PDD_KBDLANG_JP:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> Japanese keyboard connected to "
-				"port %s", HW_PortToName( p_Port ) );
-
-			pKeyboard->ppKeyTable = g_KeyTableJapan;
-
-			break;
-		}
-		case PDD_KBDLANG_US:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> American keyboard connected to "
-				"port %s", HW_PortToName( p_Port ) );
-
-			break;
-		}
-		case PDD_KBDLANG_UK:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> United Kingdom keyboard "
-				"connected to port %s", HW_PortToName( p_Port ) );
-
-			pKeyboard->ppKeyTable = g_KeyTableJapan;
-
-			break;
-		}
-		case PDD_KBDLANG_GERMANY:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> German keyboard connected to "
-				"port %s", HW_PortToName( p_Port ) );
-
-			break;
-		}
-		case PDD_KBDLANG_FRANCE:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> French keyboard connected to "
-				"port %s", HW_PortToName( p_Port ) );
-
-			break;
-		}
-		case PDD_KBDLANG_ITALY:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> Italian keyboard connected to "
-				"port %s", HW_PortToName( p_Port ) );
-
-			break;
-		}
-		case PDD_KBDLANG_SPAIN:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> Spanish keyboard connected to "
-				"port %s", HW_PortToName( p_Port ) );
-
-			break;
-		}
-		case PDD_KBDLANG_SWEDEN:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> Swedish keyboard connected to "
-				"port %s", HW_PortToName( p_Port ) );
-
-			break;
-		}
-		case PDD_KBDLANG_SWITZER:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> Swiss keyboard connected to "
-				"port %s", HW_PortToName( p_Port ) );
-
-			break;
-		}
-		case PDD_KBDLANG_NETHER:
-		{
-			LOG_Debug( "[KBD_Create] <INFO> Netherlands keyboard connected "
-				"to port %s", HW_PortToName( p_Port ) );
-
-			break;
-		}
-		default:
-		{
-			LOG_Debug( "[KBD_Create] <WARN> Unknown keyboard connected to "
-				"port %s [Language: 0x%08X]", HW_PortToName( p_Port ),
-				pKeyboardInfo->lang );
-			pKeyboard->ppKeyTable = g_KeyTableJapan;
-		}
-	}
+	KBD_AutoSetKeyTable( pKeyboard, pKeyboardInfo->lang );
 
 	return pKeyboard;
 }
@@ -276,8 +287,23 @@ static void KeyboardPortServer( PKEYBOARD p_pKeyboard )
 		return;
 	}
 
+	if( ( p_pKeyboard->Flags & KBD_READY ) == 0 )
+	{
+		/* Newly connected/reconnected keyboard */
+		if( pKeyboard->info->lang )
+		{
+			KBD_AutoSetKeyTable( p_pKeyboard, pKeyboard->info->lang );
+			p_pKeyboard->Flags |= KBD_READY;
+		}
+		else
+		{
+			/* Wait until we can set the key table before attempting to allow
+			 * for the key to character map */
+			return;
+		}
+	}
+
 	p_pKeyboard->pRawData = pKeyboard;
-	p_pKeyboard->Flags |= KBD_READY;
 
 	for( Index = 0; Index < 6; ++Index )
 	{
