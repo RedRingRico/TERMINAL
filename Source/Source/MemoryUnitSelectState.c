@@ -53,14 +53,14 @@ static PSTORAGEUNIT_INFO g_pStorageUnitsAvailable;
 
 static MEMORYUNITSELECT_GAMESTATE MemoryUnitSelectState;
 
-static int MUSS_Load( void *p_pArgs )
+static Sint32 MUSS_Load( void *p_pArgs )
 {
 	MemoryUnitSelectState.ConfigurationFound = false;
 
 	return 0;
 }
 
-static int MUSS_Initialise( void *p_pArgs )
+static Sint32 MUSS_Initialise( void *p_pArgs )
 {
 	/* If the game configuration file is present, skip the whole thing 
 	 * (for now, just look for a file that doesn't exist to force this)
@@ -82,7 +82,7 @@ static int MUSS_Initialise( void *p_pArgs )
 	return 0;
 }
 
-static int MUSS_Update( void *p_pArgs )
+static Sint32 MUSS_Update( void *p_pArgs )
 {
 	static Uint8 SelectedDrive = 0;
 
@@ -260,7 +260,7 @@ static int MUSS_Update( void *p_pArgs )
 	return 0;
 }
 
-static int MUSS_Render( void *p_pArgs )
+static Sint32 MUSS_Render( void *p_pArgs )
 {
 	KMPACKEDARGB TextColour;
 	char PrintBuffer[ 80 ];
@@ -416,12 +416,12 @@ static int MUSS_Render( void *p_pArgs )
 	return 0;
 }
 
-static int MUSS_Terminate( void *p_pArgs )
+static Sint32 MUSS_Terminate( void *p_pArgs )
 {
 	return 0;
 }
 
-static int MUSS_Unload( void *p_pArgs )
+static Sint32 MUSS_Unload( void *p_pArgs )
 {
 	 MEM_FreeFromBlock( MemoryUnitSelectState.Base.pGameStateManager->
 	 	MemoryBlocks.pSystemMemory, g_pStorageUnitsAvailable );
@@ -430,12 +430,12 @@ static int MUSS_Unload( void *p_pArgs )
 	return 0;
 }
 
-static int MUSS_VSyncCallback( void *p_pArgs )
+static Sint32 MUSS_VSyncCallback( void *p_pArgs )
 {
 	return 0;
 }
 
-int MUSS_RegisterWithGameStateManager(
+Sint32 MUSS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager )
 {
 	MemoryUnitSelectState.Base.Load = &MUSS_Load;

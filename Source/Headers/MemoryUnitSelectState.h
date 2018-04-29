@@ -11,7 +11,7 @@ typedef struct _tagMEMORYUNITSELECT
 	PGLYPHSET	pGlyphSet;
 }MEMORYUNITSELECT,*PMEMORYUNITSELECT;
 
-int MUSS_RegisterWithGameStateManager(
+Sint32 MUSS_RegisterWithGameStateManager(
 	PGAMESTATE_MANAGER p_pGameStateManager );
 
 #endif /* __TERMINAL_MEMORYUNITSELECTSTATE_H__ */
