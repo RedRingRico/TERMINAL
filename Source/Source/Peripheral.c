@@ -1,14 +1,16 @@
 #include <Peripheral.h>
 #include <shinobi.h>
+#include <Log.h>
 
 static Uint8 g_MapleRecv[ 1024 * 24 * 2 + 32 ];
 static Uint8 g_MapleSend[ 1024 * 24 * 2 + 32 ];
+extern bool g_KeyboardLibraryInitialised;
 PDS_PERIPHERAL	g_Peripherals[ 4 ];
 
 /* Prototypes */
 void MapleInterrupt( void );
 
-int PER_Initialise( void )
+Sint32 PER_Initialise( void )
 {
 	pdInitPeripheral( PDD_PLOGIC_ACTIVE, g_MapleRecv, g_MapleSend );
 	pdSetIntFunction( MapleInterrupt );
@@ -27,8 +29,8 @@ void PER_Terminate( void )
    handles connected to them of their status (connected, disconnected, etc.)*/
 void MapleInterrupt( void )
 {
-    int PortIndex = PDD_PORT_A0;
-    int Port = 0;
+    Uint32 PortIndex = PDD_PORT_A0;
+    Uint32 Port = 0;
 
     const PDS_PERIPHERALINFO *pPeripheralInfo[ 4 ] = { NULL };
 

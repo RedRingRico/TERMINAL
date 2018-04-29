@@ -8,7 +8,7 @@
 
 extern PDS_PERIPHERAL g_Peripherals[ 4 ];
 
-int PER_Initialise( void );
+Sint32 PER_Initialise( void );
 void PER_Terminate( void );
 
 #endif /* __TERMINAL_PERIPHERAL_H__ */
