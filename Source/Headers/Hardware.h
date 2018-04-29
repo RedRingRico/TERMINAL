@@ -11,5 +11,7 @@ void HW_Terminate( void );
 
 void HW_Reboot( void );
 
+const char *HW_PortToName( Uint32 p_Port );
+
 #endif /* __TERMINAL_HARDWARE_H__ */
 

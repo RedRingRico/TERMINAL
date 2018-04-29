@@ -1,6 +1,7 @@
 #include <Hardware.h>
 #include <Memory.h>
 #include <Peripheral.h>
+#include <Keyboard.h>
 #include <FileSystem.h>
 #include <Log.h>
 
@@ -59,6 +60,7 @@ int HW_Initialise( KMBPPMODE p_BPP, SYE_CBL *p_pCableType,
 	syHwInit2( );
 
 	PER_Initialise( );
+	KBD_Initialise( );
 	syRtcInit( );
 
 	set_imask( 0 );
@@ -82,6 +84,7 @@ void HW_Terminate( void )
 {
 	FS_Terminate( );
 	syRtcFinish( );
+	KBD_Terminate( );
 	PER_Terminate( );
 	kmUnloadDevice( );
     syStartGlobalDestructor();
@@ -97,6 +100,122 @@ void HW_Reboot( void )
 	syBtExit( );
 }
 
+const char *HW_PortToName( Uint32 p_Port )
+{
+	switch( p_Port )
+	{
+		/* A-0:5 */
+		case PDD_PORT_A0:
+		{
+			return "A-0";
+		}
+		case PDD_PORT_A1:
+		{
+			return "A-1";
+		}
+		case PDD_PORT_A2:
+		{
+			return "A-2";
+		}
+		case PDD_PORT_A3:
+		{
+			return "A-3";
+		}
+		case PDD_PORT_A4:
+		{
+			return "A-4";
+		}
+		case PDD_PORT_A5:
+		{
+			return "A-5";
+		}
+
+		/* B-0:5 */
+		case PDD_PORT_B0:
+		{
+			return "B-0";
+		}
+		case PDD_PORT_B1:
+		{
+			return "B-1";
+		}
+		case PDD_PORT_B2:
+		{
+			return "B-2";
+		}
+		case PDD_PORT_B3:
+		{
+			return "B-3";
+		}
+		case PDD_PORT_B4:
+		{
+			return "B-4";
+		}
+		case PDD_PORT_B5:
+		{
+			return "B-5";
+		}
+
+		/* C-0:5 */
+		case PDD_PORT_C0:
+		{
+			return "C-0";
+		}
+		case PDD_PORT_C1:
+		{
+			return "C-1";
+		}
+		case PDD_PORT_C2:
+		{
+			return "C-2";
+		}
+		case PDD_PORT_C3:
+		{
+			return "C-3";
+		}
+		case PDD_PORT_C4:
+		{
+			return "C-4";
+		}
+		case PDD_PORT_C5:
+		{
+			return "C-5";
+		}
+
+		/* D-0:5 */
+		case PDD_PORT_D0:
+		{
+			return "D-0";
+		}
+		case PDD_PORT_D1:
+		{
+			return "D-1";
+		}
+		case PDD_PORT_D2:
+		{
+			return "D-2";
+		}
+		case PDD_PORT_D3:
+		{
+			return "D-3";
+		}
+		case PDD_PORT_D4:
+		{
+			return "D-4";
+		}
+		case PDD_PORT_D5:
+		{
+			return "D-5";
+		}
+
+		/* This should never happen */
+		default:
+		{
+			return "UNKNOWN";
+		}
+	}
+}
+
 KMVOID PALExtCallback( PKMVOID p_pArgs )
 {
 	PKMPALEXTINFO pPALInfo;
@@ -104,4 +223,5 @@ KMVOID PALExtCallback( PKMVOID p_pArgs )
 	pPALInfo = ( PKMPALEXTINFO )p_pArgs;
 	pPALInfo->nPALExtMode = KM_PALEXT_HEIGHT_RATIO_1_166;
 }
+
 
