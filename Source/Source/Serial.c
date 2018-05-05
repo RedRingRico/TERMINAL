@@ -5,6 +5,7 @@
 #include <Log.h>
 #include <stddef.h>
 #include <Hardware.h>
+#include <stdarg.h>
 
 static unsigned char RecvBuf[ 1024 * 8 ];
 static unsigned char SendBuf[ 1024 * 8 ];
@@ -18,7 +19,7 @@ Sint32 SIF_Initialise_Int( Sint32 p_RecvBufferSize, Sint32 p_SendBufferSize,
 		return SIF_FATAL_ERROR;
 	}
 
-	if( scif_open( BPS_19200 ) != 0 )
+	if( scif_open( BPS_115200 ) != 0 )
 	{
 		return SIF_FATAL_ERROR;
 	}
@@ -52,11 +53,20 @@ void SIF_Clear_Int( void )
 	}
 }
 
-void SIF_Print_Int( const char *p_pString )
+void SIF_Print_Int( const char *p_pString, ... )
 {
 	if( g_Initialised == true )
 	{
-		char *pChar = p_pString;
+		char *pChar;
+		static char String[ 256 ];
+		va_list Args;
+
+		va_start( Args, p_pString );
+		vsprintf( String, p_pString, Args );
+		va_end( Args );
+
+		pChar = String;
+
 		while( *pChar )
 		{
 			if( *pChar == '\n' )

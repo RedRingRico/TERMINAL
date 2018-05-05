@@ -29,7 +29,7 @@ Sint32 SIF_Initialise_Int( Sint32 p_RecvBufferSize, Sint32 p_SendBufferSize,
 void SIF_Terminate_Int( void );
 
 void SIF_Clear_Int( void );
-void SIF_Print_Int( const char *p_pString );
+void SIF_Print_Int( const char *p_pString, ... );
 void SIF_PrintLine_Int( const char *p_pString );
 void SIF_NewLine_Int( void );
 
