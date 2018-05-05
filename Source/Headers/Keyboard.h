@@ -59,6 +59,8 @@ void KBD_Destroy( PKEYBOARD p_pKeyboard );
 Uint16 KBD_GetChar( PKEYBOARD p_pKeyboard );
 const PDS_KEYBOARD *KBD_GetRawData( PKEYBOARD p_pKeyboard );
 
+void KBD_Flush( PKEYBOARD p_pKeyboard );
+
 void KBD_Server( void );
 
 #endif /* __TERMINAL_KEYBOARD_H__ */

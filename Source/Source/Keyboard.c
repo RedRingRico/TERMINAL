@@ -1,6 +1,7 @@
 #include <Keyboard.h>
 #include <Hardware.h>
 #include <Log.h>
+#include <Serial.h>
 
 bool g_KeyboardLibraryInitialised = false;
 static KEYBOARD g_KeyboardState[ 4 ];
@@ -58,120 +59,82 @@ void KBD_AutoSetKeyTable( PKEYBOARD p_pKeyboard, Uint8 p_Language )
 {
 	if( p_pKeyboard )
 	{
-		char *pKeyboardRegion;
-
 		switch( p_Language )
 		{
 			case PDD_KBDLANG_JP:
 			{
-				pKeyboardRegion = "Japanese";
 				p_pKeyboard->ppKeyTable = g_KeyTableJapan;
 
 				break;
 			}
 			case PDD_KBDLANG_US:
 			{
-				pKeyboardRegion = "American";
-
 				break;
 			}
 			case PDD_KBDLANG_UK:
 			{
-				pKeyboardRegion = "English";
 				p_pKeyboard->ppKeyTable = g_KeyTableJapan;
 
 				break;
 			}
 			case PDD_KBDLANG_GERMANY:
 			{
-				pKeyboardRegion = "German";
-
 				break;
 			}
 			case PDD_KBDLANG_FRANCE:
 			{
-				pKeyboardRegion = "French";
-
 				break;
 			}
 			case PDD_KBDLANG_ITALY:
 			{
-				pKeyboardRegion = "Italian";
-
 				break;
 			}
 			case PDD_KBDLANG_SPAIN:
 			{
-				pKeyboardRegion = "Spanish";
-
 				break;
 			}
 			case PDD_KBDLANG_SWEDEN:
 			{
-				pKeyboardRegion = "Swediash";
-
 				break;
 			}
 			case PDD_KBDLANG_SWITZER:
 			{
-				pKeyboardRegion = "Swiss";
-
 				break;
 			}
 			case PDD_KBDLANG_NETHER:
 			{
-				pKeyboardRegion = "Netherlands";
-
 				break;
 			}
 			case PDD_KBDLANG_PORTUGAL:
 			{
-				pKeyboardRegion = "Portuguese";
-
 				break;
 			}
 			case PDD_KBDLANG_LATIN:
 			{
-				pKeyboardRegion = "Latin American";
-
 				break;
 			}
 			case PDD_KBDLANG_CANFRENCH:
 			{
-				pKeyboardRegion = "French Canadian";
-
 				break;
 			}
 			case PDD_KBDLANG_RUSSIA:
 			{
-				pKeyboardRegion = "Russian";
-
 				break;
 			}
 			case PDD_KBDLANG_CHINA:
 			{
-				pKeyboardRegion = "Chinese";
-				
 				break;
 			}
 			case PDD_KBDLANG_KOREA:
 			{
-				pKeyboardRegion = "Korean";
-
 				break;
 			}
 			default:
 			{
-				LOG_Debug( "[KBD_AutoSetKeyTable] <WARN> Unknown keyboard "
-					"connected to port %s [Language: 0x%08X]",
-					HW_PortToName( p_pKeyboard->Port ), p_Language );
 				p_pKeyboard->ppKeyTable = g_KeyTableJapan;
 				return;
 			}
 		}
-
-		LOG_Debug( "[KBD_AutoSetKeyTable] <INFO> %s keyboard connected to "
-			"port %s", pKeyboardRegion, HW_PortToName( p_pKeyboard->Port ) );
 	}
 }
 
@@ -256,6 +219,7 @@ Uint16 KBD_GetChar( PKEYBOARD p_pKeyboard )
 	{
 		Uint16 Char;
 
+		/* Nothing new */
 		if( p_pKeyboard->ReadPointer == p_pKeyboard->WritePointer )
 		{
 			return 0;
@@ -278,6 +242,15 @@ const PDS_KEYBOARD *KBD_GetRawData( PKEYBOARD p_pKeyboard )
 	}
 
 	return NULL;
+}
+
+void KBD_Flush( PKEYBOARD p_pKeyboard )
+{
+	if( p_pKeyboard )
+	{
+		p_pKeyboard->ReadPointer = 0;
+		p_pKeyboard->WritePointer = 0;
+	}
 }
 
 void KBD_Server( void )
@@ -372,6 +345,7 @@ ReadKeys:
 		if( p_pKeyboard->DelayCount > p_pKeyboard->Delay )
 		{
 			p_pKeyboard->Flags |= KBD_REPEAT;
+			SIF_Print( "DelayCount: %d", p_pKeyboard->DelayCount );
 		}
 	}
 	else
