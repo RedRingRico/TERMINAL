@@ -134,7 +134,7 @@ int REN_Initialise( PRENDERER p_pRenderer,
 		p_pRenderer->pMemoryBlock, 2000 * sizeof( KMVERTEX5 ),
 		"Renderer: Temporary vertices [TYPE 05]" );
 
-	LOG_Debug( "Vertices allocated at 0x%08X", p_pRenderer->pVertices05 );
+	//LOG_Debug( "Vertices allocated at 0x%08X", p_pRenderer->pVertices05 );
 
 	if( p_pRenderer->pVertices05 == NULL )
 	{

@@ -1,6 +1,7 @@
 #include <Peripheral.h>
 #include <shinobi.h>
 #include <Log.h>
+#include <Keyboard.h>
 
 static Uint8 g_MapleRecv[ 1024 * 24 * 2 + 32 ];
 static Uint8 g_MapleSend[ 1024 * 24 * 2 + 32 ];
@@ -33,6 +34,9 @@ void MapleInterrupt( void )
     Uint32 Port = 0;
 
     const PDS_PERIPHERALINFO *pPeripheralInfo[ 4 ] = { NULL };
+
+	/* Handle keyboard updates */
+	KBD_Server( );
 
     for( PortIndex = PDD_PORT_A0; PortIndex <= PDD_PORT_D0; PortIndex +=
         PDD_PORT_B0, ++Port )

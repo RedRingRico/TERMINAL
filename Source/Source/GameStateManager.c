@@ -765,8 +765,6 @@ Sint32 GSM_RunVSync( PGAMESTATE_MANAGER p_pGameStateManager )
 		&p_pGameStateManager->DebugAdapter.DataRead );
 #endif /* DEBUG || DEVELOPMENT */
 
-	KBD_Server( );
-
 	/* Walk the stack */
 	for( ; StackItem > 0; --StackItem )
 	{
