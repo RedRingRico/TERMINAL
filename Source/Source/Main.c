@@ -10,7 +10,6 @@
 #include <Memory.h>
 #include <Text.h>
 #include <kamui2.h>
-#include <sh4scif.h>
 #include <Vector3.h>
 #include <mathf.h>
 #include <Camera.h>
@@ -104,6 +103,7 @@ ngADnsTicket DNSTicket;
 Uint32 DNSResolveTime;
 
 static void VSyncCallback( PKMVOID p_pArgs );
+static void VSyncWaitCallback( PKMVOID p_pArgs );
 
 void main( void )
 {
@@ -260,9 +260,7 @@ void main( void )
 
 	REN_Initialise( &Renderer, &RendererConfiguration );
 
-	kmSetWaitVsyncCallback(&VSyncCallback, &VSyncCallbackArgs);
-
-	//scif_close( );
+	kmSetWaitVsyncCallback(&VSyncWaitCallback, &VSyncCallbackArgs);
 
 	AudioParameters.IntCallback = NULL;
 	AudioParameters.pMemoryBlock = &AudioMemoryBlock;
@@ -1159,14 +1157,17 @@ bool LoadSoundBank( Uint32 *p_pAICA, char *p_pName, Sint32 *p_pSize )
 	return true;
 }
 
-static void VSyncCallback( PKMVOID p_pArgs )
+static void VSyncWaitCallback( PKMVOID p_pArgs )
 {
 	PVSYNC_CALLBACK pArgs = ( PVSYNC_CALLBACK )( p_pArgs );
 
 	NET_Update( );
 
-	if( GSM_RunVSync( pArgs->pGameStateManager ) != 0 )
+	if( pArgs->pGameStateManager != NULL )
 	{
+		if( GSM_RunVSync( pArgs->pGameStateManager ) != 0 )
+		{
+		}
 	}
 }
 
