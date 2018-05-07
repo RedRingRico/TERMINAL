@@ -196,6 +196,7 @@ PKEYBOARD KBD_Create( Uint32 p_Port )
 	pKeyboard->pKeyBuffer = g_KeyboardBuffer[ PortNumber ];
 	pKeyboard->KeyBufferSize = KBD_BUFFER_SIZE;
 	pKeyboard->LastKey = 0xFF;
+	memset( pKeyboard->Keys, 0, sizeof( pKeyboard->Keys ) );
 
 	/* Set the keyboard layout */
 	KBD_AutoSetKeyTable( pKeyboard, pKeyboardInfo->lang );
@@ -276,6 +277,7 @@ static void KeyboardPortServer( PKEYBOARD p_pKeyboard )
 	Uint8 Data;
 	size_t Index;
 	bool InputFlag;
+	bool BufferFull = false, KeyPressed = false;
 
 	InputFlag = false;
 	pKeyboard = pdKbdGetData( p_pKeyboard->Port );
@@ -304,14 +306,22 @@ static void KeyboardPortServer( PKEYBOARD p_pKeyboard )
 		}
 	}
 
+	/* Reset the keyboard state */
+	memset( p_pKeyboard->Keys, 0, sizeof( p_pKeyboard->Keys ) );
 	p_pKeyboard->pRawData = pKeyboard;
 
+	/* Save the currently pressed keys */
+	memcpy( p_pKeyboard->OldKeys, p_pKeyboard->pRawData->key,
+		sizeof( p_pKeyboard->pRawData->key ) );
+
+	/* Set the keyboard state */
 	for( Index = 0; Index < 6; ++Index )
 	{
 		Data = pKeyboard->key[ 5 - Index ];
 
 		switch( Data )
 		{
+			/* No key pressed at this location, or key rollover triggered */
 			case 0x00:
 			case 0x01:
 			{
@@ -324,11 +334,26 @@ static void KeyboardPortServer( PKEYBOARD p_pKeyboard )
 					( p_pKeyboard->KeyBufferSize - 1 ) ) ==
 						p_pKeyboard->ReadPointer )
 				{
-					return;
+					BufferFull = true;
 				}
-				goto ReadKeys;
+
+				/* Set the key state */
+				p_pKeyboard->Keys[ Data ] = 1;
+				/*SIF_Print( "Key %d held", Key );*/
+				KeyPressed = true;
 			}
 		}
+	}
+
+	if( BufferFull == true )
+	{
+		/* Can't read the key correctly for converting to a character */
+		return;
+	}
+
+	if( KeyPressed == true )
+	{
+		goto ReadKey;
 	}
 
 	p_pKeyboard->DelayCount = 0;
@@ -337,7 +362,7 @@ static void KeyboardPortServer( PKEYBOARD p_pKeyboard )
 
 	return;
 
-ReadKeys:
+ReadKey:
 	if( Data == p_pKeyboard->LastKey )
 	{
 		++p_pKeyboard->DelayCount;
@@ -345,7 +370,7 @@ ReadKeys:
 		if( p_pKeyboard->DelayCount > p_pKeyboard->Delay )
 		{
 			p_pKeyboard->Flags |= KBD_REPEAT;
-			SIF_Print( "DelayCount: %d", p_pKeyboard->DelayCount );
+			/*SIF_Print( "DelayCount: %d", p_pKeyboard->DelayCount );*/
 		}
 	}
 	else

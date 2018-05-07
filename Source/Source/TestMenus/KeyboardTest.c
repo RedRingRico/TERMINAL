@@ -3,6 +3,7 @@
 #include <Keyboard.h>
 #include <Hardware.h>
 #include <Renderer.h>
+#include <Serial.h>
 
 #if defined ( DEBUG ) || defined ( DEVELOPMENT )
 
@@ -11,6 +12,7 @@ typedef struct
 	GAMESTATE	Base;
 	PGLYPHSET	pGlyphSet;
 	PKEYBOARD	Keyboard[ 4 ];
+	Uint8		OldKeyStates[ 4 ][ 140 ];
 }KEYBOARDTEST_GAMESTATE,*PKEYBOARDTEST_GAMESTATE;
 
 static KEYBOARDTEST_GAMESTATE KeyboardTestState;
@@ -31,6 +33,8 @@ static Sint32 KBDT_Initialise( void *p_pArgs )
 	{
 		KeyboardTestState.Keyboard[ Index ] =
 			KeyboardTestState.Base.pGameStateManager->Keyboard[ Index ];
+
+		memset( KeyboardTestState.OldKeyStates[ Index ], 0, 140 );
 	}
 
 	return 0;
@@ -38,20 +42,50 @@ static Sint32 KBDT_Initialise( void *p_pArgs )
 
 static Sint32 KBDT_Update( void *p_pArgs )
 {
+	size_t Index;
+
 	if( g_Peripherals[ 0 ].press & PDD_DGT_TB )
 	{
 		GSM_PopState( KeyboardTestState.Base.pGameStateManager );
 	}
 
-	if( KBD_KeyPressed( KeyboardTestState.Keyboard[ 3 ] ) )
+	for( Index = 0; Index < 4; ++Index )
 	{
-		Uint16 Data;
-		Uint16 OrgData = KBD_GetChar( KeyboardTestState.Keyboard[ 3 ] );
-		Data = OrgData & 0xFF;
-
-		if( Data == 0x1B )
+		if( KeyboardTestState.Keyboard[ Index ]->Flags & KBD_READY )
 		{
-			GSM_PopState( KeyboardTestState.Base.pGameStateManager );
+			PKEYBOARD pKeyboard = KeyboardTestState.Keyboard[ Index ];
+
+			if( KeyboardTestState.OldKeyStates[ Index ][ 0x29 ] == 1 )
+			{
+				/* Key released */
+				if( pKeyboard->Keys[ 0x29 ] == 0 )
+				{
+					GSM_PopState( KeyboardTestState.Base.pGameStateManager );
+				}
+			}
+
+			if( KBD_KeyPressed( pKeyboard ) )
+			{
+				Uint16 Data;
+				Uint16 OrgData = KBD_GetChar( pKeyboard );
+
+				Data = OrgData & 0xFF;
+
+				/* Three-finger salute */
+				if( ( OrgData & ( KEYCODE_CTRL | KEYCODE_ALT ) ) ==
+					( KEYCODE_CTRL | KEYCODE_ALT ) )
+				{
+					/* Delete */
+					if( Data == 0x7F )
+					{
+						GSM_Quit( KeyboardTestState.Base.pGameStateManager );
+					}
+				}
+			}
+
+			/* Save the key state */
+			memcpy( KeyboardTestState.OldKeyStates[ Index ],
+				pKeyboard->Keys, sizeof( pKeyboard->Keys ) );
 		}
 	}
 

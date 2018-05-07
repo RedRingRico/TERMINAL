@@ -20,6 +20,11 @@
 #define KBD_READY	2
 #define KBD_REPEAT	4
 
+#define KEYCODE_GUI		0x8000
+#define KEYCODE_CTRL	0x1000
+#define KEYCODE_SHIFT	0x2000
+#define KEYCODE_ALT		0x4000
+
 typedef struct _tagKEYBOARD
 {
 	/* In use/Ready/Repeat */
@@ -31,7 +36,7 @@ typedef struct _tagKEYBOARD
 	Uint8			Delay;
 	Uint8			DelayCount;
 	Uint8			LastKey;
-	Uint8			OldKeys[ 8 ];
+	Uint8			OldKeys[ 6 ];
 	Uint32			Port;
 	size_t			WritePointer;
 	size_t			ReadPointer;
@@ -40,6 +45,9 @@ typedef struct _tagKEYBOARD
 	PDS_KEYBOARD	*pRawData;
 	/* Key conversion table */
 	Uint8			**ppKeyTable;
+	/* Keyboard state */
+	/* 140 keys maximum per keyboard layout, each keyboard updates this */
+	Uint8			Keys[ 140 ];
 }KEYBOARD, *PKEYBOARD;
 
 Sint32 KBD_Initialise( void );
